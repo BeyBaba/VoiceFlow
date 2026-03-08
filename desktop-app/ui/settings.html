@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>VoiceFlow - Ayarlar</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0B0B12;
+      color: #E7E5E4;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2A2A36; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3A3A48; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 180px;
+      min-height: 100vh;
+      background: #111118;
+      border-right: 1px solid #1E1E28;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px 20px;
+      border-bottom: 1px solid #1E1E28;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-logo {
+      width: 32px; height: 32px; padding: 6px;
+      background: linear-gradient(135deg, #0F766E, #4F46E5);
+      border-radius: 8px; color: white;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-logo svg { display: block; }
+
+    .sidebar-title {
+      font-size: 14px; font-weight: 800; color: #F5F5F4;
+    }
+    .sidebar-subtitle {
+      font-size: 10px; color: #57534E; font-weight: 600; letter-spacing: 0.05em;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 4px 8px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 8px;
+      color: #78716C; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+      margin-bottom: 2px;
+      border: 1px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.03); color: #A8A29E; }
+    .nav-item.active {
+      background: rgba(15,118,110,0.08);
+      color: #2DD4BF;
+      border-color: rgba(15,118,110,0.15);
+    }
+    .nav-icon { font-size: 15px; width: 20px; text-align: center; line-height: 1; }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #1E1E28;
+    }
+    .sidebar-version {
+      font-size: 10px; color: #44403C;
+      font-weight: 600; letter-spacing: 0.05em;
+    }
+
+    /* ===== CONTENT ===== */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 18px; font-weight: 800; color: #F5F5F4;
+      margin-bottom: 4px;
+    }
+    .section-desc {
+      font-size: 12px; color: #57534E; margin-bottom: 24px; line-height: 1.5;
+    }
+
+    /* Cards */
+    .card {
+      background: #16161E;
+      border: 1px solid #1E1E28;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #2A2A36; }
+
+    .card-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 32px;
+    }
+
+    .card-label-wrap { flex: 1; margin-right: 16px; }
+    .card-label {
+      font-size: 13px; font-weight: 600; color: #E7E5E4;
+      margin-bottom: 2px;
+    }
+    .card-hint {
+      font-size: 11px; color: #57534E; line-height: 1.4;
+    }
+    .card-hint a { color: #2DD4BF; text-decoration: none; }
+    .card-hint a:hover { text-decoration: underline; }
+
+    /* Toggle */
+    .toggle {
+      position: relative;
+      width: 40px; height: 22px;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .toggle input { display: none; }
+    .toggle-track {
+      width: 40px; height: 22px;
+      background: #2A2A36; border-radius: 11px;
+      transition: background 0.2s;
+    }
+    .toggle-thumb {
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #57534E; border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: all 0.2s;
+    }
+    .toggle input:checked ~ .toggle-track { background: #0F766E; }
+    .toggle input:checked ~ .toggle-thumb { left: 21px; background: white; }
+
+    /* Select */
+    .card-select {
+      padding: 8px 12px;
+      background: #0B0B12;
+      border: 1px solid #2A2A36;
+      border-radius: 8px;
+      color: #E7E5E4;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      min-width: 140px;
+      transition: border-color 0.2s;
+    }
+    .card-select:focus { border-color: #0F766E; }
+
+    /* Text Input */
+    .card-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0B0B12;
+      border: 1px solid #2A2A36;
+      border-radius: 8px;
+      color: #E7E5E4;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: 'SF Mono', 'Cascadia Code', monospace;
+    }
+    .card-input:focus { border-color: #0F766E; }
+    .card-input::placeholder { color: #44403C; }
+
+    .card-input-row {
+      margin-top: 10px;
+    }
+
+    /* Password toggle */
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap .card-input { padding-right: 40px; }
+    .toggle-pass {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #57534E;
+      cursor: pointer; font-size: 14px; padding: 4px;
+    }
+    .toggle-pass:hover { color: #A8A29E; }
+
+    /* Shortcut box */
+    .shortcut-display {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      background: #0B0B12;
+      border: 1px solid #2A2A36;
+      border-radius: 8px;
+    }
+    .shortcut-display kbd {
+      padding: 3px 8px;
+      background: #16161E;
+      border: 1px solid #2A2A36;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: 700;
+      color: #2DD4BF;
+    }
+    .shortcut-display .plus {
+      color: #57534E; font-size: 11px;
+    }
+
+    /* Info box */
+    .info-box {
+      padding: 14px 16px;
+      background: rgba(15,118,110,0.05);
+      border: 1px solid rgba(15,118,110,0.12);
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .info-box p {
+      font-size: 12px; color: #78716C; line-height: 1.6;
+    }
+    .info-box .info-icon {
+      color: #2DD4BF; margin-right: 6px;
+    }
+
+    /* Danger zone */
+    .danger-card {
+      border-color: rgba(239,68,68,0.15);
+    }
+    .danger-card:hover { border-color: rgba(239,68,68,0.3); }
+
+    .danger-btn {
+      padding: 8px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      color: #EF4444;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .danger-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
+
+    /* About links */
+    .about-links {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .about-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: #16161E;
+      border: 1px solid #1E1E28;
+      border-radius: 8px;
+      color: #A8A29E;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .about-link:hover { border-color: #2A2A36; color: #E7E5E4; }
+    .about-link .about-link-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: #1E1E28;
+      margin: 16px 0;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #0F766E; color: white; padding: 8px 18px; border-radius: 18px;
+      font-size: 12px; font-weight: 600; box-shadow: 0 4px 16px rgba(15,118,110,0.5);
+      z-index: 100; white-space: nowrap;
+      animation: toastIn 0.2s ease;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== SIDEBAR ===== -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sidebar-title">VoiceFlow</div>
+        <div class="sidebar-subtitle">AYARLAR</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-section="general">
+        <span class="nav-icon">⚙️</span> Genel
+      </div>
+      <div class="nav-item" data-section="api">
+        <span class="nav-icon">🔑</span> API
+      </div>
+      <div class="nav-item" data-section="audio">
+        <span class="nav-icon">🎙️</span> Ses
+      </div>
+      <div class="nav-item" data-section="transcription">
+        <span class="nav-icon">✏️</span> Transkripsiyon
+      </div>
+      <div class="nav-item" data-section="shortcuts">
+        <span class="nav-icon">⌨️</span> Kisayollar
+      </div>
+      <div class="nav-item" data-section="appearance">
+        <span class="nav-icon">🎨</span> Gorunum
+      </div>
+      <div class="nav-item" data-section="privacy">
+        <span class="nav-icon">🔒</span> Gizlilik
+      </div>
+      <div class="nav-item" data-section="about">
+        <span class="nav-icon">ℹ️</span> Hakkinda
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-version" id="versionText">VoiceFlow v1.0.0</div>
+    </div>
+  </div>
+
+  <!-- ===== CONTENT ===== -->
+  <div class="content">
+
+    <!-- GENERAL -->
+    <div class="section active" id="sec-general">
+      <h2 class="section-title">Genel</h2>
+      <p class="section-desc">Temel uygulama ayarlari</p>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Konusma Dili</div>
+            <div class="card-hint">Varsayilan konusma tanima dili</div>
+          </div>
+          <select class="card-select" id="sLang">
+            <option value="tr">🇹🇷 Turkce</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="fr">🇫🇷 Francais</option>
+            <option value="es">🇪🇸 Espanol</option>
+            <option value="ja">🇯🇵 Japanese</option>
+            <option value="ko">🇰🇷 Korean</option>
+            <option value="zh">🇨🇳 Chinese</option>
+            <option value="pt">🇧🇷 Portugues</option>
+            <option value="it">🇮🇹 Italiano</option>
+            <option value="ru">🇷🇺 Russian</option>
+            <option value="ar">🇸🇦 Arabic</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Windows ile baslat</div>
+            <div class="card-hint">Bilgisayar acildiginda otomatik baslat</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoStart">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Kapatinca gizle</div>
+            <div class="card-hint">Pencere kapatildiginda sistem tepsisine kucult</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sMinToTray" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Bildirimler</div>
+            <div class="card-hint">Transkripsiyon tamamlandiginda bildirim goster</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sNotifications" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- API -->
+    <div class="section" id="sec-api">
+      <h2 class="section-title">API Yapilandirmasi</h2>
+      <p class="section-desc">Groq AI baglanti ayarlari</p>
+
+      <div class="card">
+        <div class="card-label">Groq API Key</div>
+        <div class="card-hint" style="margin-bottom:10px">
+          <a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin
+        </div>
+        <div class="input-wrap">
+          <input type="password" class="card-input" id="sApiKey" placeholder="gsk_...">
+          <button class="toggle-pass" id="sTogglePass" title="Goster/Gizle">👁️</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">AI Modeli</div>
+            <div class="card-hint">Konusma tanima icin kullanilacak model</div>
+          </div>
+          <select class="card-select" id="sModel">
+            <option value="whisper-large-v3">Whisper Large v3</option>
+            <option value="whisper-large-v3-turbo">Whisper v3 Turbo</option>
+            <option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Sicaklik (Temperature)</div>
+            <div class="card-hint">Dusuk = daha tutarli, yuksek = daha yaratici</div>
+          </div>
+          <select class="card-select" id="sTemperature" style="min-width:80px">
+            <option value="0" selected>0</option>
+            <option value="0.1">0.1</option>
+            <option value="0.2">0.2</option>
+            <option value="0.3">0.3</option>
+            <option value="0.4">0.4</option>
+            <option value="0.5">0.5</option>
+            <option value="0.6">0.6</option>
+            <option value="0.8">0.8</option>
+            <option value="1.0">1.0</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIO -->
+    <div class="section" id="sec-audio">
+      <h2 class="section-title">Ses Ayarlari</h2>
+      <p class="section-desc">Mikrofon ve ses islem ayarlari</p>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Giris Cihazi</div>
+            <div class="card-hint">Kullanilacak mikrofon</div>
+          </div>
+          <select class="card-select" id="sAudioDevice">
+            <option value="default">Varsayilan Mikrofon</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Ses Formati</div>
+            <div class="card-hint">Kayit icin kullanilacak format</div>
+          </div>
+          <select class="card-select" id="sAudioFormat">
+            <option value="webm">WebM/Opus (Onerilen)</option>
+            <option value="wav">WAV (Sikistirilmamis)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Sessizlik Algilama</div>
+            <div class="card-hint">Uzun sessizliklerde kaydi otomatik durdur</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sSilenceDetect">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Otomatik Durdurma Suresi</div>
+            <div class="card-hint">Sessizlik algilandiginda bekleme suresi</div>
+          </div>
+          <select class="card-select" id="sAutoStopTime" style="min-width:100px">
+            <option value="0">Kapali</option>
+            <option value="3">3 saniye</option>
+            <option value="5" selected>5 saniye</option>
+            <option value="10">10 saniye</option>
+            <option value="30">30 saniye</option>
+            <option value="60">60 saniye</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Maksimum Kayit Suresi</div>
+            <div class="card-hint">Kaydin otomatik duracagi sure</div>
+          </div>
+          <select class="card-select" id="sMaxRecTime" style="min-width:100px">
+            <option value="60">1 dakika</option>
+            <option value="120" selected>2 dakika</option>
+            <option value="300">5 dakika</option>
+            <option value="600">10 dakika</option>
+            <option value="0">Sinirsiz</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSCRIPTION -->
+    <div class="section" id="sec-transcription">
+      <h2 class="section-title">Transkripsiyon</h2>
+      <p class="section-desc">Metin islem ve cikti ayarlari</p>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Dolgu kelimelerini kaldir</div>
+            <div class="card-hint">"ee", "yani", "iste" gibi kelimeleri temizle</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sRemoveFiller" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Otomatik noktalama</div>
+            <div class="card-hint">Cumle sonuna otomatik nokta ekle</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoPunctuation" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Otomatik buyuk harf</div>
+            <div class="card-hint">Cumlenin ilk harfini buyuk yap</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoCapitalize" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Panoya kopyala</div>
+            <div class="card-hint">Transkripsiyon tamamlaninca metni panoya kopyala</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoCopy" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Otomatik yapistir</div>
+            <div class="card-hint">Metni kopyaladiktan sonra aktif pencereye yapistir</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoPaste">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHORTCUTS -->
+    <div class="section" id="sec-shortcuts">
+      <h2 class="section-title">Kisayollar</h2>
+      <p class="section-desc">Klavye kisayollari yapilandirmasi</p>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Kaydi Baslat / Durdur</div>
+            <div class="card-hint">Herhangi bir uygulamadayken dikte etmeye basla</div>
+          </div>
+          <div class="shortcut-display">
+            <kbd>Ctrl</kbd>
+            <span class="plus">+</span>
+            <kbd>Space</kbd>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <p>
+          <span class="info-icon">💡</span>
+          Bu kisayol global olarak calisir — hangi uygulamada olursaniz olun,
+          <strong>Ctrl+Space</strong> ile hemen dikte etmeye baslayabilirsiniz.
+          Bazi uygulamalar bu kisayolu kullanabilir, bu durumda VoiceFlow oncelik alir.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Pencereyi Goster</div>
+            <div class="card-hint">Ana pencereyi on plana getir</div>
+          </div>
+          <div class="shortcut-display">
+            <kbd>Ctrl</kbd>
+            <span class="plus">+</span>
+            <kbd>Shift</kbd>
+            <span class="plus">+</span>
+            <kbd>V</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPEARANCE -->
+    <div class="section" id="sec-appearance">
+      <h2 class="section-title">Gorunum</h2>
+      <p class="section-desc">Arayuz ayarlari</p>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Tema</div>
+            <div class="card-hint">Uygulama gorunumunu secin</div>
+          </div>
+          <select class="card-select" id="sTheme">
+            <option value="light">☀️ Acik Mod</option>
+            <option value="dark">🌙 Karanlik Mod</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Alt cubugu goster</div>
+            <div class="card-hint">Ekranin altinda VoiceFlow ipucu cubusu</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sShowPill" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Alt cubuk konumu</div>
+            <div class="card-hint">Ipucu cubugunun ekrandaki konumu</div>
+          </div>
+          <select class="card-select" id="sPillPosition">
+            <option value="center" selected>Alt Orta</option>
+            <option value="right">Alt Sag</option>
+            <option value="left">Alt Sol</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Pencere saydamligi</div>
+            <div class="card-hint">Kayit penceresi arka plan saydamligi</div>
+          </div>
+          <select class="card-select" id="sOpacity">
+            <option value="1.0" selected>Opak</option>
+            <option value="0.9">%90</option>
+            <option value="0.8">%80</option>
+            <option value="0.7">%70</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRIVACY -->
+    <div class="section" id="sec-privacy">
+      <h2 class="section-title">Gizlilik</h2>
+      <p class="section-desc">Veri guvenligi ve gizlilik ayarlari</p>
+
+      <div class="info-box">
+        <p>
+          <span class="info-icon">🔒</span>
+          <strong>Verileriniz guvendedir.</strong> Ses kayitlariniz dogrudan cihazinizdan Groq API'ye gonderilir
+          ve islem sonrasinda saklanmaz. VoiceFlow hicbir ses verinizi sunucularinda depolamaz.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Kullanim istatistikleri</div>
+            <div class="card-hint">Anonim kullanim verilerini gelistirme icin gonder</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sSendStats">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Gecikmeli silme</div>
+            <div class="card-hint">Ses dosyalarini islem sonrasi otomatik sil</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sAutoDelete" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label">Transkripsiyon gecmisi</div>
+            <div class="card-hint">Onceki transkripsiyon sonuclarini sakla</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sKeepHistory">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="section" id="sec-about">
+      <h2 class="section-title">Hakkinda</h2>
+      <p class="section-desc">Uygulama bilgileri</p>
+
+      <div class="card" style="text-align:center;padding:24px">
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#0F766E,#4F46E5);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px;">VoiceFlow</div>
+        <div style="font-size:12px;color:#57534E;margin-bottom:16px" id="aboutVersion">Surum 1.0.0</div>
+        <div style="font-size:11px;color:#44403C;">Sesinizi metne donusturmenin en hizli yolu</div>
+      </div>
+
+      <div class="about-links">
+        <a href="#" class="about-link" id="aboutWebsite">
+          <span class="about-link-icon">🌐</span> Web Sitesi
+        </a>
+        <a href="#" class="about-link" id="aboutGithub">
+          <span class="about-link-icon">💻</span> GitHub
+        </a>
+        <a href="#" class="about-link" id="aboutGroq">
+          <span class="about-link-icon">🔑</span> Groq Console
+        </a>
+        <a href="#" class="about-link" id="aboutLicense">
+          <span class="about-link-icon">📄</span> Lisans (MIT)
+        </a>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card danger-card">
+        <div class="card-row">
+          <div class="card-label-wrap">
+            <div class="card-label" style="color:#EF4444">Ayarlari Sifirla</div>
+            <div class="card-hint">Tum ayarlari sifirla ve ilk kurulum ekranina don</div>
+          </div>
+          <button class="danger-btn" id="sResetBtn">Sifirla</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"><span id="toastText"></span></div>
+
+  <script>
+    // ==================== NAVIGATION ====================
+    const navItems = document.querySelectorAll(".nav-item");
+    const sections = document.querySelectorAll(".section");
+
+    navItems.forEach(item => {
+      item.addEventListener("click", () => {
+        const sectionId = item.dataset.section;
+        navItems.forEach(n => n.classList.remove("active"));
+        item.classList.add("active");
+        sections.forEach(s => s.classList.remove("active"));
+        document.getElementById("sec-" + sectionId).classList.add("active");
+      });
+    });
+
+    // ==================== SETTINGS STATE ====================
+    let settings = {};
+
+    async function loadSettings() {
+      try {
+        settings = await window.voiceflow.getSettings() || {};
+      } catch (e) {
+        settings = {};
+      }
+      applySettings();
+    }
+
+    async function saveSetting(key, value) {
+      settings[key] = value;
+      await window.voiceflow.saveSettings({ [key]: value });
+    }
+
+    function applySettings() {
+      // General
+      if (settings.language) document.getElementById("sLang").value = settings.language;
+      document.getElementById("sMinToTray").checked = settings.minimizeToTray !== false;
+      document.getElementById("sNotifications").checked = settings.notifications !== false;
+
+      // API
+      if (settings.apiKey) document.getElementById("sApiKey").value = settings.apiKey;
+      if (settings.aiModel) document.getElementById("sModel").value = settings.aiModel;
+      if (settings.temperature !== undefined) document.getElementById("sTemperature").value = String(settings.temperature);
+
+      // Audio
+      if (settings.audioFormat) document.getElementById("sAudioFormat").value = settings.audioFormat;
+      document.getElementById("sSilenceDetect").checked = !!settings.silenceDetection;
+      if (settings.autoStopTime !== undefined) document.getElementById("sAutoStopTime").value = String(settings.autoStopTime);
+      if (settings.maxRecTime !== undefined) document.getElementById("sMaxRecTime").value = String(settings.maxRecTime);
+
+      // Transcription
+      document.getElementById("sRemoveFiller").checked = settings.removeFiller !== false;
+      document.getElementById("sAutoPunctuation").checked = settings.autoPunctuation !== false;
+      document.getElementById("sAutoCapitalize").checked = settings.autoCapitalize !== false;
+      document.getElementById("sAutoCopy").checked = settings.autoCopy !== false;
+      document.getElementById("sAutoPaste").checked = !!settings.autoPaste;
+
+      // Appearance
+      if (settings.theme) document.getElementById("sTheme").value = settings.theme;
+      document.getElementById("sShowPill").checked = settings.showPill !== false;
+      if (settings.pillPosition) document.getElementById("sPillPosition").value = settings.pillPosition;
+      if (settings.opacity) document.getElementById("sOpacity").value = String(settings.opacity);
+
+      // Privacy
+      document.getElementById("sSendStats").checked = !!settings.sendStats;
+      document.getElementById("sAutoDelete").checked = settings.autoDelete !== false;
+      document.getElementById("sKeepHistory").checked = !!settings.keepHistory;
+    }
+
+    // ==================== AUTO-START ====================
+    async function loadAutoStart() {
+      try {
+        const autoStart = await window.voiceflow.getAutoStart();
+        document.getElementById("sAutoStart").checked = autoStart;
+      } catch (e) {
+        document.getElementById("sAutoStart").checked = false;
+      }
+    }
+
+    // ==================== VERSION ====================
+    async function loadVersion() {
+      try {
+        const ver = await window.voiceflow.getVersion();
+        document.getElementById("versionText").textContent = "VoiceFlow v" + ver;
+        document.getElementById("aboutVersion").textContent = "Surum " + ver;
+      } catch (e) {}
+    }
+
+    // ==================== AUDIO DEVICES ====================
+    async function loadAudioDevices() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(d => d.kind === "audioinput");
+        const select = document.getElementById("sAudioDevice");
+        select.innerHTML = "";
+
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "default";
+        defaultOpt.textContent = "Varsayilan Mikrofon";
+        select.appendChild(defaultOpt);
+
+        audioInputs.forEach(device => {
+          if (device.deviceId === "default") return;
+          const opt = document.createElement("option");
+          opt.value = device.deviceId;
+          opt.textContent = device.label || "Mikrofon " + (select.children.length);
+          select.appendChild(opt);
+        });
+
+        if (settings.audioDevice) {
+          select.value = settings.audioDevice;
+        }
+      } catch (e) {
+        console.error("Audio devices error:", e);
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    function setupListeners() {
+      // General
+      on("sLang", "change", (v) => saveSetting("language", v));
+      on("sAutoStart", "change", (v) => {
+        window.voiceflow.setAutoStart(v);
+        showToast(v ? "Otomatik baslama acik" : "Otomatik baslama kapali");
+      });
+      on("sMinToTray", "change", (v) => saveSetting("minimizeToTray", v));
+      on("sNotifications", "change", (v) => saveSetting("notifications", v));
+
+      // API
+      document.getElementById("sApiKey").addEventListener("blur", () => {
+        const val = document.getElementById("sApiKey").value.trim();
+        saveSetting("apiKey", val);
+        showToast("API Key kaydedildi");
+      });
+      document.getElementById("sApiKey").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") e.target.blur();
+      });
+      on("sModel", "change", (v) => saveSetting("aiModel", v));
+      on("sTemperature", "change", (v) => saveSetting("temperature", parseFloat(v)));
+
+      // Password toggle
+      document.getElementById("sTogglePass").addEventListener("click", () => {
+        const inp = document.getElementById("sApiKey");
+        inp.type = inp.type === "password" ? "text" : "password";
+      });
+
+      // Groq link
+      document.getElementById("sGroqLink").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.voiceflow.openExternal("https://console.groq.com/keys");
+      });
+
+      // Audio
+      on("sAudioDevice", "change", (v) => saveSetting("audioDevice", v));
+      on("sAudioFormat", "change", (v) => saveSetting("audioFormat", v));
+      on("sSilenceDetect", "change", (v) => saveSetting("silenceDetection", v));
+      on("sAutoStopTime", "change", (v) => saveSetting("autoStopTime", parseInt(v)));
+      on("sMaxRecTime", "change", (v) => saveSetting("maxRecTime", parseInt(v)));
+
+      // Transcription
+      on("sRemoveFiller", "change", (v) => saveSetting("removeFiller", v));
+      on("sAutoPunctuation", "change", (v) => saveSetting("autoPunctuation", v));
+      on("sAutoCapitalize", "change", (v) => saveSetting("autoCapitalize", v));
+      on("sAutoCopy", "change", (v) => saveSetting("autoCopy", v));
+      on("sAutoPaste", "change", (v) => saveSetting("autoPaste", v));
+
+      // Appearance
+      on("sTheme", "change", (v) => saveSetting("theme", v));
+      on("sShowPill", "change", (v) => {
+        saveSetting("showPill", v);
+        showToast(v ? "Alt cubuk acik" : "Alt cubuk kapali");
+      });
+      on("sPillPosition", "change", (v) => saveSetting("pillPosition", v));
+      on("sOpacity", "change", (v) => saveSetting("opacity", parseFloat(v)));
+
+      // Privacy
+      on("sSendStats", "change", (v) => saveSetting("sendStats", v));
+      on("sAutoDelete", "change", (v) => saveSetting("autoDelete", v));
+      on("sKeepHistory", "change", (v) => saveSetting("keepHistory", v));
+
+      // About links
+      document.getElementById("aboutWebsite").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.voiceflow.openExternal("https://voiceflow.app");
+      });
+      document.getElementById("aboutGithub").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.voiceflow.openExternal("https://github.com/voiceflow");
+      });
+      document.getElementById("aboutGroq").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.voiceflow.openExternal("https://console.groq.com");
+      });
+      document.getElementById("aboutLicense").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.voiceflow.openExternal("https://opensource.org/licenses/MIT");
+      });
+
+      // Reset
+      document.getElementById("sResetBtn").addEventListener("click", () => {
+        if (confirm("Tum ayarlar sifirlanacak ve ilk kurulum ekranina donulecek. Emin misiniz?")) {
+          window.voiceflow.resetSettings();
+          showToast("Ayarlar sifirlandi!");
+        }
+      });
+    }
+
+    // Helper: bind change event
+    function on(id, event, handler) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener(event, () => {
+        const value = el.type === "checkbox" ? el.checked : el.value;
+        handler(value);
+      });
+    }
+
+    // ==================== TOAST ====================
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      const toastText = document.getElementById("toastText");
+      toastText.textContent = msg;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 2500);
+    }
+
+    // ==================== INIT ====================
+    async function init() {
+      await loadSettings();
+      await loadAutoStart();
+      await loadVersion();
+      await loadAudioDevices();
+      setupListeners();
+    }
+
+    init();
+  </script>
+</body>
+</html>

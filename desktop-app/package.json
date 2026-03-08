@@ -1,0 +1,52 @@
+{
+  "name": "voiceflow-desktop",
+  "version": "2.0.4",
+  "description": "VoiceFlow - AI Sesli Dikte Uygulamasi",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "author": "VoiceFlow",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.voiceflow.desktop",
+    "productName": "VoiceFlow",
+    "directories": {
+      "output": "dist"
+    },
+    "forceCodeSigning": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false,
+      "publisherName": "VoiceFlow"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "VoiceFlow",
+      "runAfterFinish": true,
+      "installerSidebar": null,
+      "license": null,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "menuCategory": true
+    }
+  }
+}

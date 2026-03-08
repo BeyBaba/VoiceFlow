@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>VoiceFlow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root, [data-theme="light"] {
+      --bg-0: #ffffff; --bg-1: #fafaf9; --bg-2: #f5f5f4; --bg-3: #e7e5e4;
+      --bg-sidebar: #fafaf9; --bg-card: #ffffff; --bg-input: #f5f5f4;
+      --border: #e7e5e4; --border-light: #f0efee;
+      --text-0: #1c1917; --text-1: #44403c; --text-2: #78716c; --text-3: #a8a29e;
+      --accent: #0F766E; --accent-hover: #0d6963; --accent-light: rgba(15,118,110,0.06); --accent-text: #0F766E;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06); --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+      --toggle-bg: #d6d3d1; --toggle-on: #0F766E;
+    }
+    [data-theme="dark"] {
+      --bg-0: #0B0B12; --bg-1: #111118; --bg-2: #16161E; --bg-3: #1E1E28;
+      --bg-sidebar: #111118; --bg-card: #16161E; --bg-input: #0B0B12;
+      --border: #1E1E28; --border-light: #2A2A36;
+      --text-0: #E7E5E4; --text-1: #A8A29E; --text-2: #78716C; --text-3: #57534E;
+      --accent: #2DD4BF; --accent-hover: #14b8a6; --accent-light: rgba(15,118,110,0.08); --accent-text: #2DD4BF;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3); --shadow-lg: 0 4px 16px rgba(0,0,0,0.4);
+      --toggle-bg: #2A2A36; --toggle-on: #0F766E;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg-0); color: var(--text-0); min-height: 100vh; display: flex; transition: background 0.3s, color 0.3s; }
+    ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+    /* ===== AUTH VIEW ===== */
+    #authView { width:100%; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg-1); }
+    .auth-card { width:400px; padding:40px 36px; background:var(--bg-0); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-lg); }
+    .auth-logo { width:56px; height:56px; border-radius:16px; background:linear-gradient(135deg,#0F766E,#4F46E5); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; color:white; }
+    .auth-title { font-size:22px; font-weight:800; text-align:center; color:var(--text-0); margin-bottom:6px; }
+    .auth-subtitle { font-size:13px; color:var(--text-2); text-align:center; margin-bottom:28px; line-height:1.5; }
+    .social-btn { width:100%; padding:12px 16px; display:flex; align-items:center; gap:12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-0); color:var(--text-0); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; margin-bottom:8px; }
+    .social-btn:hover { border-color:var(--text-3); background:var(--bg-1); }
+    .social-btn svg { flex-shrink:0; }
+    .auth-divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--text-3); font-size:12px; }
+    .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+    .auth-input { width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text-0); font-size:13px; outline:none; transition:border-color 0.2s; margin-bottom:10px; }
+    .auth-input:focus { border-color:var(--accent); } .auth-input::placeholder { color:var(--text-3); }
+    .auth-btn { width:100%; padding:12px; border:none; border-radius:10px; background:#0F766E; color:white; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.15s; margin-top:4px; }
+    .auth-btn:hover { background:#0d6963; } .auth-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .auth-footer { margin-top:18px; text-align:center; font-size:12px; color:var(--text-2); }
+    .auth-footer a,.auth-link { color:var(--accent-text); text-decoration:none; font-weight:600; cursor:pointer; }
+    .auth-license-link { display:block; text-align:center; margin-top:14px; font-size:12px; color:var(--text-3); cursor:pointer; }
+    .auth-license-link:hover { color:var(--accent-text); }
+    .auth-back { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-2); cursor:pointer; margin-bottom:16px; }
+    .auth-back:hover { color:var(--text-0); }
+    .auth-page { display:none; } .auth-page.active { display:block; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar { width:220px; min-height:100vh; background:var(--bg-sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+    .sidebar-brand { display:flex; align-items:center; gap:10px; padding:18px 16px 14px; }
+    .brand-icon { width:32px; height:32px; padding:6px; background:linear-gradient(135deg,#0F766E,#4F46E5); border-radius:8px; color:white; display:flex; align-items:center; justify-content:center; }
+    .brand-icon svg { display:block; }
+    .brand-name { font-size:14px; font-weight:800; color:var(--text-0); }
+    .brand-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:4px; background:rgba(15,118,110,0.1); color:var(--accent-text); }
+    .brand-badge.pro { background:linear-gradient(135deg,#F59E0B,#EF4444); color:white; }
+    .sidebar-nav { flex:1; padding:4px 8px; }
+    .nav-label { padding:10px 12px 4px; font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.08em; }
+    .nav-item { display:flex; align-items:center; gap:9px; padding:8px 12px; border-radius:8px; color:var(--text-2); font-size:12.5px; font-weight:600; cursor:pointer; transition:all 0.15s; margin-bottom:1px; }
+    .nav-item:hover { background:var(--accent-light); color:var(--text-1); }
+    .nav-item.active { background:var(--accent-light); color:var(--accent-text); }
+    .nav-icon { font-size:14px; width:20px; text-align:center; }
+    .nav-divider { height:1px; background:var(--border); margin:6px 12px; }
+    .theme-toggle { display:flex; align-items:center; gap:8px; padding:8px 12px; margin:0 8px 4px; border-radius:8px; cursor:pointer; font-size:12px; color:var(--text-2); font-weight:600; }
+    .theme-toggle:hover { background:var(--accent-light); }
+    .sidebar-user { padding:10px 14px; border-top:1px solid var(--border); }
+    .user-email { font-size:11px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-plan { display:inline-flex; font-size:10px; font-weight:700; margin-top:3px; padding:2px 8px; border-radius:4px; }
+    .user-plan.free { background:var(--bg-2); color:var(--text-2); } .user-plan.pro { background:linear-gradient(135deg,#F59E0B,#EF4444); color:white; }
+    .sidebar-version { padding:4px 14px 8px; font-size:10px; color:var(--text-3); font-weight:600; }
+    .sidebar-logout { display:flex; align-items:center; gap:6px; padding:7px 14px; margin:0 10px 6px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s; width:calc(100% - 20px); }
+    .sidebar-logout:hover { border-color:rgba(239,68,68,0.3); color:#EF4444; background:rgba(239,68,68,0.05); }
+    .word-count-bar { margin:0 12px 8px; padding:8px 10px; background:var(--bg-2); border-radius:8px; }
+    .wc-header { display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:var(--text-2); margin-bottom:5px; }
+    .wc-track { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+    .wc-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#0F766E,#2DD4BF); transition:width 0.3s; }
+    .wc-fill.warn { background:linear-gradient(90deg,#F59E0B,#EF4444); }
+
+    /* ===== DASHBOARD ===== */
+    #dashboardView { width:100%; min-height:100vh; display:none; }
+    #dashboardView.active { display:flex; }
+    .content { flex:1; overflow-y:auto; }
+    .page { display:none; } .page.active { display:block; }
+    .page-header { padding:28px 32px 0; }
+    .page-title { font-size:20px; font-weight:800; color:var(--text-0); margin-bottom:4px; }
+    .page-desc { font-size:12px; color:var(--text-2); margin-bottom:22px; }
+    .page-body { padding:0 32px 28px; }
+
+    /* Cards (for settings) */
+    .card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+    .card:hover { border-color:var(--border-light); }
+    .card-row { display:flex; align-items:center; justify-content:space-between; min-height:28px; }
+    .card-label-wrap { flex:1; margin-right:14px; }
+    .card-label { font-size:13px; font-weight:600; color:var(--text-0); margin-bottom:1px; }
+    .card-hint { font-size:11px; color:var(--text-2); line-height:1.4; }
+    .card-hint a { color:var(--accent-text); text-decoration:none; } .card-hint a:hover { text-decoration:underline; }
+    .toggle { position:relative; width:38px; height:20px; flex-shrink:0; cursor:pointer; }
+    .toggle input { display:none; }
+    .toggle-track { width:38px; height:20px; background:var(--toggle-bg); border-radius:10px; transition:background 0.2s; }
+    .toggle-thumb { position:absolute; width:14px; height:14px; background:white; border-radius:50%; top:3px; left:3px; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+    .toggle input:checked ~ .toggle-track { background:var(--toggle-on); }
+    .toggle input:checked ~ .toggle-thumb { left:21px; }
+    .card-select { padding:7px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text-0); font-size:12px; outline:none; cursor:pointer; min-width:130px; }
+    .card-select:focus { border-color:var(--accent); }
+    .card-input { width:100%; padding:9px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text-0); font-size:12px; outline:none; font-family:'SF Mono','Cascadia Code',monospace; }
+    .card-input:focus { border-color:var(--accent); } .card-input::placeholder { color:var(--text-3); }
+    .input-wrap { position:relative; margin-top:8px; } .input-wrap .card-input { padding-right:36px; }
+    .toggle-pass { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-3); cursor:pointer; font-size:13px; padding:2px; }
+    .shortcut-display { display:flex; align-items:center; gap:4px; }
+    .shortcut-display kbd { padding:3px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:4px; font-size:11px; font-family:monospace; font-weight:700; color:var(--accent-text); }
+    .shortcut-display .plus { color:var(--text-3); font-size:10px; }
+    .info-box { padding:12px 14px; background:var(--accent-light); border:1px solid var(--border); border-radius:8px; margin-bottom:10px; }
+    .info-box p { font-size:12px; color:var(--text-2); line-height:1.5; }
+    .danger-btn { padding:7px 14px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; color:#EF4444; font-size:12px; font-weight:600; cursor:pointer; }
+    .danger-btn:hover { background:rgba(239,68,68,0.15); }
+    .divider { height:1px; background:var(--border); margin:14px 0; }
+
+    /* Home page */
+    .quick-start { margin-bottom:22px; padding:20px; background:var(--accent-light); border:1px solid var(--border); border-radius:12px; display:flex; align-items:center; gap:16px; }
+    .qs-icon { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#0F766E,#0D9488); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:white; }
+    .qs-info { flex:1; } .qs-title { font-size:14px; font-weight:700; color:var(--text-0); margin-bottom:3px; }
+    .qs-desc { font-size:12px; color:var(--text-2); }
+    .qs-kbd { display:inline-flex; align-items:center; gap:4px; margin-top:5px; }
+    .qs-kbd kbd { padding:2px 7px; background:var(--bg-0); border:1px solid var(--border); border-radius:4px; font-size:11px; font-family:monospace; font-weight:700; color:var(--accent-text); }
+    .qs-kbd .plus { color:var(--text-3); font-size:10px; }
+    .status-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:22px; }
+    .status-card { padding:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; }
+    .status-card-icon { font-size:16px; margin-bottom:4px; display:block; }
+    .status-card-label { font-size:10px; color:var(--text-2); margin-bottom:1px; }
+    .status-card-value { font-size:12px; font-weight:700; } .status-card-value.ok { color:#22C55E; } .status-card-value.warn { color:#F59E0B; }
+    .recent-empty { padding:28px; text-align:center; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; }
+    .recent-empty-icon { font-size:24px; margin-bottom:8px; opacity:0.5; } .recent-empty-text { font-size:12px; color:var(--text-2); }
+    .recent-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+    .recent-item-text { flex:1; font-size:12px; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .recent-item-time { font-size:10px; color:var(--text-3); flex-shrink:0; }
+    .recent-item-actions { display:flex; gap:4px; flex-shrink:0; }
+    .recent-item-copy { padding:3px 8px; border:1px solid var(--border); border-radius:5px; background:transparent; color:var(--text-2); font-size:10px; cursor:pointer; font-weight:600; }
+    .recent-item-copy:hover { border-color:var(--accent); color:var(--accent-text); }
+    .recent-item-del { padding:3px 8px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text-3); font-size:10px; cursor:pointer; font-weight:600; }
+    .recent-item-del:hover { border-color:rgba(239,68,68,0.3); color:#EF4444; background:rgba(239,68,68,0.05); }
+    .list-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .list-toolbar .sec-label { margin-bottom:0; }
+    .list-toolbar-actions { display:flex; gap:6px; }
+    .toolbar-btn { padding:4px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text-2); font-size:10px; cursor:pointer; font-weight:600; }
+    .toolbar-btn:hover { border-color:var(--text-3); color:var(--text-1); }
+    .toolbar-btn.danger { color:var(--text-3); }
+    .toolbar-btn.danger:hover { border-color:rgba(239,68,68,0.3); color:#EF4444; background:rgba(239,68,68,0.05); }
+    .scratchpad-area { width:100%; min-height:180px; padding:14px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; resize:vertical; font-size:13px; line-height:1.7; color:var(--text-0); outline:none; font-family:inherit; }
+    .scratchpad-area:focus { border-color:var(--accent); } .scratchpad-area::placeholder { color:var(--text-3); }
+    .sec-label { font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+    .about-link { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; color:var(--text-1); font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; margin-bottom:6px; }
+    .about-link:hover { border-color:var(--border-light); color:var(--text-0); }
+
+    .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#0F766E; color:white; padding:8px 18px; border-radius:18px; font-size:12px; font-weight:600; z-index:100; white-space:nowrap; animation:toastIn 0.2s ease; }
+    @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body data-theme="light">
+
+  <!-- ============ AUTH VIEW ============ -->
+  <div id="authView">
+    <div class="auth-card">
+      <div class="auth-page active" id="authLogin">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
+        </div>
+        <h2 class="auth-title">VoiceFlow'a Hos Geldiniz</h2>
+        <p class="auth-subtitle">Giris yapin veya yeni hesap olusturun</p>
+        <button class="social-btn" id="btnGoogle">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Google ile devam et
+        </button>
+        <div class="auth-divider">veya</div>
+        <input type="email" class="auth-input" id="loginEmail" placeholder="E-posta adresiniz">
+        <input type="password" class="auth-input" id="loginPassword" placeholder="Sifreniz">
+        <button class="auth-btn" id="btnLogin">Giris Yap</button>
+        <div class="auth-footer">Hesabiniz yok mu? <a href="#" id="goRegister">Kayit olun</a></div>
+        <div class="auth-license-link" id="goLicense">Lisans anahtarim var</div>
+      </div>
+      <div class="auth-page" id="authRegister">
+        <div class="auth-back" id="backToLogin1">← Giris ekranina don</div>
+        <h2 class="auth-title">Hesap Olustur</h2>
+        <p class="auth-subtitle">Ucretsiz baslayabilirsiniz — gunde 2.000 kelime</p>
+        <input type="text" class="auth-input" id="regName" placeholder="Adiniz">
+        <input type="email" class="auth-input" id="regEmail" placeholder="E-posta adresiniz">
+        <input type="password" class="auth-input" id="regPassword" placeholder="Sifre olusturun">
+        <button class="auth-btn" id="btnRegister">Kayit Ol</button>
+        <div class="auth-footer">Zaten hesabiniz var mi? <a href="#" id="goLogin">Giris yapin</a></div>
+      </div>
+      <div class="auth-page" id="authLicense">
+        <div class="auth-back" id="backToLogin2">← Giris ekranina don</div>
+        <div class="auth-logo" style="background:linear-gradient(135deg,#F59E0B,#EF4444);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+        </div>
+        <h2 class="auth-title">Lisans Anahtari</h2>
+        <p class="auth-subtitle">Pro lisans anahtarinizi girin ve sinirsiz erisim kazanin</p>
+        <input type="text" class="auth-input" id="licenseKey" placeholder="VF-PRO-XXXX-XXXX" style="text-align:center;font-family:monospace;font-weight:700;">
+        <input type="email" class="auth-input" id="licenseEmail" placeholder="E-posta adresiniz">
+        <button class="auth-btn" id="btnActivate" style="background:linear-gradient(135deg,#F59E0B,#EF4444);">Lisansi Etkinlestir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="dashboardView">
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
+        <span class="brand-name">VoiceFlow</span>
+        <span class="brand-badge" id="planBadge">Free</span>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active" data-page="home"><span class="nav-icon">🏠</span> Ana Sayfa</div>
+        <div class="nav-item" data-page="scratchpad"><span class="nav-icon">📝</span> Scratchpad</div>
+        <div class="nav-item" data-page="history"><span class="nav-icon">📋</span> Gecmis</div>
+        <div class="nav-item" data-page="shortcuts"><span class="nav-icon">⌨️</span> Kisayollar</div>
+        <div class="nav-divider"></div>
+        <div class="nav-label">AYARLAR</div>
+        <div class="nav-item" data-page="s-general"><span class="nav-icon">⚙️</span> Genel</div>
+        <div class="nav-item" data-page="s-api" style="display:none"><span class="nav-icon">🔑</span> API</div>
+        <div class="nav-item" data-page="s-audio"><span class="nav-icon">🎙️</span> Ses</div>
+        <div class="nav-item" data-page="s-transcription"><span class="nav-icon">✏️</span> Transkripsiyon</div>
+        <div class="nav-item" data-page="s-appearance"><span class="nav-icon">🎨</span> Gorunum</div>
+        <div class="nav-item" data-page="s-privacy"><span class="nav-icon">🔒</span> Gizlilik</div>
+        <div class="nav-item" data-page="s-about"><span class="nav-icon">ℹ️</span> Hakkinda</div>
+        <div class="nav-divider"></div>
+        <div class="word-count-bar" id="wordCountBar">
+          <div class="wc-header"><span>Bugun</span><span id="wcText">0 / 2.000</span></div>
+          <div class="wc-track"><div class="wc-fill" id="wcFill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="theme-toggle" id="themeToggle"><span id="themeIcon">☀️</span> <span id="themeLabel">Acik Mod</span></div>
+      <div class="sidebar-user" id="sidebarUser">
+        <div class="user-email" id="userEmailDisplay"></div>
+        <span class="user-plan free" id="userPlanBadge">Ucretsiz</span>
+      </div>
+      <button class="sidebar-logout" id="btnLogout">⬅ Cikis Yap</button>
+      <div class="sidebar-version" id="homeVersion">VoiceFlow v2.0.4</div>
+    </div>
+
+    <div class="content">
+      <!-- HOME -->
+      <div class="page active" id="page-home">
+        <div class="page-header"><h1 class="page-title" id="greeting">Hos Geldiniz!</h1><p class="page-desc">Ctrl+Space ile herhangi bir uygulamada dikte etmeye baslayin.</p></div>
+        <div class="page-body">
+          <div class="quick-start">
+            <div class="qs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
+            <div class="qs-info"><div class="qs-title">Hizli Baslangic</div><div class="qs-desc">Herhangi bir uygulamadayken kisayola basin ve konusmaya baslayin.</div><div class="qs-kbd"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></div></div>
+          </div>
+          <div class="sec-label">Durum</div>
+          <div class="status-grid">
+            <div class="status-card" style="display:none"><span class="status-card-icon">🔑</span><div class="status-card-label">API Key</div><div class="status-card-value ok" id="statusApi">Aktif</div></div>
+            <div class="status-card"><span class="status-card-icon">🎙️</span><div class="status-card-label">Mikrofon</div><div class="status-card-value ok">Hazir</div></div>
+            <div class="status-card"><span class="status-card-icon">⌨️</span><div class="status-card-label">Kisayol</div><div class="status-card-value ok">Ctrl+Space</div></div>
+          </div>
+          <div class="list-toolbar"><div class="sec-label">Son Transkripsiyon</div><div class="list-toolbar-actions" id="recentToolbar" style="display:none"><button class="toolbar-btn danger" onclick="clearAllHistory()">Tumunu Sil</button></div></div>
+          <div id="recentList"><div class="recent-empty"><div class="recent-empty-icon">📝</div><div class="recent-empty-text">Henuz transkripsiyon yok. Ctrl+Space ile baslayin!</div></div></div>
+        </div>
+      </div>
+
+      <!-- SCRATCHPAD -->
+      <div class="page" id="page-scratchpad">
+        <div class="page-header"><h1 class="page-title">Scratchpad</h1><p class="page-desc">Not defteri — yazmak, duzenlemek veya transkripsiyon sonuclarini biriktirmek icin.</p></div>
+        <div class="page-body">
+          <textarea class="scratchpad-area" id="scratchpadText" rows="8" placeholder="Buraya yazin veya Ctrl+Space ile konusun..."></textarea>
+          <div style="margin-top:16px;"><div class="list-toolbar"><div class="sec-label">Son Transkripsiyonlar</div><div class="list-toolbar-actions" id="scratchpadToolbar" style="display:none"><button class="toolbar-btn" onclick="appendAllToScratchpad()">Tumunu Ekle</button><button class="toolbar-btn danger" onclick="clearAllHistory()">Tumunu Sil</button></div></div><div id="scratchpadRecents"><div class="recent-empty"><div class="recent-empty-icon">📋</div><div class="recent-empty-text">Henuz yok.</div></div></div></div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="page-history">
+        <div class="page-header"><h1 class="page-title">Gecmis</h1><p class="page-desc">Tum transkripsiyon sonuclari</p></div>
+        <div class="page-body">
+          <div class="list-toolbar" id="historyToolbar" style="display:none"><div class="sec-label" id="historyCount"></div><div class="list-toolbar-actions"><button class="toolbar-btn danger" onclick="clearAllHistory()">Tumunu Sil</button></div></div>
+          <div id="historyList"><div class="recent-empty"><div class="recent-empty-icon">📋</div><div class="recent-empty-text">Henuz gecmis yok.</div></div></div>
+        </div>
+      </div>
+
+      <!-- SHORTCUTS -->
+      <div class="page" id="page-shortcuts">
+        <div class="page-header"><h1 class="page-title">Kisayollar</h1><p class="page-desc">Klavye kisayollari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Dikte Baslat / Durdur</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></div></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Son Metni Yapistir</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></div></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Ana Sayfa</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>H</kbd></div></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: GENERAL -->
+      <div class="page" id="page-s-general">
+        <div class="page-header"><h1 class="page-title">Genel</h1><p class="page-desc">Temel uygulama ayarlari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Konusma Dili</div><div class="card-hint">Varsayilan konusma tanima dili</div></div>
+            <select class="card-select" id="sLang"><option value="tr">TR Turkce</option><option value="en">EN English</option><option value="de">DE Deutsch</option><option value="fr">FR Francais</option><option value="es">ES Espanol</option><option value="ja">JP Japanese</option><option value="ko">KR Korean</option><option value="zh">CN Chinese</option><option value="pt">PT Portugues</option><option value="it">IT Italiano</option><option value="ru">RU Russian</option><option value="ar">AR Arabic</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Windows ile baslat</div><div class="card-hint">Bilgisayar acildiginda otomatik baslat</div></div><label class="toggle"><input type="checkbox" id="sAutoStart"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Kapatinca gizle</div><div class="card-hint">Pencere kapatildiginda sistem tepsisine kucult</div></div><label class="toggle"><input type="checkbox" id="sMinToTray" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Bildirimler</div><div class="card-hint">Transkripsiyon tamamlandiginda bildirim goster</div></div><label class="toggle"><input type="checkbox" id="sNotifications" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: API -->
+      <div class="page" id="page-s-api">
+        <div class="page-header"><h1 class="page-title">API Yapilandirmasi</h1><p class="page-desc">Groq AI baglanti ayarlari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-label">Groq API Key</div><div class="card-hint" style="margin-bottom:8px"><a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin</div><div class="input-wrap"><input type="password" class="card-input" id="sApiKey" placeholder="gsk_..."><button class="toggle-pass" id="sTogglePass">👁️</button></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Sicaklik (Temperature)</div><div class="card-hint">Dusuk = tutarli, yuksek = yaratici</div></div><select class="card-select" id="sTemperature" style="min-width:70px"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.2">0.2</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="0.8">0.8</option><option value="1.0">1.0</option></select></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: AUDIO -->
+      <div class="page" id="page-s-audio">
+        <div class="page-header"><h1 class="page-title">Ses Ayarlari</h1><p class="page-desc">Mikrofon ve ses islem ayarlari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Giris Cihazi</div><div class="card-hint">Kullanilacak mikrofon</div></div><select class="card-select" id="sAudioDevice"><option value="default">Varsayilan Mikrofon</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Ses Formati</div><div class="card-hint">Kayit icin kullanilacak format</div></div><select class="card-select" id="sAudioFormat"><option value="webm">WebM/Opus</option><option value="wav">WAV</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Maksimum Kayit Suresi</div><div class="card-hint">Kaydin otomatik duracagi sure</div></div><select class="card-select" id="sMaxRecTime"><option value="60">1 dk</option><option value="120" selected>2 dk</option><option value="300">5 dk</option><option value="600">10 dk</option><option value="0">Sinirsiz</option></select></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: TRANSCRIPTION -->
+      <div class="page" id="page-s-transcription">
+        <div class="page-header"><h1 class="page-title">Transkripsiyon</h1><p class="page-desc">Metin islem ve cikti ayarlari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Dolgu kelimelerini kaldir</div><div class="card-hint">"ee", "yani", "iste" gibi kelimeleri temizle</div></div><label class="toggle"><input type="checkbox" id="sRemoveFiller" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik noktalama</div><div class="card-hint">Cumle sonuna otomatik nokta ekle</div></div><label class="toggle"><input type="checkbox" id="sAutoPunctuation" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik buyuk harf</div><div class="card-hint">Cumlenin ilk harfini buyuk yap</div></div><label class="toggle"><input type="checkbox" id="sAutoCapitalize" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="divider"></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Panoya kopyala</div><div class="card-hint">Transkripsiyon tamamlaninca metni panoya kopyala</div></div><label class="toggle"><input type="checkbox" id="sAutoCopy" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik yapistir</div><div class="card-hint">Kopyaladiktan sonra aktif pencereye yapistir</div></div><label class="toggle"><input type="checkbox" id="sAutoPaste"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: APPEARANCE -->
+      <div class="page" id="page-s-appearance">
+        <div class="page-header"><h1 class="page-title">Gorunum</h1><p class="page-desc">Arayuz ayarlari</p></div>
+        <div class="page-body">
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Tema</div><div class="card-hint">Uygulama gorunumunu secin</div></div><select class="card-select" id="sTheme"><option value="light">Acik Mod</option><option value="dark">Karanlik Mod</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Alt cubugu goster</div><div class="card-hint">Ekranin altinda VoiceFlow cubugu</div></div><label class="toggle"><input type="checkbox" id="sShowPill" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Alt cubuk konumu</div><div class="card-hint">Cubugun ekrandaki konumu</div></div><select class="card-select" id="sPillPosition"><option value="center">Orta</option><option value="right">Sag</option><option value="left">Sol</option></select></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: PRIVACY -->
+      <div class="page" id="page-s-privacy">
+        <div class="page-header"><h1 class="page-title">Gizlilik</h1><p class="page-desc">Veri guvenligi ayarlari</p></div>
+        <div class="page-body">
+          <div class="info-box"><p>🔒 <strong>Verileriniz guvendedir.</strong> Ses kayitlariniz dogrudan Groq API'ye gonderilir ve saklanmaz.</p></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Kullanim istatistikleri</div><div class="card-hint">Anonim verileri gelistirme icin gonder</div></div><label class="toggle"><input type="checkbox" id="sSendStats"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Transkripsiyon gecmisi</div><div class="card-hint">Onceki sonuclari sakla</div></div><label class="toggle"><input type="checkbox" id="sKeepHistory"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS: ABOUT -->
+      <div class="page" id="page-s-about">
+        <div class="page-header"><h1 class="page-title">Hakkinda</h1><p class="page-desc">Uygulama bilgileri</p></div>
+        <div class="page-body">
+          <div class="card" style="text-align:center;padding:20px">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#4F46E5);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
+            <div style="font-size:16px;font-weight:800;">VoiceFlow</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:4px" id="aboutVersion">v2.0.4</div>
+          </div>
+          <a href="#" class="about-link" id="aboutWebsite">🌐 Web Sitesi</a>
+          <a href="#" class="about-link" id="aboutGroq" style="display:none">🔑 Groq Console</a>
+          <div class="divider"></div>
+          <div class="card" style="border-color:rgba(239,68,68,0.15)"><div class="card-row"><div class="card-label-wrap"><div class="card-label" style="color:#EF4444">Ayarlari Sifirla</div><div class="card-hint">Tum ayarlari sifirla</div></div><button class="danger-btn" id="sResetBtn">Sifirla</button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"><span id="toastText"></span></div>
+
+  <script>
+    let currentSettings = {};
+    let currentTheme = "light";
+
+    async function init() {
+      currentSettings = await window.voiceflow.getSettings() || {};
+      currentTheme = currentSettings.theme || "light";
+      applyTheme(currentTheme);
+      if (currentSettings.isAuthenticated) showDashboard();
+      else showAuth();
+    }
+
+    // THEME
+    function applyTheme(t) {
+      document.body.setAttribute("data-theme", t);
+      currentTheme = t;
+      const i=document.getElementById("themeIcon"), l=document.getElementById("themeLabel");
+      if(i&&l){ if(t==="dark"){i.textContent="🌙";l.textContent="Karanlik Mod";}else{i.textContent="☀️";l.textContent="Acik Mod";} }
+      const sel=document.getElementById("sTheme"); if(sel) sel.value=t;
+    }
+    function toggleTheme(){ const n=currentTheme==="light"?"dark":"light"; applyTheme(n); saveSetting("theme",n); }
+
+    // AUTH
+    function showAuth(){ document.getElementById("authView").style.display="flex"; document.getElementById("dashboardView").classList.remove("active"); showAuthPage("login"); }
+    function showDashboard(){ document.getElementById("authView").style.display="none"; document.getElementById("dashboardView").classList.add("active"); loadDashboard(); }
+    function showAuthPage(p){ document.querySelectorAll(".auth-page").forEach(e=>e.classList.remove("active")); document.getElementById({login:"authLogin",register:"authRegister",license:"authLicense"}[p]).classList.add("active"); }
+
+    // Real Google OAuth
+    document.getElementById("btnGoogle").addEventListener("click",async()=>{
+      const btn=document.getElementById("btnGoogle");
+      btn.disabled=true; btn.style.opacity="0.6"; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Giris yapiliyor...';
+      try {
+        const result = await window.voiceflow.googleAuth();
+        if(result.success){
+          await auth(result.name, result.email, "google", false);
+          showToast("Google ile giris basarili!");
+        } else {
+          showToast(result.error==="Pencere kapatildi"?"Giris iptal edildi":"Hata: "+result.error);
+        }
+      } catch(err){ showToast("Google giris hatasi!"); }
+      btn.disabled=false; btn.style.opacity="1"; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Google ile devam et';
+    });
+    // (Facebook & Apple removed — only Google OAuth active)
+    document.getElementById("btnLogin").addEventListener("click",async()=>{
+      const e=document.getElementById("loginEmail").value.trim(), p=document.getElementById("loginPassword").value;
+      if(!e){showToast("E-posta gerekli!");return;} if(!p){showToast("Sifre gerekli!");return;} await auth(e.split("@")[0],e,"email",false);
+    });
+    document.getElementById("btnRegister").addEventListener("click",async()=>{
+      const n=document.getElementById("regName").value.trim(), e=document.getElementById("regEmail").value.trim(), p=document.getElementById("regPassword").value;
+      if(!n||!e){showToast("Tum alanlar gerekli!");return;} if(p.length<6){showToast("Sifre en az 6 karakter!");return;} await auth(n,e,"email",false);
+    });
+    document.getElementById("btnActivate").addEventListener("click",async()=>{
+      const k=document.getElementById("licenseKey").value.trim().toUpperCase(), e=document.getElementById("licenseEmail").value.trim();
+      if(!k||!e){showToast("Tum alanlar gerekli!");return;}
+      if(!["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED"].includes(k)){showToast("Gecersiz lisans anahtari!");return;}
+      await auth(e.split("@")[0],e,"license",true,k);
+    });
+
+    async function auth(name,email,method,isPro,key){
+      await window.voiceflow.saveSettings({isAuthenticated:true,setupComplete:true,userName:name,userEmail:email,authMethod:method,isPro:isPro,licenseKey:key||"",dailyWordCount:0,lastWordCountDate:new Date().toISOString().split("T")[0]});
+      currentSettings=await window.voiceflow.getSettings();
+      showToast(isPro?"Pro aktif! Sinirsiz erisim.":"Hos geldiniz, "+name+"!");
+      showDashboard();
+    }
+
+    document.getElementById("goRegister").addEventListener("click",e=>{e.preventDefault();showAuthPage("register");});
+    document.getElementById("goLogin").addEventListener("click",e=>{e.preventDefault();showAuthPage("login");});
+    document.getElementById("goLicense").addEventListener("click",()=>showAuthPage("license"));
+    document.getElementById("backToLogin1").addEventListener("click",()=>showAuthPage("login"));
+    document.getElementById("backToLogin2").addEventListener("click",()=>showAuthPage("login"));
+
+    // DASHBOARD
+    async function loadDashboard(){
+      currentSettings = await window.voiceflow.getSettings()||{};
+      applyTheme(currentSettings.theme||"light");
+      try{ const v=await window.voiceflow.getVersion(); document.getElementById("homeVersion").textContent="VoiceFlow v"+v; document.getElementById("aboutVersion").textContent="v"+v; }catch(e){}
+      document.getElementById("userEmailDisplay").textContent=currentSettings.userEmail||"";
+      const isPro=currentSettings.isPro;
+      document.getElementById("planBadge").textContent=isPro?"Pro":"Free";
+      document.getElementById("planBadge").className="brand-badge"+(isPro?" pro":"");
+      document.getElementById("userPlanBadge").textContent=isPro?"Pro":"Ucretsiz";
+      document.getElementById("userPlanBadge").className="user-plan "+(isPro?"pro":"free");
+      document.getElementById("wordCountBar").style.display=isPro?"none":"block";
+      if(!isPro) updateWordCount();
+      const api=document.getElementById("statusApi");
+      if(currentSettings.apiKey){api.textContent="Aktif";api.className="status-card-value ok";}else{api.textContent="Eksik";api.className="status-card-value warn";}
+      setGreeting(); loadHistory(); loadSettingsValues();
+      document.getElementById("scratchpadText").value=currentSettings.scratchpadText||"";
+    }
+
+    function updateWordCount(){
+      const today=new Date().toISOString().split("T")[0];
+      let c=currentSettings.dailyWordCount||0;
+      if(currentSettings.lastWordCountDate!==today)c=0;
+      const pct=Math.min(100,(c/2000)*100);
+      document.getElementById("wcText").textContent=c+"/2.000";
+      const f=document.getElementById("wcFill"); f.style.width=pct+"%";
+      if(pct>80)f.classList.add("warn");else f.classList.remove("warn");
+    }
+
+    // NAV
+    document.querySelectorAll(".nav-item[data-page]").forEach(item=>{
+      item.addEventListener("click",()=>{
+        document.querySelectorAll(".nav-item[data-page]").forEach(n=>n.classList.remove("active"));
+        item.classList.add("active");
+        document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+        document.getElementById("page-"+item.dataset.page).classList.add("active");
+      });
+    });
+
+    // Navigate to specific page (called from main process via IPC)
+    window.voiceflow.onShowPage((page)=>{
+      const nav=document.querySelector('.nav-item[data-page="'+page+'"]');
+      if(nav) nav.click();
+    });
+
+    document.getElementById("themeToggle").addEventListener("click",toggleTheme);
+
+    // Scratchpad save
+    let padTimer=null;
+    document.getElementById("scratchpadText").addEventListener("input",()=>{
+      if(padTimer)clearTimeout(padTimer);
+      padTimer=setTimeout(()=>window.voiceflow.saveSettings({scratchpadText:document.getElementById("scratchpadText").value}),500);
+    });
+
+    // SETTINGS LOAD
+    function loadSettingsValues(){
+      const s=currentSettings;
+      if(s.language)document.getElementById("sLang").value=s.language;
+      document.getElementById("sMinToTray").checked=s.minimizeToTray!==false;
+      document.getElementById("sNotifications").checked=s.notifications!==false;
+      if(s.apiKey)document.getElementById("sApiKey").value=s.apiKey;
+      if(s.aiModel)document.getElementById("sModel").value=s.aiModel;
+      if(s.temperature!==undefined)document.getElementById("sTemperature").value=String(s.temperature);
+      if(s.audioFormat)document.getElementById("sAudioFormat").value=s.audioFormat;
+      if(s.maxRecTime!==undefined)document.getElementById("sMaxRecTime").value=String(s.maxRecTime);
+      document.getElementById("sRemoveFiller").checked=s.removeFiller!==false;
+      document.getElementById("sAutoPunctuation").checked=s.autoPunctuation!==false;
+      document.getElementById("sAutoCapitalize").checked=s.autoCapitalize!==false;
+      document.getElementById("sAutoCopy").checked=s.autoCopy!==false;
+      document.getElementById("sAutoPaste").checked=!!s.autoPaste;
+      if(s.theme)document.getElementById("sTheme").value=s.theme;
+      document.getElementById("sShowPill").checked=s.showPill!==false;
+      if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
+      document.getElementById("sSendStats").checked=!!s.sendStats;
+      document.getElementById("sKeepHistory").checked=!!s.keepHistory;
+      loadAutoStart(); loadAudioDevices();
+    }
+
+    async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
+    async function loadAudioDevices(){
+      try{
+        const d=await navigator.mediaDevices.enumerateDevices(), sel=document.getElementById("sAudioDevice");
+        sel.innerHTML='<option value="default">Varsayilan Mikrofon</option>';
+        d.filter(x=>x.kind==="audioinput"&&x.deviceId!=="default").forEach(x=>{
+          const o=document.createElement("option"); o.value=x.deviceId; o.textContent=x.label||"Mikrofon"; sel.appendChild(o);
+        });
+        if(currentSettings.audioDevice) sel.value=currentSettings.audioDevice;
+      }catch(e){}
+    }
+
+    // SETTINGS SAVE
+    function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
+    function on(id,ev,fn){ const e=document.getElementById(id); if(!e)return; e.addEventListener(ev,()=>fn(e.type==="checkbox"?e.checked:e.value)); }
+
+    function setupSettingsListeners(){
+      on("sLang","change",v=>saveSetting("language",v));
+      on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
+      on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
+      on("sNotifications","change",v=>saveSetting("notifications",v));
+      document.getElementById("sApiKey").addEventListener("blur",()=>{saveSetting("apiKey",document.getElementById("sApiKey").value.trim());showToast("API Key kaydedildi");});
+      document.getElementById("sTogglePass").addEventListener("click",()=>{const i=document.getElementById("sApiKey");i.type=i.type==="password"?"text":"password";});
+      document.getElementById("sGroqLink").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com/keys");});
+      on("sModel","change",v=>saveSetting("aiModel",v));
+      on("sTemperature","change",v=>saveSetting("temperature",parseFloat(v)));
+      on("sAudioDevice","change",v=>saveSetting("audioDevice",v));
+      on("sAudioFormat","change",v=>saveSetting("audioFormat",v));
+      on("sMaxRecTime","change",v=>saveSetting("maxRecTime",parseInt(v)));
+      on("sRemoveFiller","change",v=>saveSetting("removeFiller",v));
+      on("sAutoPunctuation","change",v=>saveSetting("autoPunctuation",v));
+      on("sAutoCapitalize","change",v=>saveSetting("autoCapitalize",v));
+      on("sAutoCopy","change",v=>saveSetting("autoCopy",v));
+      on("sAutoPaste","change",v=>saveSetting("autoPaste",v));
+      on("sTheme","change",v=>{saveSetting("theme",v);applyTheme(v);});
+      on("sShowPill","change",v=>{saveSetting("showPill",v);showToast(v?"Cubuk acik":"Cubuk kapali");});
+      on("sPillPosition","change",v=>saveSetting("pillPosition",v));
+      on("sSendStats","change",v=>saveSetting("sendStats",v));
+      on("sKeepHistory","change",v=>saveSetting("keepHistory",v));
+      document.getElementById("aboutWebsite").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://voiceflow.app");});
+      document.getElementById("aboutGroq").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com");});
+      document.getElementById("sResetBtn").addEventListener("click",()=>{if(confirm("Tum ayarlar sifirlanacak. Emin misiniz?")){window.voiceflow.resetSettings();showToast("Sifirlandi!");location.reload();}});
+    }
+    setupSettingsListeners();
+
+    // LOGOUT
+    document.getElementById("btnLogout").addEventListener("click",async()=>{
+      if(!confirm("Cikis yapmak istediginize emin misiniz?")) return;
+      await window.voiceflow.saveSettings({isAuthenticated:false,setupComplete:false,userName:"",userEmail:"",authMethod:"",isPro:false,licenseKey:"",accessToken:"",refreshToken:""});
+      currentSettings=await window.voiceflow.getSettings();
+      showAuth();
+      showToast("Cikis yapildi");
+    });
+
+    // HISTORY
+    function loadHistory(){
+      const h=currentSettings.transcriptHistory||[];
+      const hasItems=h.length>0;
+
+      const render=(items,showDel)=>items.map((x,i)=>{
+        const t=new Date(x.time), ts=t.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}), ds=t.toLocaleDateString("tr-TR",{day:"numeric",month:"short"});
+        return '<div class="recent-item"><div class="recent-item-text">'+esc(x.text)+'</div><div class="recent-item-time">'+ds+' '+ts+'</div><div class="recent-item-actions"><button class="recent-item-copy" onclick="copyItem('+i+')">Kopyala</button>'+(showDel?'<button class="recent-item-del" onclick="deleteItem('+i+')">Sil</button>':'')+'</div></div>';
+      }).join("");
+
+      const empty='<div class="recent-empty"><div class="recent-empty-icon">📝</div><div class="recent-empty-text">Henuz yok. Ctrl+Space ile baslayin!</div></div>';
+
+      // Home — recent 3 (with delete)
+      document.getElementById("recentList").innerHTML=hasItems?render(h.slice(0,3),true):empty;
+      document.getElementById("recentToolbar").style.display=hasItems?"flex":"none";
+
+      // History page — all (with delete)
+      document.getElementById("historyList").innerHTML=hasItems?render(h,true):empty.replace("📝","📋");
+      document.getElementById("historyToolbar").style.display=hasItems?"flex":"none";
+      document.getElementById("historyCount").textContent=hasItems?h.length+" kayit":"";
+
+      // Scratchpad — recent 5 (with delete)
+      document.getElementById("scratchpadRecents").innerHTML=hasItems?render(h.slice(0,5),true):empty.replace("📝","📋");
+      document.getElementById("scratchpadToolbar").style.display=hasItems?"flex":"none";
+    }
+
+    function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML;}
+
+    async function copyItem(i){
+      const h=currentSettings.transcriptHistory||[];
+      if(h[i]){window.voiceflow.copyToClipboard(h[i].text);showToast("Kopyalandi!");}
+    }
+
+    async function deleteItem(i){
+      const h=currentSettings.transcriptHistory||[];
+      if(h[i]){
+        h.splice(i,1);
+        currentSettings.transcriptHistory=h;
+        await window.voiceflow.saveSettings({transcriptHistory:h});
+        loadHistory();
+        showToast("Silindi");
+      }
+    }
+
+    async function clearAllHistory(){
+      if(!confirm("Tum gecmis silinecek. Emin misiniz?")) return;
+      currentSettings.transcriptHistory=[];
+      await window.voiceflow.saveSettings({transcriptHistory:[]});
+      loadHistory();
+      showToast("Tum gecmis silindi");
+    }
+
+    function appendAllToScratchpad(){
+      const h=currentSettings.transcriptHistory||[];
+      if(!h.length) return;
+      const pad=document.getElementById("scratchpadText");
+      const texts=h.map(x=>x.text).join("\n\n");
+      pad.value=(pad.value?pad.value+"\n\n":"")+texts;
+      window.voiceflow.saveSettings({scratchpadText:pad.value});
+      showToast("Tumu eklendi");
+    }
+
+    function setGreeting(){
+      const h=new Date().getHours(), n=currentSettings.userName||"";
+      let g=h<6?"Iyi Geceler":h<12?"Gunaydin":h<18?"Iyi Gunler":"Iyi Aksamlar";
+      document.getElementById("greeting").textContent=g+(n?", "+n+"!":"!");
+    }
+
+    function showToast(m){document.getElementById("toastText").textContent=m;document.getElementById("toast").classList.remove("hidden");setTimeout(()=>document.getElementById("toast").classList.add("hidden"),2500);}
+
+    init();
+  </script>
+</body>
+</html>

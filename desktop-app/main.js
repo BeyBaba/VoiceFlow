@@ -1,0 +1,855 @@
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
+const http = require("http");
+
+let mainWindow = null;
+let pillWindow = null;
+let settingsWindow = null;
+let homeWindow = null;
+let tray = null;
+let isRecording = false;
+
+// ========== SETTINGS ==========
+function getSettingsPath() {
+  return path.join(app.getPath("userData"), "vf-settings.json");
+}
+
+function loadSettings() {
+  try {
+    const p = getSettingsPath();
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, "utf-8"));
+    }
+  } catch {}
+  return {};
+}
+
+function saveSettings(data) {
+  try {
+    fs.writeFileSync(getSettingsPath(), JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Settings save error:", err);
+  }
+}
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    // Double-click desktop icon → open home window
+    createHomeWindow();
+  });
+}
+
+// ========== MAIN WINDOW ==========
+function createMainWindow() {
+  const display = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+  const settings = loadSettings();
+  const isFirstRun = !settings.setupComplete;
+
+  const winWidth = isFirstRun ? 420 : 380;
+  const winHeight = isFirstRun ? 560 : 120;
+
+  // Center on first run, top-right otherwise
+  const winX = isFirstRun
+    ? Math.round((screenWidth - winWidth) / 2)
+    : screenWidth - 400;
+  const winY = isFirstRun
+    ? Math.round((screenHeight - winHeight) / 2)
+    : 60;
+
+  mainWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: winX,
+    y: winY,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  mainWindow.loadFile("ui/index.html");
+
+  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
+    console.error("Failed to load:", errorCode, errorDescription);
+  });
+
+  mainWindow.on("blur", () => {
+    const currentSettings = loadSettings();
+    if (!isRecording && currentSettings.setupComplete && currentSettings.isAuthenticated) {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed() && !isRecording) {
+          mainWindow.hide();
+        }
+      }, 200);
+    }
+  });
+
+  mainWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    // Only show main dictation window if user is authenticated
+    const s = loadSettings();
+    if (s.isAuthenticated && s.setupComplete) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// ========== BOTTOM PILL WINDOW ==========
+function createPillWindow() {
+  const display = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+
+  const pillWidth = 320;
+  const pillHeight = 52;
+
+  // Check pill position setting
+  const settings = loadSettings();
+  let pillX;
+  if (settings.pillPosition === "right") {
+    pillX = screenWidth - pillWidth - 20;
+  } else if (settings.pillPosition === "left") {
+    pillX = 20;
+  } else {
+    pillX = Math.round((screenWidth - pillWidth) / 2);
+  }
+
+  pillWindow = new BrowserWindow({
+    width: pillWidth,
+    height: pillHeight,
+    x: pillX,
+    y: screenHeight - pillHeight,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: true,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  pillWindow.loadFile("ui/pill.html");
+
+  pillWindow.webContents.on("did-finish-load", () => {
+    const settings = loadSettings();
+    if (settings.setupComplete && settings.isAuthenticated && settings.showPill !== false) {
+      pillWindow.show();
+    }
+  });
+
+  pillWindow.on("blur", () => {
+    // Keep pill always visible, don't hide on blur
+  });
+
+  pillWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      pillWindow.hide();
+    }
+  });
+}
+
+function showPill() {
+  if (pillWindow && !pillWindow.isDestroyed()) {
+    const settings = loadSettings();
+    if (settings.showPill !== false) {
+      pillWindow.show();
+    }
+  }
+}
+
+function hidePill() {
+  if (pillWindow && !pillWindow.isDestroyed()) {
+    pillWindow.hide();
+  }
+}
+
+function updatePillState(state) {
+  if (pillWindow && !pillWindow.isDestroyed()) {
+    pillWindow.webContents.send("pill-state", state);
+  }
+}
+
+// ========== SETTINGS WINDOW ==========
+function createSettingsWindow() {
+  if (settingsWindow) {
+    settingsWindow.show();
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 700,
+    height: 560,
+    frame: true,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  settingsWindow.setMenuBarVisibility(false);
+  settingsWindow.loadFile("ui/settings.html");
+
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
+}
+
+// ========== HOME WINDOW ==========
+function createHomeWindow(navigateTo) {
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.show();
+    homeWindow.focus();
+    // Navigate to specific page if requested
+    if (navigateTo) {
+      homeWindow.webContents.send("show-page", navigateTo);
+    }
+    return;
+  }
+
+  const display = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+
+  // Open at 90% of screen size for a spacious feel
+  const winWidth = Math.round(screenWidth * 0.9);
+  const winHeight = Math.round(screenHeight * 0.9);
+
+  homeWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: Math.round((screenWidth - winWidth) / 2),
+    y: Math.round((screenHeight - winHeight) / 2),
+    frame: true,
+    resizable: true,
+    minWidth: 700,
+    minHeight: 500,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  homeWindow.setMenuBarVisibility(false);
+  homeWindow.loadFile("ui/home.html");
+
+  // Navigate to specific page after load
+  if (navigateTo) {
+    homeWindow.webContents.on("did-finish-load", () => {
+      homeWindow.webContents.send("show-page", navigateTo);
+    });
+  }
+
+  homeWindow.on("closed", () => {
+    homeWindow = null;
+  });
+}
+
+// ========== TRAY ==========
+function createTray() {
+  // Use the app icon (gradient mic) for tray — much nicer than plain circle
+  const icon16 = path.join(__dirname, "assets", "icon-16.png");
+  const icon32 = path.join(__dirname, "assets", "icon-32.png");
+  let trayIcon;
+
+  try {
+    if (fs.existsSync(icon32)) {
+      trayIcon = nativeImage.createFromPath(icon32);
+      // Resize to 16x16 for crisp tray display
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+      if (trayIcon.isEmpty()) {
+        trayIcon = createFallbackIcon();
+      }
+    } else if (fs.existsSync(icon16)) {
+      trayIcon = nativeImage.createFromPath(icon16);
+      if (trayIcon.isEmpty()) {
+        trayIcon = createFallbackIcon();
+      }
+    } else {
+      trayIcon = createFallbackIcon();
+    }
+  } catch {
+    trayIcon = createFallbackIcon();
+  }
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip("VoiceFlow - Ctrl+Space ile dikte et");
+
+  // Build language submenu
+  const settings = loadSettings();
+  const currentLang = settings.language || "tr";
+
+  const languageItems = [
+    { code: "tr", label: "Turkce", flag: "TR" },
+    { code: "en", label: "English", flag: "EN" },
+    { code: "de", label: "Deutsch", flag: "DE" },
+    { code: "fr", label: "Francais", flag: "FR" },
+    { code: "es", label: "Espanol", flag: "ES" },
+    { code: "ja", label: "Japanese", flag: "JP" },
+    { code: "ko", label: "Korean", flag: "KR" },
+    { code: "zh", label: "Chinese", flag: "CN" },
+    { code: "pt", label: "Portugues", flag: "PT" },
+    { code: "it", label: "Italiano", flag: "IT" },
+    { code: "ru", label: "Russian", flag: "RU" },
+    { code: "ar", label: "Arabic", flag: "AR" },
+  ];
+
+  const langSubmenu = languageItems.map(lang => ({
+    label: `${lang.flag} ${lang.label}`,
+    type: "radio",
+    checked: currentLang === lang.code,
+    click: () => {
+      const s = loadSettings();
+      s.language = lang.code;
+      saveSettings(s);
+      // Refresh tray to update radio state
+      rebuildTrayMenu();
+    },
+  }));
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Dikte Et (Ctrl+Space)",
+      click: () => toggleRecording(),
+    },
+    { type: "separator" },
+    {
+      label: "Ana Sayfa",
+      click: () => createHomeWindow(),
+    },
+    {
+      label: "Pencereyi Goster",
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Dil",
+      submenu: langSubmenu,
+    },
+    {
+      label: "Ayarlar",
+      click: () => createHomeWindow("s-general"),
+    },
+    { type: "separator" },
+    {
+      label: "Cikis",
+      click: () => {
+        app.isQuitting = true;
+        if (pillWindow) pillWindow.destroy();
+        if (homeWindow) homeWindow.destroy();
+        if (mainWindow) mainWindow.destroy();
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  tray.on("click", () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        toggleRecording();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    }
+  });
+
+  tray.on("double-click", () => {
+    createHomeWindow();
+  });
+}
+
+function rebuildTrayMenu() {
+  if (tray) {
+    tray.removeAllListeners("click");
+    tray.removeAllListeners("double-click");
+    // Recreate
+    const settings = loadSettings();
+    const currentLang = settings.language || "tr";
+
+    const languageItems = [
+      { code: "tr", label: "Turkce", flag: "TR" },
+      { code: "en", label: "English", flag: "EN" },
+      { code: "de", label: "Deutsch", flag: "DE" },
+      { code: "fr", label: "Francais", flag: "FR" },
+      { code: "es", label: "Espanol", flag: "ES" },
+      { code: "ja", label: "Japanese", flag: "JP" },
+      { code: "ko", label: "Korean", flag: "KR" },
+      { code: "zh", label: "Chinese", flag: "CN" },
+      { code: "pt", label: "Portugues", flag: "PT" },
+      { code: "it", label: "Italiano", flag: "IT" },
+      { code: "ru", label: "Russian", flag: "RU" },
+      { code: "ar", label: "Arabic", flag: "AR" },
+    ];
+
+    const langSubmenu = languageItems.map(lang => ({
+      label: `${lang.flag} ${lang.label}`,
+      type: "radio",
+      checked: currentLang === lang.code,
+      click: () => {
+        const s = loadSettings();
+        s.language = lang.code;
+        saveSettings(s);
+        rebuildTrayMenu();
+      },
+    }));
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: "Dikte Et (Ctrl+Space)",
+        click: () => toggleRecording(),
+      },
+      { type: "separator" },
+      {
+        label: "Ana Sayfa",
+        click: () => createHomeWindow(),
+      },
+      {
+        label: "Pencereyi Goster",
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Dil",
+        submenu: langSubmenu,
+      },
+      {
+        label: "Ayarlar",
+        click: () => createHomeWindow("s-general"),
+      },
+      { type: "separator" },
+      {
+        label: "Cikis",
+        click: () => {
+          app.isQuitting = true;
+          if (pillWindow) pillWindow.destroy();
+          if (homeWindow) homeWindow.destroy();
+          if (mainWindow) mainWindow.destroy();
+          app.quit();
+        },
+      },
+    ]);
+
+    tray.setContextMenu(contextMenu);
+
+    tray.on("click", () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          toggleRecording();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    });
+
+    tray.on("double-click", () => {
+      createHomeWindow();
+    });
+  }
+}
+
+function createFallbackIcon() {
+  const size = 16;
+  const buffer = Buffer.alloc(size * size * 4);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const cx = size / 2, cy = size / 2, r = 6;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= r) {
+        buffer[i] = 45;
+        buffer[i + 1] = 212;
+        buffer[i + 2] = 191;
+        buffer[i + 3] = 255;
+      } else {
+        buffer[i + 3] = 0;
+      }
+    }
+  }
+
+  return nativeImage.createFromBuffer(buffer, { width: size, height: size });
+}
+
+// ========== RECORDING ==========
+function toggleRecording() {
+  if (!mainWindow) return;
+
+  // Position main window above the pill (bottom center)
+  const display = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+  const mainBounds = mainWindow.getBounds();
+
+  const newX = Math.round((screenWidth - mainBounds.width) / 2);
+  const newY = screenHeight - 52 - mainBounds.height - 12;
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.setPosition(newX, newY);
+    mainWindow.show();
+  }
+  mainWindow.focus();
+
+  mainWindow.webContents.send("toggle-recording");
+}
+
+function registerShortcuts() {
+  const ret = globalShortcut.register("CommandOrControl+Space", () => {
+    toggleRecording();
+  });
+
+  if (!ret) {
+    console.error("Ctrl+Space shortcut registration failed");
+  }
+}
+
+// ========== GOOGLE OAUTH (System Browser + Local HTTP Server) ==========
+const GOOGLE_CLIENT_ID = "111781870956-vkc76eqprbi91ocou7dvaoethh5gnttr.apps.googleusercontent.com";
+const GOOGLE_CLIENT_SECRET = "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";
+
+function googleOAuth() {
+  return new Promise((resolve, reject) => {
+    let redirectUri = "";
+    let resolved = false;
+    let timeoutId = null;
+
+    // Create a temporary local HTTP server to capture Google's redirect
+    const server = http.createServer(async (req, res) => {
+      if (resolved) {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
+
+      try {
+        const reqUrl = new URL(req.url, "http://localhost");
+        const code = reqUrl.searchParams.get("code");
+        const error = reqUrl.searchParams.get("error");
+
+        // Ignore requests without code or error (favicon, etc.)
+        if (!code && !error) {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+
+        resolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
+
+        if (error) {
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+          res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>VoiceFlow</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:linear-gradient(135deg,#0f0f23 0%,#1a1a3e 100%);color:#fff}.card{text-align:center;background:rgba(255,255,255,0.05);border-radius:20px;padding:48px;backdrop-filter:blur(10px)}.icon{font-size:56px;margin-bottom:20px}h2{color:#ff6b6b;font-size:24px;margin-bottom:12px}p{color:#aaa;font-size:16px}</style></head><body><div class="card"><div class="icon">❌</div><h2>Giris iptal edildi</h2><p>Bu pencereyi kapatabilirsiniz.</p></div></body></html>`);
+          try { server.close(); } catch {}
+          reject(new Error(error));
+          return;
+        }
+
+        console.log("Google OAuth: Got authorization code, exchanging for tokens...");
+
+        // Show success page to user immediately
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>VoiceFlow</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:linear-gradient(135deg,#0f0f23 0%,#1a1a3e 100%);color:#fff}.card{text-align:center;background:rgba(255,255,255,0.05);border-radius:20px;padding:48px;backdrop-filter:blur(10px)}.icon{font-size:56px;margin-bottom:20px}h2{color:#2dd4a8;font-size:24px;margin-bottom:12px}p{color:#aaa;font-size:16px}</style></head><body><div class="card"><div class="icon">✅</div><h2>Giris basarili!</h2><p>VoiceFlow uygulamasina donebilirsiniz.</p><p style="margin-top:8px;font-size:13px;color:#666">Bu sekme otomatik kapanacak...</p></div><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+        try { server.close(); } catch {}
+
+        // Exchange authorization code for tokens
+        const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            code,
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            redirect_uri: redirectUri,
+            grant_type: "authorization_code",
+          }),
+        });
+
+        const tokens = await tokenResponse.json();
+        console.log("Google OAuth: Token response received", tokens.error || "OK");
+
+        if (tokens.error) {
+          reject(new Error(tokens.error_description || tokens.error));
+          return;
+        }
+
+        // Get user info from Google
+        const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        });
+
+        const userInfo = await userInfoResponse.json();
+        console.log("Google OAuth: User info received for", userInfo.email);
+
+        // Bring home window to front
+        if (homeWindow && !homeWindow.isDestroyed()) {
+          homeWindow.show();
+          homeWindow.focus();
+        }
+
+        resolve({
+          name: userInfo.name || userInfo.given_name || "",
+          email: userInfo.email || "",
+          picture: userInfo.picture || "",
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token || "",
+        });
+      } catch (err) {
+        console.error("Google OAuth exchange error:", err);
+        try { server.close(); } catch {}
+        if (!resolved) {
+          resolved = true;
+          reject(err);
+        }
+      }
+    });
+
+    // Listen on random available port
+    server.listen(0, "127.0.0.1", () => {
+      const port = server.address().port;
+      redirectUri = `http://localhost:${port}`;
+      console.log("Google OAuth: Local callback server on port", port);
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${GOOGLE_CLIENT_ID}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent("email profile")}` +
+        `&access_type=offline` +
+        `&prompt=consent`;
+
+      // Open in user's real Chrome browser — Google trusts this!
+      shell.openExternal(authUrl);
+      console.log("Google OAuth: Opened in system browser");
+    });
+
+    // 5 minute timeout
+    timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        try { server.close(); } catch {}
+        reject(new Error("Giris zaman asimina ugradi (5 dakika)"));
+      }
+    }, 5 * 60 * 1000);
+  });
+}
+
+// ========== AUTO-PASTE (PowerShell SendKeys) ==========
+function autoPasteToApp() {
+  // Hide the main window first
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+  updatePillState("idle");
+
+  // Small delay to let the previous app regain focus, then simulate Ctrl+V
+  setTimeout(() => {
+    const psCommand = `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`;
+    exec(psCommand, (err) => {
+      if (err) {
+        console.error("Auto-paste error:", err);
+      } else {
+        console.log("Auto-paste: Ctrl+V sent successfully");
+      }
+    });
+  }, 300);
+}
+
+// ========== IPC HANDLERS ==========
+ipcMain.on("recording-state", (event, state) => {
+  isRecording = state;
+  updatePillState(state ? "recording" : "idle");
+});
+
+ipcMain.on("show-result", (event, text) => {
+  isRecording = false;
+  updatePillState("result");
+});
+
+ipcMain.on("hide-window", () => {
+  isRecording = false;
+  if (mainWindow) mainWindow.hide();
+  updatePillState("idle");
+});
+
+ipcMain.on("open-settings", () => {
+  // Redirect to home window settings page instead of separate window
+  createHomeWindow("s-general");
+});
+
+ipcMain.on("open-home", () => {
+  createHomeWindow();
+});
+
+ipcMain.on("copy-to-clipboard", (event, text) => {
+  clipboard.writeText(text);
+});
+
+ipcMain.on("resize-window", (event, width, height) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setSize(width, height);
+  }
+});
+
+// Pill clicked → toggle recording
+ipcMain.on("pill-clicked", () => {
+  toggleRecording();
+});
+
+// Auto-paste: hide window and simulate Ctrl+V
+ipcMain.on("auto-paste", () => {
+  autoPasteToApp();
+});
+
+// Settings IPC
+ipcMain.handle("get-settings", () => {
+  return loadSettings();
+});
+
+ipcMain.handle("save-settings", (event, data) => {
+  const existing = loadSettings();
+  const merged = { ...existing, ...data };
+  saveSettings(merged);
+
+  // Show/hide pill based on settings
+  if (merged.setupComplete) {
+    if (merged.showPill !== false) {
+      showPill();
+    } else {
+      hidePill();
+    }
+  }
+
+  return merged;
+});
+
+ipcMain.on("open-external", (event, url) => {
+  shell.openExternal(url);
+});
+
+// Version
+ipcMain.handle("get-version", () => {
+  return app.getVersion();
+});
+
+// Auto-start
+ipcMain.handle("get-auto-start", () => {
+  try {
+    return app.getLoginItemSettings().openAtLogin;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.on("set-auto-start", (event, enabled) => {
+  try {
+    app.setLoginItemSettings({ openAtLogin: enabled });
+  } catch (err) {
+    console.error("Auto-start error:", err);
+  }
+});
+
+// Google OAuth
+ipcMain.handle("google-auth", async () => {
+  try {
+    const result = await googleOAuth();
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("Google OAuth error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Reset settings
+ipcMain.on("reset-settings", () => {
+  saveSettings({});
+
+  // Hide pill and main dictation window (no auth)
+  if (pillWindow && !pillWindow.isDestroyed()) {
+    pillWindow.hide();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.close();
+    settingsWindow = null;
+  }
+
+  // Re-open home window → will show login page (no auth)
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.close();
+    homeWindow = null;
+  }
+  createHomeWindow();
+});
+
+// ========== APP LIFECYCLE ==========
+app.whenReady().then(() => {
+  createMainWindow();
+  createPillWindow();
+  createTray();
+  registerShortcuts();
+
+  // Always open home window on start
+  // - Fresh install (no auth) → shows login/registration page
+  // - Returning user (authenticated) → shows dashboard
+  createHomeWindow();
+
+  console.log("VoiceFlow started successfully!");
+  console.log("Settings path:", getSettingsPath());
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+});
+
+app.on("window-all-closed", () => {
+  // Don't quit - keep in tray
+});
+
+app.on("activate", () => {
+  if (!mainWindow) {
+    createMainWindow();
+  }
+});

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceFlow - Ayarlar</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+        </svg>
+        <div>
+          <h1 class="logo-title">VoiceFlow</h1>
+          <span class="logo-subtitle">Ayarlar</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="settings-grid">
+      <!-- API Key -->
+      <section class="card">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+          </svg>
+          <h2>API Key</h2>
+        </div>
+        <p class="card-desc">Groq API anahtarınızı girin. <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a> adresinden ücretsiz alabilirsiniz.</p>
+        <div class="input-row">
+          <input type="password" id="apiKeyInput" placeholder="gsk_..." class="text-input">
+          <button id="toggleApiKey" class="icon-btn-sm" title="Göster/Gizle">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Language -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-emoji">🌍</span>
+          <h2>Konuşma Dili</h2>
+        </div>
+        <p class="card-desc">Varsayılan konuşma dilinizi seçin.</p>
+        <select id="langSelect" class="select-input">
+          <option value="tr">🇹🇷 Türkçe</option>
+          <option value="en">🇺🇸 English</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="ko">🇰🇷 한국어</option>
+          <option value="zh">🇨🇳 中文</option>
+          <option value="pt">🇧🇷 Português</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="ar">🇸🇦 العربية</option>
+        </select>
+      </section>
+
+      <!-- Auto-paste -->
+      <section class="card">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+          </svg>
+          <h2>Otomatik Yapıştırma</h2>
+        </div>
+        <p class="card-desc">Transkripsiyon tamamlanınca metni aktif metin alanına otomatik yapıştırır.</p>
+        <label class="toggle">
+          <input type="checkbox" id="autoPasteCheckbox">
+          <span class="toggle-slider"></span>
+          <span class="toggle-label-text">Otomatik yapıştır</span>
+        </label>
+      </section>
+
+      <!-- Shortcut info -->
+      <section class="card">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+          </svg>
+          <h2>Kısayol</h2>
+        </div>
+        <p class="card-desc">Herhangi bir sayfada dikte etmeye başlamak için:</p>
+        <div class="shortcut-display">
+          <kbd>Ctrl</kbd> + <kbd>Space</kbd>
+        </div>
+      </section>
+
+      <!-- Reset -->
+      <section class="card card-danger">
+        <div class="card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+          <h2>Sıfırla</h2>
+        </div>
+        <p class="card-desc">Tüm ayarları sıfırla ve ilk kurulum ekranına dön.</p>
+        <button id="resetBtn" class="danger-btn">Ayarları Sıfırla</button>
+      </section>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span id="toastText">Kaydedildi!</span>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

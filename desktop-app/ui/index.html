@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceFlow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    .container {
+      background: #16161E;
+      border: 1px solid #2A2A36;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    button, select, input, a, label { -webkit-app-region: no-drag; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2A2A36; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3A3A48; }
+
+    /* ===== ONBOARDING ===== */
+    .onboarding {
+      position: relative;
+      width: 100%;
+      height: 520px;
+      overflow: hidden;
+    }
+
+    .ob-step {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 36px 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      transform: translateX(80px);
+      pointer-events: none;
+      transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .ob-step.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .ob-step.prev {
+      opacity: 0;
+      transform: translateX(-80px);
+      pointer-events: none;
+    }
+
+    /* Logo */
+    .ob-logo {
+      width: 80px; height: 80px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(15,118,110,0.12), rgba(79,70,229,0.12));
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      position: relative;
+      animation: logoFloat 4s ease-in-out infinite;
+    }
+
+    .ob-logo::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 27px;
+      background: linear-gradient(135deg, #0F766E, #4F46E5);
+      opacity: 0.25;
+      animation: logoGlow 4s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes logoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes logoGlow {
+      0%, 100% { opacity: 0.15; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.06); }
+    }
+
+    .ob-logo svg { color: #2DD4BF; }
+
+    /* Step icon (smaller, for non-welcome steps) */
+    .ob-step-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(15,118,110,0.12), rgba(79,70,229,0.08));
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px;
+      color: #2DD4BF;
+    }
+
+    .ob-title {
+      font-size: 22px; font-weight: 800; color: #F5F5F4;
+      margin-bottom: 8px; text-align: center;
+    }
+
+    .ob-subtitle {
+      font-size: 13px; color: #78716C; text-align: center;
+      line-height: 1.7; margin-bottom: 24px; max-width: 310px;
+    }
+
+    /* Buttons */
+    .ob-btn {
+      width: 100%; max-width: 310px;
+      padding: 14px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #0F766E, #0D9488);
+      color: white; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(15,118,110,0.35);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .ob-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(15,118,110,0.45); }
+    .ob-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .ob-btn:active:not(:disabled) { transform: translateY(0); }
+
+    .ob-btn-secondary {
+      width: 100%; max-width: 310px;
+      padding: 12px; border: 1px solid #2A2A36; border-radius: 12px;
+      background: transparent; color: #A8A29E; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; margin-top: 8px;
+    }
+    .ob-btn-secondary:hover { border-color: #3A3A48; color: #E7E5E4; }
+
+    /* Progress dots */
+    .ob-dots {
+      display: flex; gap: 6px; margin-top: 16px;
+    }
+    .ob-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #2A2A36; transition: all 0.35s;
+    }
+    .ob-dot.active {
+      background: #2DD4BF; width: 24px; border-radius: 4px;
+    }
+    .ob-dot.done { background: #0F766E; }
+
+    /* Input */
+    .ob-input-wrap {
+      width: 100%; max-width: 310px; position: relative;
+      margin-bottom: 8px;
+    }
+    .ob-input {
+      width: 100%; padding: 14px 16px;
+      border: 2px solid #2A2A36; border-radius: 12px;
+      font-size: 13px; background: #0B0B12; color: #E7E5E4;
+      outline: none; transition: border-color 0.2s;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    }
+    .ob-input:focus { border-color: #2DD4BF; }
+    .ob-input::placeholder { color: #44403C; }
+    .ob-input.error { border-color: #EF4444; }
+
+    .ob-input-hint {
+      font-size: 11px; color: #57534E; margin-top: 6px; text-align: center;
+    }
+
+    .ob-link {
+      color: #2DD4BF; text-decoration: none; cursor: pointer;
+      font-weight: 600;
+    }
+    .ob-link:hover { text-decoration: underline; }
+
+    /* Feature cards */
+    .ob-features {
+      display: flex; gap: 10px; width: 100%; max-width: 310px;
+      margin-bottom: 24px;
+    }
+    .ob-feature {
+      flex: 1; padding: 14px 10px;
+      background: rgba(15,118,110,0.05);
+      border: 1px solid #2A2A36; border-radius: 12px;
+      text-align: center; transition: all 0.2s;
+    }
+    .ob-feature:hover { border-color: #3A3A48; background: rgba(15,118,110,0.08); }
+    .ob-feature-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+    .ob-feature-label { font-size: 11px; color: #78716C; font-weight: 600; }
+
+    /* Language grid */
+    .ob-lang-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; width: 100%; max-width: 310px;
+      max-height: 240px; overflow-y: auto;
+      padding-right: 4px; margin-bottom: 16px;
+    }
+    .ob-lang {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; border: 2px solid #2A2A36;
+      border-radius: 10px; background: #0B0B12;
+      color: #A8A29E; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .ob-lang:hover { border-color: #3A3A48; color: #E7E5E4; }
+    .ob-lang.selected {
+      border-color: #2DD4BF; background: rgba(15,118,110,0.08); color: #2DD4BF;
+    }
+    .ob-lang-flag { font-size: 18px; line-height: 1; }
+
+    /* Mic test */
+    .ob-mic-area {
+      width: 100%; max-width: 310px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .ob-mic-btn {
+      width: 96px; height: 96px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg, rgba(15,118,110,0.12), rgba(15,118,110,0.06));
+      border: 2px solid #2A2A36; color: #78716C;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .ob-mic-btn:hover { border-color: #3A3A48; color: #A8A29E; }
+    .ob-mic-btn.listening {
+      border-color: #2DD4BF; color: #2DD4BF;
+      background: rgba(15,118,110,0.15);
+      animation: micPulse 1.5s ease-in-out infinite;
+    }
+    .ob-mic-btn.success {
+      border-color: #22C55E; color: #22C55E;
+      background: rgba(34,197,94,0.1);
+      animation: none;
+    }
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(45,212,191,0.25); }
+      50% { box-shadow: 0 0 0 14px rgba(45,212,191,0); }
+    }
+
+    .ob-level-wrap {
+      width: 100%; height: 6px; background: #2A2A36;
+      border-radius: 3px; overflow: hidden;
+    }
+    .ob-level-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #0F766E, #2DD4BF);
+      border-radius: 3px; transition: width 0.08s;
+    }
+    .ob-mic-status {
+      font-size: 12px; color: #57534E; text-align: center; min-height: 18px;
+    }
+    .ob-mic-status.ok { color: #22C55E; font-weight: 600; }
+    .ob-mic-status.err { color: #EF4444; }
+
+    /* Ready checklist */
+    .ob-checklist {
+      width: 100%; max-width: 310px;
+      display: flex; flex-direction: column; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .ob-check {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px;
+      background: rgba(15,118,110,0.04);
+      border: 1px solid rgba(15,118,110,0.12);
+      border-radius: 10px;
+      opacity: 0; transform: translateY(8px);
+      animation: checkSlideIn 0.4s ease forwards;
+    }
+    .ob-check:nth-child(1) { animation-delay: 0.1s; }
+    .ob-check:nth-child(2) { animation-delay: 0.25s; }
+    .ob-check:nth-child(3) { animation-delay: 0.4s; }
+    .ob-check:nth-child(4) { animation-delay: 0.55s; }
+
+    @keyframes checkSlideIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ob-check-icon {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(15,118,110,0.15);
+      display: flex; align-items: center; justify-content: center;
+      color: #2DD4BF; font-size: 13px; flex-shrink: 0;
+    }
+    .ob-check-text { font-size: 13px; color: #A8A29E; }
+    .ob-check-text strong { color: #E7E5E4; font-weight: 600; }
+
+    /* Spacer to push button to bottom */
+    .ob-spacer { flex: 1; }
+
+    /* ===== RECORDING VIEW ===== */
+    .recording-view {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 18px;
+    }
+
+    .wave-wrap {
+      display: flex; align-items: center; gap: 3px; flex: 1; height: 40px;
+    }
+
+    .wave-bar {
+      width: 4px; border-radius: 4px;
+      background: linear-gradient(180deg, #2DD4BF, #0F766E);
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(1)  { animation-delay: 0s;    height: 10px; }
+    .wave-bar:nth-child(2)  { animation-delay: 0.08s; height: 16px; }
+    .wave-bar:nth-child(3)  { animation-delay: 0.16s; height: 24px; }
+    .wave-bar:nth-child(4)  { animation-delay: 0.24s; height: 32px; }
+    .wave-bar:nth-child(5)  { animation-delay: 0.32s; height: 40px; }
+    .wave-bar:nth-child(6)  { animation-delay: 0.4s;  height: 32px; }
+    .wave-bar:nth-child(7)  { animation-delay: 0.48s; height: 40px; }
+    .wave-bar:nth-child(8)  { animation-delay: 0.4s;  height: 32px; }
+    .wave-bar:nth-child(9)  { animation-delay: 0.32s; height: 24px; }
+    .wave-bar:nth-child(10) { animation-delay: 0.24s; height: 16px; }
+    .wave-bar:nth-child(11) { animation-delay: 0.16s; height: 24px; }
+    .wave-bar:nth-child(12) { animation-delay: 0.08s; height: 16px; }
+    .wave-bar:nth-child(13) { animation-delay: 0s;    height: 10px; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.3); opacity: 0.5; }
+      50%      { transform: scaleY(1);   opacity: 1; }
+    }
+
+    .rec-info {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0;
+    }
+    .rec-timer {
+      font-size: 14px; font-weight: 700; color: #EF4444;
+      font-variant-numeric: tabular-nums;
+    }
+    .rec-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #EF4444;
+      animation: blink 1s ease infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .stop-btn {
+      width: 36px; height: 36px; border-radius: 10px; border: none;
+      background: #EF4444; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .stop-btn:hover { background: #DC2626; transform: scale(1.05); }
+
+    /* ===== PROCESSING VIEW ===== */
+    .processing-view {
+      display: flex; align-items: center; gap: 12px;
+      padding: 22px 18px;
+    }
+    .proc-spinner {
+      width: 22px; height: 22px; border: 3px solid #2A2A36;
+      border-top-color: #2DD4BF; border-radius: 50%;
+      animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .proc-text { font-size: 13px; color: #A8A29E; font-weight: 500; }
+
+    /* ===== RESULT VIEW ===== */
+    .result-view { padding: 14px 18px; }
+    .result-box {
+      background: rgba(15,118,110,0.1); border: 1px solid rgba(15,118,110,0.25);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;
+    }
+    .result-text {
+      font-size: 13px; line-height: 1.6; color: #E7E5E4;
+      word-break: break-word; font-weight: 500;
+    }
+    .result-footer {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .result-badge { font-size: 11px; color: #2DD4BF; font-weight: 600; }
+    .result-actions { display: flex; gap: 6px; }
+    .result-btn {
+      padding: 4px 10px; border: 1px solid #2A2A36; border-radius: 6px;
+      background: transparent; color: #A8A29E; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .result-btn:hover { border-color: #2DD4BF; color: #2DD4BF; }
+
+    /* ===== IDLE VIEW ===== */
+    .idle-view {
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px 18px; gap: 12px;
+      position: relative;
+    }
+    .idle-settings-btn {
+      position: absolute; top: 8px; right: 10px;
+      width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid #2A2A36; background: transparent;
+      color: #57534E; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .idle-settings-btn:hover { border-color: #3A3A48; color: #A8A29E; background: rgba(255,255,255,0.03); }
+    .idle-mic {
+      width: 52px; height: 52px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg, #0F766E, #0D9488);
+      color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; box-shadow: 0 4px 16px rgba(15,118,110,0.4);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    .idle-mic:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(15,118,110,0.55); }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 4px 16px rgba(15,118,110,0.4); }
+      50% { box-shadow: 0 4px 24px rgba(15,118,110,0.6), 0 0 0 6px rgba(15,118,110,0.1); }
+    }
+
+    .idle-info { display: flex; flex-direction: column; gap: 2px; }
+    .idle-title { font-size: 14px; font-weight: 700; color: #E7E5E4; }
+    .idle-hint { font-size: 11px; color: #78716C; }
+    .idle-hint kbd {
+      padding: 1px 5px; background: #0B0B12; border: 1px solid #2A2A36;
+      border-radius: 3px; font-size: 10px; font-family: monospace;
+      font-weight: 700; color: #2DD4BF;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+      background: #0F766E; color: white; padding: 5px 14px; border-radius: 14px;
+      font-size: 11px; font-weight: 600; box-shadow: 0 4px 16px rgba(15,118,110,0.5);
+      animation: toastIn 0.2s ease; z-index: 100; white-space: nowrap;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* Confetti burst on ready screen */
+    .confetti-wrap {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; overflow: hidden; z-index: 0;
+    }
+    .confetti {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: confettiFall 2.5s ease forwards;
+      opacity: 0;
+    }
+    @keyframes confettiFall {
+      0% { opacity: 1; transform: translateY(-20px) rotate(0deg) scale(1); }
+      100% { opacity: 0; transform: translateY(500px) rotate(720deg) scale(0.5); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+
+    <!-- ===================== ONBOARDING ===================== -->
+    <div id="onboarding" class="onboarding hidden">
+
+      <!-- Step 0: Welcome -->
+      <div class="ob-step active" data-step="0">
+        <div class="ob-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="38" height="38">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <h2 class="ob-title">VoiceFlow'a Hos Geldin!</h2>
+        <p class="ob-subtitle">Sesinizi metne donusturmenin en hizli yolu.<br>Her uygulama, her dil, her an.</p>
+        <div class="ob-features">
+          <div class="ob-feature">
+            <span class="ob-feature-icon">⚡</span>
+            <span class="ob-feature-label">4x Hizli</span>
+          </div>
+          <div class="ob-feature">
+            <span class="ob-feature-icon">🌍</span>
+            <span class="ob-feature-label">100+ Dil</span>
+          </div>
+          <div class="ob-feature">
+            <span class="ob-feature-icon">🎯</span>
+            <span class="ob-feature-label">Her Yerde</span>
+          </div>
+        </div>
+        <div class="ob-spacer"></div>
+        <button class="ob-btn" onclick="goToStep(1)">Baslayalim <span style="font-size:16px">→</span></button>
+        <div class="ob-dots">
+          <div class="ob-dot active"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+        </div>
+      </div>
+
+      <!-- Step 1: API Key -->
+      <div class="ob-step" data-step="1">
+        <div class="ob-step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+          </svg>
+        </div>
+        <h2 class="ob-title">API Anahtarini Gir</h2>
+        <p class="ob-subtitle">VoiceFlow, sesinizi metne donusturmek icin Groq AI kullanir. Ucretsiz bir API anahtari alin.</p>
+        <div class="ob-input-wrap">
+          <input type="text" id="obApiKey" class="ob-input" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        </div>
+        <p class="ob-input-hint">
+          <a href="#" id="obGroqLink" class="ob-link">console.groq.com</a> → ucretsiz API key al
+        </p>
+        <div class="ob-spacer"></div>
+        <button class="ob-btn" id="obApiBtn" disabled onclick="validateAndGoStep2()">Devam <span style="font-size:16px">→</span></button>
+        <button class="ob-btn-secondary" onclick="goToStep(0)">← Geri</button>
+        <div class="ob-dots">
+          <div class="ob-dot done"></div>
+          <div class="ob-dot active"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+        </div>
+      </div>
+
+      <!-- Step 2: Language -->
+      <div class="ob-step" data-step="2">
+        <div class="ob-step-icon">
+          <span style="font-size:28px">🌍</span>
+        </div>
+        <h2 class="ob-title">Konusma Dilini Sec</h2>
+        <p class="ob-subtitle">Varsayilan konusma dilinizi secin. Daha sonra ayarlardan degistirebilirsiniz.</p>
+        <div class="ob-lang-grid" id="obLangGrid">
+          <div class="ob-lang selected" data-lang="tr"><span class="ob-lang-flag">🇹🇷</span> Turkce</div>
+          <div class="ob-lang" data-lang="en"><span class="ob-lang-flag">🇺🇸</span> English</div>
+          <div class="ob-lang" data-lang="de"><span class="ob-lang-flag">🇩🇪</span> Deutsch</div>
+          <div class="ob-lang" data-lang="fr"><span class="ob-lang-flag">🇫🇷</span> Francais</div>
+          <div class="ob-lang" data-lang="es"><span class="ob-lang-flag">🇪🇸</span> Espanol</div>
+          <div class="ob-lang" data-lang="ja"><span class="ob-lang-flag">🇯🇵</span> Japanese</div>
+          <div class="ob-lang" data-lang="ko"><span class="ob-lang-flag">🇰🇷</span> Korean</div>
+          <div class="ob-lang" data-lang="zh"><span class="ob-lang-flag">🇨🇳</span> Chinese</div>
+          <div class="ob-lang" data-lang="pt"><span class="ob-lang-flag">🇧🇷</span> Portugues</div>
+          <div class="ob-lang" data-lang="it"><span class="ob-lang-flag">🇮🇹</span> Italiano</div>
+          <div class="ob-lang" data-lang="ru"><span class="ob-lang-flag">🇷🇺</span> Russian</div>
+          <div class="ob-lang" data-lang="ar"><span class="ob-lang-flag">🇸🇦</span> Arabic</div>
+        </div>
+        <div class="ob-spacer"></div>
+        <button class="ob-btn" onclick="goToStep(3)">Devam <span style="font-size:16px">→</span></button>
+        <button class="ob-btn-secondary" onclick="goToStep(1)">← Geri</button>
+        <div class="ob-dots">
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot active"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Mic Test -->
+      <div class="ob-step" data-step="3">
+        <div class="ob-step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <h2 class="ob-title">Mikrofonu Test Et</h2>
+        <p class="ob-subtitle">Mikrofonunuzun calistigindan emin olalim. Asagidaki butona tiklayin ve konusmaya baslayin.</p>
+        <div class="ob-mic-area">
+          <button class="ob-mic-btn" id="obMicBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+            </svg>
+          </button>
+          <div class="ob-level-wrap">
+            <div class="ob-level-bar" id="obLevelBar"></div>
+          </div>
+          <div class="ob-mic-status" id="obMicStatus">Tiklayin ve konusmaya baslayin</div>
+        </div>
+        <div class="ob-spacer"></div>
+        <button class="ob-btn" id="obMicNext" onclick="goToStep(4)">Devam <span style="font-size:16px">→</span></button>
+        <button class="ob-btn-secondary" onclick="goToStep(2)">← Geri</button>
+        <div class="ob-dots">
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot active"></div>
+          <div class="ob-dot"></div>
+        </div>
+      </div>
+
+      <!-- Step 4: Ready -->
+      <div class="ob-step" data-step="4">
+        <div class="confetti-wrap" id="confettiWrap"></div>
+        <div class="ob-step-icon" style="background:rgba(34,197,94,0.1);z-index:1;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" width="28" height="28">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <h2 class="ob-title" style="z-index:1;">Her Sey Hazir!</h2>
+        <p class="ob-subtitle" style="z-index:1;">VoiceFlow kullanima hazir. Iste yapilandirmaniz:</p>
+        <div class="ob-checklist" style="z-index:1;">
+          <div class="ob-check">
+            <div class="ob-check-icon">✓</div>
+            <div class="ob-check-text"><strong>API Key</strong> — Yapilandirildi</div>
+          </div>
+          <div class="ob-check">
+            <div class="ob-check-icon">✓</div>
+            <div class="ob-check-text"><strong>Dil</strong> — <span id="obReadyLang">Turkce</span></div>
+          </div>
+          <div class="ob-check">
+            <div class="ob-check-icon">✓</div>
+            <div class="ob-check-text"><strong>Mikrofon</strong> — Calisiyor</div>
+          </div>
+          <div class="ob-check">
+            <div class="ob-check-icon">⌨</div>
+            <div class="ob-check-text"><strong>Kisayol</strong> — Ctrl+Space</div>
+          </div>
+        </div>
+        <div class="ob-spacer"></div>
+        <button class="ob-btn" onclick="finishOnboarding()" style="z-index:1;background:linear-gradient(135deg,#0F766E,#059669);">
+          VoiceFlow'u Baslat 🚀
+        </button>
+        <div class="ob-dots" style="z-index:1;">
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot done"></div>
+          <div class="ob-dot active"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================== RECORDING ===================== -->
+    <div id="recordingView" class="recording-view hidden">
+      <div class="wave-wrap">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div class="rec-info">
+        <span id="timer" class="rec-timer">0:00</span>
+        <div class="rec-dot"></div>
+      </div>
+      <button id="stopBtn" class="stop-btn" title="Durdur">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+    </div>
+
+    <!-- ===================== PROCESSING ===================== -->
+    <div id="processingView" class="processing-view hidden">
+      <div class="proc-spinner"></div>
+      <span class="proc-text">AI metne donusturuyor...</span>
+    </div>
+
+    <!-- ===================== RESULT ===================== -->
+    <div id="resultView" class="result-view hidden">
+      <div class="result-box">
+        <div id="resultText" class="result-text"></div>
+      </div>
+      <div class="result-footer">
+        <span class="result-badge">Panoya kopyalandi</span>
+        <div class="result-actions">
+          <button id="newRecBtn" class="result-btn">Yeni</button>
+          <button id="closeBtn" class="result-btn">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== IDLE ===================== -->
+    <div id="idleView" class="idle-view hidden">
+      <button id="settingsBtn" class="idle-settings-btn" title="Ayarlar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </button>
+      <button id="micBtn" class="idle-mic" title="Tikla ve konus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+        </svg>
+      </button>
+      <div class="idle-info">
+        <span class="idle-title">VoiceFlow</span>
+        <span class="idle-hint"><kbd>Ctrl</kbd>+<kbd>Space</kbd> ile dikte et</span>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast hidden"><span id="toastText"></span></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

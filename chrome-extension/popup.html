@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceFlow</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ====== SETUP: First-run (mic permission + language) ====== -->
+    <div id="setupScreen" class="screen hidden">
+      <div id="setupStep1" class="setup-step">
+        <div class="setup-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <h2 class="setup-title">Mikrofon İzni</h2>
+        <p class="setup-desc">VoiceFlow'un çalışabilmesi için mikrofon erişimi gerekli.</p>
+        <button id="grantMicBtn" class="setup-btn">İzin Ver</button>
+      </div>
+
+      <div id="setupStep2" class="setup-step hidden">
+        <div class="setup-icon-emoji">🌍</div>
+        <h2 class="setup-title">Konuşma Dili</h2>
+        <p class="setup-desc">Hangi dilde konuşacaksınız?</p>
+        <select id="setupLangSelect" class="setup-select">
+          <option value="tr">🇹🇷 Türkçe</option>
+          <option value="en">🇺🇸 English</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="ko">🇰🇷 한국어</option>
+          <option value="zh">🇨🇳 中文</option>
+          <option value="pt">🇧🇷 Português</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="ar">🇸🇦 العربية</option>
+        </select>
+        <button id="saveLangBtn" class="setup-btn">Kaydet ve Başla</button>
+      </div>
+    </div>
+
+    <!-- ====== MAIN SCREEN ====== -->
+    <div id="mainScreen" class="screen hidden">
+
+      <!-- Recording view: wave animation + timer + stop button -->
+      <div id="recordingView" class="main-row hidden">
+        <div class="wave-wrap">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+        <span id="timer" class="timer">0:00</span>
+        <button id="stopBtn" class="stop-btn" title="Kaydı durdur">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <rect x="6" y="6" width="12" height="12" rx="2"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Processing view -->
+      <div id="processingView" class="main-row hidden">
+        <div class="proc-spinner"></div>
+        <span class="proc-text">AI işliyor...</span>
+      </div>
+
+      <!-- Result view: horizontal text box -->
+      <div id="resultView" class="main-row hidden">
+        <div class="result-box">
+          <span id="resultText" class="result-text"></span>
+        </div>
+        <span class="result-badge">✅ Kopyalandı</span>
+      </div>
+
+      <!-- Idle view: mic button (shown after result or when popup re-opens without auto-record) -->
+      <div id="idleView" class="main-row hidden">
+        <button id="micBtn" class="idle-mic" title="Tıkla ve konuş">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden">
+      <span id="toastText"></span>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

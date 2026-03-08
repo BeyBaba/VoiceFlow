@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "VoiceFlow - Voice to Text",
+  "version": "1.1.0",
+  "description": "Konuş, AI metne dönüştürsün. Herhangi bir metin alanında Ctrl+Space ile dikte et.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "offscreen",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://api.groq.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "commands": {
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Space"
+      },
+      "description": "Dikte etmeye başla/durdur"
+    }
+  }
+}

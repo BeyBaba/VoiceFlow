@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.next/
+
+# Build output
+desktop-app/dist/
+desktop-app/win-unpacked/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.blockmap
+*.log
