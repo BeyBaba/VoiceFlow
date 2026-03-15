@@ -3,8 +3,8 @@
 const footerLinks = {
   "Ürün": [
     { label: "Özellikler", href: "#features" },
-    { label: "Kullanım Alanları", href: "#usecases" },
-    { label: "Entegrasyonlar", href: "#integrations" },
+    { label: "Fiyatlandırma", href: "#pricing" },
+    { label: "Karşılaştırma", href: "#comparison" },
     { label: "Web Demo", href: "/demo" },
     { label: "Windows İndir", href: "/downloads/VoiceFlow-Setup.exe" },
   ],
@@ -12,7 +12,7 @@ const footerLinks = {
     { label: "Windows Uygulaması", href: "#download" },
     { label: "Chrome Eklentisi", href: "#download" },
     { label: "Web Demo", href: "/demo" },
-    { label: "Groq Whisper API", href: "https://console.groq.com" },
+    { label: "Kullanım Alanları", href: "#usecases" },
   ],
   "Kaynaklar": [
     { label: "Yardım Merkezi", href: "#" },

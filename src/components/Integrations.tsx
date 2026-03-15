@@ -41,11 +41,11 @@ const row2 = integrations.slice(15, 30);
 
 function IntegrationChip({ name }: { name: string }) {
   return (
-    <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-white border border-stone-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300 shrink-0">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center text-sm font-bold text-text-muted">
+    <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-white dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/40 shadow-sm hover:shadow-md dark:hover:shadow-black/20 hover:border-teal-500/30 dark:hover:border-teal-500/30 transition-all duration-300 shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-700 dark:to-stone-600 flex items-center justify-center text-sm font-bold text-stone-500 dark:text-stone-300">
         {name.charAt(0)}
       </div>
-      <span className="text-sm font-medium text-text whitespace-nowrap">
+      <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
         {name}
       </span>
     </div>
@@ -57,7 +57,7 @@ export default function Integrations() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="integrations" className="py-24 sm:py-32 bg-white">
+    <section id="integrations" className="py-24 sm:py-32">
       <div ref={ref} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -65,11 +65,14 @@ export default function Integrations() {
           transition={{ duration: 0.7 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+          <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 mb-4">
+            Entegrasyonlar
+          </span>
+          <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
             Her yerde{" "}
-            <span className="gradient-text">çalışır</span>
+            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">çalışır</span>
           </h2>
-          <p className="text-lg text-text-muted max-w-xl mx-auto">
+          <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
             VoiceFlow, 30+ favori uygulamanızda her metin alanında çalışır.
             Eklenti yok, kurulum yok — sadece konuş.
           </p>
@@ -105,9 +108,9 @@ export default function Integrations() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="text-center"
         >
-          <span className="inline-flex items-center gap-2 text-text-muted text-sm">
+          <span className="inline-flex items-center gap-2 text-stone-500 dark:text-stone-400 text-sm">
             <svg
-              className="w-5 h-5 text-primary"
+              className="w-5 h-5 text-teal-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

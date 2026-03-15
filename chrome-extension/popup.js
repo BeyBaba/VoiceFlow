@@ -201,7 +201,7 @@ async function transcribe(audioBlob) {
     const file = new File([audioBlob], "recording.webm", { type: "audio/webm" });
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("model", "whisper-large-v3");
+    formData.append("model", "whisper-large-v3-turbo");
     formData.append("language", language);
     formData.append("response_format", "verbose_json");
     formData.append("temperature", "0");
@@ -209,15 +209,32 @@ async function transcribe(audioBlob) {
     const prompt = LANGUAGE_PROMPTS[language] || "";
     if (prompt) formData.append("prompt", prompt);
 
-    const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    let response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
     });
 
+    // Fallback to whisper-large-v3 if turbo fails
+    if (!response.ok && response.status !== 401) {
+      console.warn("Turbo failed, trying whisper-large-v3...");
+      const fb = new FormData();
+      fb.append("file", new File([audioBlob], "recording.webm", { type: "audio/webm" }));
+      fb.append("model", "whisper-large-v3");
+      fb.append("language", language);
+      fb.append("response_format", "verbose_json");
+      fb.append("temperature", "0");
+      if (prompt) fb.append("prompt", prompt);
+      response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: fb,
+      });
+    }
+
     if (!response.ok) {
       console.error("Groq error:", await response.text());
-      showToast("Transkripsiyon hatası!");
+      showToast(response.status === 401 ? "API Key geçersiz!" : "Transkripsiyon hatası!");
       isProcessing = false;
       showView("idle");
       return;

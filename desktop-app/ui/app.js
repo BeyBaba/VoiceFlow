@@ -174,6 +174,15 @@ async function init() {
     if (cachedSettings.setupComplete && cachedSettings.apiKey) {
       showView("idle");
       window.voiceflow.resizeWindow(380, 100);
+
+      // Check if trial expired for free users
+      if (!cachedSettings.isPro && cachedSettings.trialEndDate) {
+        const trialEnd = new Date(cachedSettings.trialEndDate);
+        if (trialEnd <= new Date()) {
+          console.log("Trial expired — upgrade required");
+          // Don't block, just log. Modal shows when they try to record.
+        }
+      }
     } else {
       showView("onboarding");
       window.voiceflow.resizeWindow(420, 560);
@@ -451,7 +460,7 @@ async function startRecording() {
     let count = cachedSettings.dailyWordCount || 0;
     if (cachedSettings.lastWordCountDate !== today) count = 0;
     if (count >= 2000) {
-      showToast("Gunluk limit doldu! Pro'ya yukselt.");
+      showUpgradeModal(count);
       return;
     }
   }
@@ -518,7 +527,7 @@ async function transcribe(audioBlob) {
   }
   const apiKey = cachedSettings.apiKey;
   const language = cachedSettings.language || "tr";
-  const model = cachedSettings.aiModel || "whisper-large-v3";
+  const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
 
   try {
@@ -535,11 +544,29 @@ async function transcribe(audioBlob) {
     const prompt = LANGUAGE_PROMPTS[language] || "";
     if (prompt) formData.append("prompt", prompt);
 
-    const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    let response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
     });
+
+    // Fallback to whisper-large-v3 if turbo fails (not auth error)
+    if (!response.ok && response.status !== 401) {
+      console.warn("Turbo model failed, trying whisper-large-v3...");
+      const fallbackForm = new FormData();
+      fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: mime }));
+      fallbackForm.append("model", "whisper-large-v3");
+      fallbackForm.append("language", language);
+      fallbackForm.append("response_format", "verbose_json");
+      fallbackForm.append("temperature", String(temperature));
+      if (prompt) fallbackForm.append("prompt", prompt);
+
+      response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: fallbackForm,
+      });
+    }
 
     if (!response.ok) {
       const errText = await response.text();
@@ -548,7 +575,7 @@ async function transcribe(audioBlob) {
       if (response.status === 401) {
         showToast("API Key gecersiz! Ayarlardan kontrol edin.");
       } else {
-        showToast("Transkripsiyon hatasi!");
+        showToast("Transkripsiyon hatasi: " + response.status);
       }
 
       isProcessing = false;
@@ -657,7 +684,7 @@ async function updateDailyWordCount(text) {
 
     // Check limit for free users (2000 words/day)
     if (!settings.isPro && count >= 2000) {
-      showToast("Gunluk kelime limitine ulastiniz! Pro'ya yukselt.");
+      showUpgradeModal(count);
     }
   } catch (e) {
     console.error("Word count error:", e);
@@ -718,6 +745,46 @@ function showToast(message) {
   toastText.textContent = message;
   toast.classList.remove("hidden");
   setTimeout(() => toast.classList.add("hidden"), 3000);
+}
+
+// ==================== UPGRADE MODAL ====================
+const VOICEFLOW_PRICING_URL = "https://voiceflow.app/#pricing";
+
+const upgradeModal = document.getElementById("upgradeModal");
+const upgradeBtn = document.getElementById("upgradeBtn");
+const upgradeCloseBtn = document.getElementById("upgradeCloseBtn");
+
+function showUpgradeModal(wordCount) {
+  // Resize window to fit modal
+  window.voiceflow.resizeWindow(380, 420);
+
+  // Update word count display
+  const wcEl = document.getElementById("upgradeWordCount");
+  if (wcEl) {
+    wcEl.textContent = wordCount ? wordCount.toLocaleString("tr-TR") : "2.000";
+  }
+
+  upgradeModal.classList.remove("hidden");
+}
+
+function hideUpgradeModal() {
+  upgradeModal.classList.add("hidden");
+  // Restore window to idle size
+  showView("idle");
+  window.voiceflow.resizeWindow(380, 100);
+}
+
+if (upgradeBtn) {
+  upgradeBtn.addEventListener("click", () => {
+    window.voiceflow.openExternal(VOICEFLOW_PRICING_URL);
+    hideUpgradeModal();
+  });
+}
+
+if (upgradeCloseBtn) {
+  upgradeCloseBtn.addEventListener("click", () => {
+    hideUpgradeModal();
+  });
 }
 
 // ==================== START ====================
