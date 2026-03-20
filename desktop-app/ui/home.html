@@ -542,16 +542,88 @@
       if(!n||!e){showToast("Tum alanlar gerekli!");return;} if(p.length<6){showToast("Sifre en az 6 karakter!");return;} await auth(n,e,"email",false);
     });
     document.getElementById("btnActivate").addEventListener("click",async()=>{
-      const k=document.getElementById("licenseKey").value.trim().toUpperCase(), e=document.getElementById("licenseEmail").value.trim();
+      const k=document.getElementById("licenseKey").value.trim(), e=document.getElementById("licenseEmail").value.trim();
       if(!k||!e){showToast("Tum alanlar gerekli!");return;}
-      if(!["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED"].includes(k)){showToast("Gecersiz lisans anahtari!");return;}
-      await auth(e.split("@")[0],e,"license",true,k);
+      const btn=document.getElementById("btnActivate");
+      btn.disabled=true; btn.textContent="Dogrulanıyor...";
+      try {
+        const res = await fetch("https://voiceflow.app/api/verify-license", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: e, licenseKey: k })
+        });
+        const data = await res.json();
+        if (data.active && (data.plan === "pro" || data.plan === "lifetime")) {
+          await auth(e.split("@")[0], e, "license", true, k);
+          showToast("Pro lisans aktif!");
+        } else if (data.active && data.trialActive) {
+          await auth(e.split("@")[0], e, "license", false, k);
+          showToast("Deneme suresi aktif! " + data.trialDaysLeft + " gun kaldi.");
+        } else {
+          showToast(data.error || "Gecersiz lisans anahtari!");
+        }
+      } catch (err) {
+        // Fallback: hardcoded keys for offline usage
+        const upperK = k.toUpperCase();
+        if (["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED"].includes(upperK)) {
+          await auth(e.split("@")[0], e, "license", true, upperK);
+          showToast("Pro aktif! (cevrimdisi mod)");
+        } else {
+          showToast("Sunucuya baglanilamadi. Internet baglantinizi kontrol edin.");
+        }
+      }
+      btn.disabled=false; btn.textContent="Lisansi Etkinlestir";
     });
 
     async function auth(name,email,method,isPro,key){
-      await window.voiceflow.saveSettings({isAuthenticated:true,setupComplete:true,userName:name,userEmail:email,authMethod:method,isPro:isPro,licenseKey:key||"",dailyWordCount:0,lastWordCountDate:new Date().toISOString().split("T")[0]});
-      currentSettings=await window.voiceflow.getSettings();
-      showToast(isPro?"Pro aktif! Sinirsiz erisim.":"Hos geldiniz, "+name+"!");
+      // Server-side plan verification
+      let serverPlan = null;
+      let trialActive = false;
+      let trialDaysLeft = 0;
+      let trialEndDate = null;
+      try {
+        const res = await fetch("https://voiceflow.app/api/verify-license", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, licenseKey: key || undefined })
+        });
+        const data = await res.json();
+        if (data.plan === "pro" || data.plan === "lifetime") {
+          isPro = true;
+          serverPlan = data.plan;
+        }
+        if (data.trialActive) {
+          trialActive = true;
+          trialDaysLeft = data.trialDaysLeft || 0;
+          trialEndDate = data.trialEndDate || null;
+        }
+      } catch (e) {
+        console.log("Server verification skipped (offline):", e.message);
+      }
+
+      await window.voiceflow.saveSettings({
+        isAuthenticated: true,
+        setupComplete: true,
+        userName: name,
+        userEmail: email,
+        authMethod: method,
+        isPro: isPro,
+        serverPlan: serverPlan,
+        licenseKey: key || "",
+        trialActive: trialActive,
+        trialDaysLeft: trialDaysLeft,
+        trialEndDate: trialEndDate,
+        dailyWordCount: 0,
+        lastWordCountDate: new Date().toISOString().split("T")[0]
+      });
+      currentSettings = await window.voiceflow.getSettings();
+      if (isPro) {
+        showToast("Pro aktif! Sinirsiz erisim.");
+      } else if (trialActive) {
+        showToast("Hos geldiniz! " + trialDaysLeft + " gun ucretsiz deneme.");
+      } else {
+        showToast("Hos geldiniz, " + name + "!");
+      }
       showDashboard();
     }
 
@@ -568,9 +640,17 @@
       try{ const v=await window.voiceflow.getVersion(); document.getElementById("homeVersion").textContent="VoiceFlow v"+v; document.getElementById("aboutVersion").textContent="v"+v; }catch(e){}
       document.getElementById("userEmailDisplay").textContent=currentSettings.userEmail||"";
       const isPro=currentSettings.isPro;
-      document.getElementById("planBadge").textContent=isPro?"Pro":"Free";
+      const trialActive=currentSettings.trialActive;
+      const trialDays=currentSettings.trialDaysLeft||0;
+      let planText = isPro ? "Pro" : "Free";
+      let userPlanText = isPro ? "Pro" : "Ucretsiz";
+      if (!isPro && trialActive && trialDays > 0) {
+        planText = "Trial (" + trialDays + " gun)";
+        userPlanText = "Deneme - " + trialDays + " gun";
+      }
+      document.getElementById("planBadge").textContent=planText;
       document.getElementById("planBadge").className="brand-badge"+(isPro?" pro":"");
-      document.getElementById("userPlanBadge").textContent=isPro?"Pro":"Ucretsiz";
+      document.getElementById("userPlanBadge").textContent=userPlanText;
       document.getElementById("userPlanBadge").className="user-plan "+(isPro?"pro":"free");
       document.getElementById("wordCountBar").style.display=isPro?"none":"block";
       if(!isPro) updateWordCount();

@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Customer {
+  id                          String    @id @default(cuid())
+  email                       String    @unique
+  name                        String?
+  image                       String?
+  googleId                    String?   @unique
+  plan                        String    @default("free") // free | pro | lifetime
+  trialStartDate              DateTime?
+  trialEndDate                DateTime?
+  lemonSqueezyCustomerId      String?
+  lemonSqueezySubscriptionId  String?
+  lemonSqueezyOrderId         String?
+  lemonSqueezyVariantId       String?
+  customerPortalUrl           String?
+  currentPeriodEnd            DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}

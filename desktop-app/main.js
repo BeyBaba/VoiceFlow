@@ -240,7 +240,7 @@ function createHomeWindow(navigateTo) {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = display.workAreaSize;
 
-  // Open at 63% of screen size (30% smaller than before)
+  // Open at 63% of screen size (responsive)
   const winWidth = Math.round(screenWidth * 0.63);
   const winHeight = Math.round(screenHeight * 0.63);
 
@@ -263,12 +263,16 @@ function createHomeWindow(navigateTo) {
   homeWindow.setMenuBarVisibility(false);
   homeWindow.loadFile("ui/home.html");
 
-  // Navigate to specific page after load
-  if (navigateTo) {
-    homeWindow.webContents.on("did-finish-load", () => {
+  // Always bring to front when opened
+  homeWindow.webContents.on("did-finish-load", () => {
+    homeWindow.show();
+    homeWindow.focus();
+    homeWindow.moveTop();
+    // Navigate to specific page if requested
+    if (navigateTo) {
       homeWindow.webContents.send("show-page", navigateTo);
-    });
-  }
+    }
+  });
 
   homeWindow.on("closed", () => {
     homeWindow = null;
@@ -936,8 +940,54 @@ ipcMain.on("reset-settings", () => {
   createHomeWindow();
 });
 
+// ========== SERVER LICENSE CHECK ==========
+const VOICEFLOW_API_URL = "https://voiceflow.app/api/verify-license";
+
+async function checkLicenseOnStartup() {
+  const settings = loadSettings();
+  if (!settings.isAuthenticated || !settings.userEmail) return;
+
+  try {
+    const response = await fetch(VOICEFLOW_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: settings.userEmail,
+        licenseKey: settings.licenseKey || undefined,
+      }),
+    });
+
+    const data = await response.json();
+    console.log("License check result:", data);
+
+    // Update local settings based on server response
+    const updates = {};
+
+    if (data.plan === "pro" || data.plan === "lifetime") {
+      updates.isPro = true;
+      updates.serverPlan = data.plan;
+    } else {
+      updates.isPro = false;
+      updates.serverPlan = "free";
+    }
+
+    // Update trial info
+    updates.trialActive = data.trialActive || false;
+    updates.trialDaysLeft = data.trialDaysLeft || 0;
+    updates.trialEndDate = data.trialEndDate || null;
+
+    // Save updated settings
+    const merged = { ...settings, ...updates };
+    saveSettings(merged);
+    console.log("License synced: plan=" + (updates.serverPlan || "free") + ", isPro=" + updates.isPro + ", trialActive=" + updates.trialActive);
+  } catch (err) {
+    console.log("License check skipped (offline):", err.message);
+    // Offline — keep existing local settings
+  }
+}
+
 // ========== APP LIFECYCLE ==========
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createMainWindow();
   createPillWindow();
   createTray();
@@ -946,10 +996,24 @@ app.whenReady().then(() => {
   // Always open home window on start
   createHomeWindow();
 
-  // Auto-start power mode if enabled (handled by home.html on load)
+  // Check license status from server (non-blocking)
+  checkLicenseOnStartup();
+
+  // Auto-start power mode if enabled
   const startSettings = loadSettings();
   if (startSettings.powerMode) {
     powerModeActive = true;
+  }
+
+  // Default: Windows başlatınca başlat (auto-start ON)
+  try {
+    const loginSettings = app.getLoginItemSettings();
+    if (!loginSettings.openAtLogin) {
+      app.setLoginItemSettings({ openAtLogin: true });
+      console.log("Auto-start enabled by default");
+    }
+  } catch (err) {
+    console.error("Auto-start setup error:", err);
   }
 
   console.log("VoiceFlow started successfully!");

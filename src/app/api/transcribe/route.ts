@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       type: "audio/webm",
     });
 
-    const model = "whisper-large-v3";
+    const model = "whisper-large-v3-turbo";
 
     // Build form data for Groq Whisper
     const groqForm = new FormData();
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Groq Whisper API - TRANSCRIPTIONS endpoint (keeps original language)
-    const groqResponse = await fetch(
+    let groqResponse = await fetch(
       "https://api.groq.com/openai/v1/audio/transcriptions",
       {
         method: "POST",
@@ -72,6 +72,27 @@ export async function POST(request: NextRequest) {
         body: groqForm,
       }
     );
+
+    // Fallback to whisper-large-v3 if turbo fails
+    if (!groqResponse.ok && groqResponse.status !== 401) {
+      console.warn("Turbo model failed, trying whisper-large-v3...");
+      const fallbackForm = new FormData();
+      fallbackForm.append("file", file);
+      fallbackForm.append("model", "whisper-large-v3");
+      fallbackForm.append("language", language);
+      fallbackForm.append("response_format", "verbose_json");
+      fallbackForm.append("temperature", "0");
+      if (prompt) fallbackForm.append("prompt", prompt);
+
+      groqResponse = await fetch(
+        "https://api.groq.com/openai/v1/audio/transcriptions",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}` },
+          body: fallbackForm,
+        }
+      );
+    }
 
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();

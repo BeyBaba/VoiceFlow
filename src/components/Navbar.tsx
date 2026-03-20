@@ -1,19 +1,60 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 const navLinks = [
   { label: "Özellikler", href: "#features" },
   { label: "Kullanım", href: "#usecases" },
-  { label: "Entegrasyonlar", href: "#integrations" },
+  { label: "Fiyatlandırma", href: "#pricing" },
   { label: "Yorumlar", href: "#testimonials" },
 ];
+
+function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
+
+function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
+  if (!trialEndDate) return 0;
+  const diff = new Date(trialEndDate).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function getPlanBadge(plan: string | undefined, trialEndDate: string | null | undefined) {
+  if (plan === "lifetime") return { text: "Lifetime", color: "bg-amber-500/20 text-amber-400" };
+  if (plan === "pro") return { text: "Pro", color: "bg-primary/20 text-primary" };
+  const days = getTrialDaysLeft(trialEndDate);
+  if (days > 0) return { text: `Free · ${days} gün kaldı`, color: "bg-emerald-500/20 text-emerald-400" };
+  return { text: "Süre doldu", color: "bg-red-500/20 text-red-400" };
+}
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -22,8 +63,18 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    // Check initial theme
     setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const toggleTheme = () => {
@@ -36,6 +87,8 @@ export default function Navbar() {
       setIsDark(true);
     }
   };
+
+  const badge = session?.user ? getPlanBadge(session.user.plan, session.user.trialEndDate) : null;
 
   return (
     <motion.nav
@@ -89,7 +142,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
+              className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               title={isDark ? "Aydınlık mod" : "Karanlık mod"}
             >
               {isDark ? (
@@ -108,12 +161,102 @@ export default function Navbar() {
             >
               Web Demo
             </a>
-            <a
-              href="#download"
-              className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/20"
-            >
-              Ücretsiz İndir
-            </a>
+
+            {/* Auth Button */}
+            {status === "loading" ? (
+              <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 animate-pulse" />
+            ) : session?.user ? (
+              /* Logged in: Avatar + Dropdown */
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-primary/30 transition-all"
+                >
+                  {session.user.image ? (
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name || ""}
+                      className="w-8 h-8 rounded-full border-2 border-primary/30"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
+                      {(session.user.name || session.user.email || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {dropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-64 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 shadow-xl overflow-hidden"
+                    >
+                      {/* User Info */}
+                      <div className="p-4 border-b border-stone-100 dark:border-stone-700">
+                        <div className="flex items-center gap-3">
+                          {session.user.image ? (
+                            <img
+                              src={session.user.image}
+                              alt=""
+                              className="w-10 h-10 rounded-full"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                              {(session.user.name || "U")[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate">
+                              {session.user.name}
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                              {session.user.email}
+                            </p>
+                          </div>
+                        </div>
+                        {badge && (
+                          <span
+                            className={`inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-semibold ${badge.color}`}
+                          >
+                            {badge.text}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="p-2">
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            signOut();
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                          </svg>
+                          Çıkış Yap
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              /* Not logged in: Google Sign In button */
+              <button
+                onClick={() => signIn("google")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm"
+              >
+                <GoogleIcon className="w-4 h-4" />
+                Giriş Yap
+              </button>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -164,13 +307,56 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
-              <a
-                href="#download"
-                onClick={() => setMobileOpen(false)}
-                className="mt-2 px-5 py-3 rounded-full bg-primary text-white text-center text-sm font-semibold"
-              >
-                Ücretsiz İndir
-              </a>
+
+              {/* Mobile Auth */}
+              {session?.user ? (
+                <div className="mt-2 flex items-center gap-3 p-3 rounded-xl bg-stone-100 dark:bg-stone-800">
+                  {session.user.image ? (
+                    <img
+                      src={session.user.image}
+                      alt=""
+                      className="w-8 h-8 rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
+                      {(session.user.name || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate">
+                      {session.user.name}
+                    </p>
+                    {badge && (
+                      <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${badge.color}`}>
+                        {badge.text}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      signOut();
+                    }}
+                    className="p-2 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    signIn("google");
+                  }}
+                  className="mt-2 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 text-sm font-semibold text-stone-700 dark:text-stone-200"
+                >
+                  <GoogleIcon className="w-4 h-4" />
+                  Google ile Giriş Yap
+                </button>
+              )}
             </div>
           </motion.div>
         )}

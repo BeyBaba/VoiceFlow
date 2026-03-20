@@ -42,7 +42,7 @@ export default function SpeedComparison() {
     <section className="py-24 sm:py-32 relative overflow-hidden">
       {/* Marquee background text */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.03] select-none">
-        <div className="animate-marquee whitespace-nowrap text-[200px] font-black text-text leading-none">
+        <div className="animate-marquee whitespace-nowrap text-[200px] font-black leading-none text-stone-900 dark:text-white">
           4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI
           &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X
           HIZLI &middot;
@@ -56,11 +56,11 @@ export default function SpeedComparison() {
           transition={{ duration: 0.7 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4">
             Konuşma hızında{" "}
-            <span className="gradient-text">düşün</span>
+            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">düşün</span>
           </h2>
-          <p className="text-lg text-text-muted max-w-xl mx-auto">
+          <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
             Ses, yazmaktan 4 kat hızlı. Fikirlerini yavaşlatma.
           </p>
         </motion.div>
@@ -71,26 +71,26 @@ export default function SpeedComparison() {
             initial={{ opacity: 0, x: -40 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="bg-white rounded-3xl p-8 border border-stone-200 relative"
+            className="bg-white dark:bg-stone-900/60 rounded-3xl p-8 border border-stone-200 dark:border-stone-700/50 relative"
           >
-            <div className="text-sm font-medium text-text-muted mb-4 uppercase tracking-wider">
+            <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-4 uppercase tracking-wider">
               Klavye ile yazma
             </div>
-            <div className="text-6xl sm:text-7xl font-black text-stone-300 mb-2">
+            <div className="text-6xl sm:text-7xl font-black text-stone-300 dark:text-stone-600 mb-2">
               <AnimatedCounter target={45} suffix="" delay={0.3} />
             </div>
-            <div className="text-lg text-text-muted">kelime / dakika</div>
+            <div className="text-lg text-stone-500 dark:text-stone-400">kelime / dakika</div>
             {/* Progress bar */}
-            <div className="mt-8 h-3 bg-stone-100 rounded-full overflow-hidden">
+            <div className="mt-8 h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={isInView ? { width: "20%" } : {}}
                 transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
-                className="h-full bg-stone-300 rounded-full"
+                className="h-full bg-stone-300 dark:bg-stone-600 rounded-full"
               />
             </div>
             {/* Keyboard icon */}
-            <div className="absolute top-8 right-8 text-stone-200">
+            <div className="absolute top-8 right-8 text-stone-200 dark:text-stone-700">
               <svg
                 className="w-12 h-12"
                 fill="none"
@@ -117,7 +117,7 @@ export default function SpeedComparison() {
             initial={{ opacity: 0, x: 40 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="bg-gradient-to-br from-primary to-primary-dark rounded-3xl p-8 text-white relative overflow-hidden"
+            className="bg-gradient-to-br from-teal-600 to-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-teal-500/20"
           >
             {/* Glow effect */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
@@ -165,7 +165,7 @@ export default function SpeedComparison() {
           transition={{ duration: 0.6, delay: 0.8, type: "spring" }}
           className="flex justify-center mt-12"
         >
-          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent/10 text-accent font-bold text-lg">
+          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-bold text-lg">
             <svg
               className="w-6 h-6"
               fill="none"

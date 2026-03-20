@@ -10,8 +10,12 @@
   },
   "dependencies": {
     "@deepgram/sdk": "^5.0.0",
+    "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
+    "@prisma/client": "^6.19.2",
     "framer-motion": "^12.35.0",
     "next": "^16.1.6",
+    "next-auth": "^5.0.0-beta.30",
+    "prisma": "^6.19.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

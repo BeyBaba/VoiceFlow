@@ -21,9 +21,8 @@ const features = [
       </svg>
     ),
     gradient: "from-violet-500 to-purple-600",
-    bgLight: "bg-violet-50",
-    bgDark: "dark:bg-violet-500/10",
-    textColor: "text-violet-600",
+    bgLight: "bg-violet-50 dark:bg-violet-500/10",
+    textColor: "text-violet-600 dark:text-violet-400",
   },
   {
     id: "everywhere",
@@ -39,9 +38,8 @@ const features = [
       </svg>
     ),
     gradient: "from-blue-500 to-indigo-600",
-    bgLight: "bg-blue-50",
-    bgDark: "dark:bg-blue-500/10",
-    textColor: "text-blue-600",
+    bgLight: "bg-blue-50 dark:bg-blue-500/10",
+    textColor: "text-blue-600 dark:text-blue-400",
   },
   {
     id: "speed",
@@ -60,9 +58,30 @@ const features = [
       </svg>
     ),
     gradient: "from-amber-500 to-orange-600",
-    bgLight: "bg-amber-50",
-    bgDark: "dark:bg-amber-500/10",
-    textColor: "text-amber-600",
+    bgLight: "bg-amber-50 dark:bg-amber-500/10",
+    textColor: "text-amber-600 dark:text-amber-400",
+  },
+  {
+    id: "command-mode",
+    title: "Komut Modu",
+    subtitle: "Sesli komutlarla yönet",
+    description:
+      "\"Bunu resmi yap\", \"İngilizce'ye çevir\", \"Kısalt\" gibi sesli komutlarla metninizi anında dönüştürün. AI, ne istediğinizi anlar ve uygular.",
+    commands: [
+      { cmd: "Bunu resmi yap", result: "Ton: Profesyonel" },
+      { cmd: "İngilizce'ye çevir", result: "Dil: EN → TR" },
+      { cmd: "Kısalt", result: "Özetle: %50" },
+      { cmd: "Madde listesi yap", result: "Format: Bullet" },
+    ],
+    pro: true,
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
+    gradient: "from-indigo-500 to-purple-600",
+    bgLight: "bg-indigo-50 dark:bg-indigo-500/10",
+    textColor: "text-indigo-600 dark:text-indigo-400",
   },
   {
     id: "multilang",
@@ -90,9 +109,8 @@ const features = [
       </svg>
     ),
     gradient: "from-emerald-500 to-teal-600",
-    bgLight: "bg-emerald-50",
-    bgDark: "dark:bg-emerald-500/10",
-    textColor: "text-emerald-600",
+    bgLight: "bg-emerald-50 dark:bg-emerald-500/10",
+    textColor: "text-emerald-600 dark:text-emerald-400",
   },
   {
     id: "privacy",
@@ -107,9 +125,8 @@ const features = [
       </svg>
     ),
     gradient: "from-teal-500 to-cyan-600",
-    bgLight: "bg-teal-50",
-    bgDark: "dark:bg-teal-500/10",
-    textColor: "text-teal-600",
+    bgLight: "bg-teal-50 dark:bg-teal-500/10",
+    textColor: "text-teal-600 dark:text-teal-400",
   },
   {
     id: "auto-paste",
@@ -128,9 +145,28 @@ const features = [
       </svg>
     ),
     gradient: "from-pink-500 to-rose-600",
-    bgLight: "bg-pink-50",
-    bgDark: "dark:bg-pink-500/10",
-    textColor: "text-pink-600",
+    bgLight: "bg-pink-50 dark:bg-pink-500/10",
+    textColor: "text-pink-600 dark:text-pink-400",
+  },
+  {
+    id: "snippets",
+    title: "Snippet Kütüphanesi",
+    subtitle: "Hazır şablonlar",
+    description:
+      "Sık kullandığınız cümleleri, e-posta şablonlarını ve imzaları kaydedin. Sesle çağırın, anında yapıştırın. Tekrar tekrar yazmaya son.",
+    snippets: [
+      { name: "E-posta Kapanış", text: "Saygılarımla, iyi çalışmalar dilerim." },
+      { name: "Toplantı Daveti", text: "Yarınki toplantıya katılabilir misiniz?" },
+      { name: "Teşekkür", text: "İlginiz için teşekkür ederim." },
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+      </svg>
+    ),
+    gradient: "from-cyan-500 to-blue-600",
+    bgLight: "bg-cyan-50 dark:bg-cyan-500/10",
+    textColor: "text-cyan-600 dark:text-cyan-400",
   },
 ];
 
@@ -155,28 +191,35 @@ function FeatureCard({
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, delay: index * 0.08 }}
       onClick={onClick}
-      className={`group relative bg-white rounded-2xl border overflow-hidden cursor-pointer transition-all duration-500 ${
+      className={`group relative rounded-2xl border overflow-hidden cursor-pointer transition-all duration-500 bg-white dark:bg-stone-900/60 ${
         isActive
-          ? "border-primary shadow-xl shadow-primary/10 ring-1 ring-primary/20"
-          : "border-stone-200 hover:shadow-lg hover:shadow-stone-200/50 hover:border-stone-300"
+          ? "border-primary dark:border-teal-500/50 shadow-xl shadow-primary/10 dark:shadow-teal-500/5 ring-1 ring-primary/20 dark:ring-teal-500/20"
+          : "border-stone-200 dark:border-stone-700/50 hover:shadow-lg hover:shadow-stone-200/50 dark:hover:shadow-black/20 hover:border-stone-300 dark:hover:border-stone-600"
       }`}
     >
       <div className="p-6">
         {/* Icon + Title */}
         <div className="flex items-start gap-4 mb-4">
           <div
-            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center text-white shrink-0`}
+            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center text-white shrink-0 shadow-lg`}
           >
             {feature.icon}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-text mb-1">{feature.title}</h3>
-            <p className="text-sm text-text-muted">{feature.subtitle}</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-stone-900 dark:text-white">{feature.title}</h3>
+              {feature.pro && (
+                <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold uppercase tracking-wider">
+                  Pro
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-stone-500 dark:text-stone-400">{feature.subtitle}</p>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-sm text-text-muted leading-relaxed mb-4">
+        <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed mb-4">
           {feature.description}
         </p>
 
@@ -192,19 +235,19 @@ function FeatureCard({
               {/* AI Edit Demo */}
               {feature.demo && (
                 <div className="space-y-2 mt-2">
-                  <div className={`rounded-lg p-3 ${feature.bgLight}`}>
+                  <div className={`rounded-lg p-3 bg-red-50 dark:bg-red-500/10`}>
                     <div className="text-[10px] font-semibold text-red-400 mb-1 uppercase tracking-widest">
                       Ham giriş
                     </div>
-                    <p className="text-xs text-red-500/70 line-through leading-relaxed">
+                    <p className="text-xs text-red-500/70 dark:text-red-400/60 line-through leading-relaxed">
                       {feature.demo.before}
                     </p>
                   </div>
-                  <div className="rounded-lg p-3 bg-green-50">
-                    <div className="text-[10px] font-semibold text-green-500 mb-1 uppercase tracking-widest">
+                  <div className="rounded-lg p-3 bg-green-50 dark:bg-green-500/10">
+                    <div className="text-[10px] font-semibold text-green-500 dark:text-green-400 mb-1 uppercase tracking-widest">
                       AI çıktısı
                     </div>
-                    <p className="text-xs text-green-700 font-medium leading-relaxed">
+                    <p className="text-xs text-green-700 dark:text-green-300 font-medium leading-relaxed">
                       {feature.demo.after}
                     </p>
                   </div>
@@ -234,8 +277,33 @@ function FeatureCard({
                   {feature.stats.map((stat) => (
                     <div key={stat.label} className={`${feature.bgLight} rounded-lg p-2.5 text-center`}>
                       <div className={`text-lg font-black ${feature.textColor}`}>{stat.value}</div>
-                      <div className="text-[10px] text-text-muted font-medium">{stat.label}</div>
+                      <div className="text-[10px] text-stone-500 dark:text-stone-400 font-medium">{stat.label}</div>
                     </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Command Mode - Commands */}
+              {feature.commands && (
+                <div className="space-y-1.5 mt-2">
+                  {feature.commands.map((cmd, i) => (
+                    <motion.div
+                      key={cmd.cmd}
+                      initial={{ opacity: 0, x: -15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className={`flex items-center justify-between rounded-lg p-2.5 ${feature.bgLight}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">🎤</span>
+                        <span className={`text-xs font-medium ${feature.textColor}`}>
+                          &ldquo;{cmd.cmd}&rdquo;
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono bg-white/50 dark:bg-white/5 px-2 py-0.5 rounded">
+                        {cmd.result}
+                      </span>
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -252,7 +320,7 @@ function FeatureCard({
                       className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${feature.bgLight}`}
                     >
                       <span className="text-sm">{flag.emoji}</span>
-                      <span className="text-[10px] text-text-muted font-medium truncate">{flag.name}</span>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium truncate">{flag.name}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -287,17 +355,17 @@ function FeatureCard({
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ delay: i * 0.15, type: "spring" }}
-                        className={`flex flex-col items-center gap-1`}
+                        className="flex flex-col items-center gap-1"
                       >
                         <span className="text-2xl">{item.icon}</span>
-                        <span className="text-[10px] font-medium text-text-muted">{item.step}</span>
+                        <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{item.step}</span>
                       </motion.div>
                       {i < feature.flow.length - 1 && (
                         <motion.svg
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: i * 0.15 + 0.1 }}
-                          className="w-5 h-5 text-stone-300 mx-1"
+                          className="w-5 h-5 text-stone-300 dark:text-stone-600 mx-1"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -307,6 +375,33 @@ function FeatureCard({
                         </motion.svg>
                       )}
                     </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Snippet Library */}
+              {feature.snippets && (
+                <div className="space-y-1.5 mt-2">
+                  {feature.snippets.map((snippet, i) => (
+                    <motion.div
+                      key={snippet.name}
+                      initial={{ opacity: 0, x: -15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className={`rounded-lg p-2.5 ${feature.bgLight}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <svg className={`w-3 h-3 ${feature.textColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                        </svg>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${feature.textColor}`}>
+                          {snippet.name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                        {snippet.text}
+                      </p>
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -340,23 +435,23 @@ export default function Features() {
           transition={{ duration: 0.7 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-sm font-medium mb-6">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 mb-4">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
-            AI Destekli
-          </div>
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+            AI Destekli Özellikler
+          </span>
+          <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
             Sıradan bir dikte değil,{" "}
-            <span className="gradient-text">akıllı asistan</span>
+            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">akıllı asistan</span>
           </h2>
-          <p className="text-lg text-text-muted max-w-2xl mx-auto">
+          <p className="text-lg text-stone-500 dark:text-stone-400 max-w-2xl mx-auto">
             VoiceFlow sadece ses-metin dönüşümü yapmaz. AI ile metninizi düzenler,
             biçimlendirir ve tam istediğiniz yere yapıştırır.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((feature, i) => (
             <FeatureCard
               key={feature.id}
