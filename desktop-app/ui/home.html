@@ -676,6 +676,10 @@
         item.classList.add("active");
         document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
         document.getElementById("page-"+item.dataset.page).classList.add("active");
+        // Resume power mode audio if navigating back to guc modu page
+        if (item.dataset.page === "gucmodu" && pmIsListening && pmAudioCtx) {
+          pmAudioCtx.resume();
+        }
       });
     });
 
@@ -811,6 +815,11 @@
         updatePowerModeUI("listening");
 
         pmCheckInterval = setInterval(() => {
+          // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize)
+          if (pmAudioCtx && pmAudioCtx.state === "suspended") {
+            pmAudioCtx.resume();
+            return;
+          }
           if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
           pmAnalyser.getByteFrequencyData(dataArray);
           let sum = 0;
@@ -983,6 +992,20 @@
         pmResume();
       });
     }
+
+    // Auto-resume power mode when window regains visibility or focus
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && pmIsListening && pmAudioCtx && pmAudioCtx.state === "suspended") {
+        console.log("Visibility restored — resuming power mode AudioContext");
+        pmAudioCtx.resume();
+      }
+    });
+    window.addEventListener("focus", () => {
+      if (pmIsListening && pmAudioCtx && pmAudioCtx.state === "suspended") {
+        console.log("Window focused — resuming power mode AudioContext");
+        pmAudioCtx.resume();
+      }
+    });
 
     // Power mode toggle
     document.getElementById("sPowerMode").addEventListener("change", function() {

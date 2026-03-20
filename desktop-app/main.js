@@ -277,6 +277,23 @@ function createHomeWindow(navigateTo) {
     }
   });
 
+  // Resume power mode when homeWindow regains focus, is restored, or shown
+  homeWindow.on("focus", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
+    }
+  });
+  homeWindow.on("restore", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
+    }
+  });
+  homeWindow.on("show", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
+    }
+  });
+
   homeWindow.on("closed", () => {
     homeWindow = null;
   });
