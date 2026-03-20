@@ -563,14 +563,7 @@
           showToast(data.error || "Gecersiz lisans anahtari!");
         }
       } catch (err) {
-        // Fallback: hardcoded keys for offline usage
-        const upperK = k.toUpperCase();
-        if (["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED"].includes(upperK)) {
-          await auth(e.split("@")[0], e, "license", true, upperK);
-          showToast("Pro aktif! (cevrimdisi mod)");
-        } else {
-          showToast("Sunucuya baglanilamadi. Internet baglantinizi kontrol edin.");
-        }
+        showToast("Sunucuya baglanilamadi. Internet baglantinizi kontrol edin.");
       }
       btn.disabled=false; btn.textContent="Lisansi Etkinlestir";
     });
@@ -647,6 +640,12 @@
       if (!isPro && trialActive && trialDays > 0) {
         planText = "Trial (" + trialDays + " gun)";
         userPlanText = "Deneme - " + trialDays + " gun";
+      } else if (!isPro && currentSettings.trialEndDate) {
+        const trialEnd = new Date(currentSettings.trialEndDate);
+        if (trialEnd <= new Date()) {
+          planText = "Suresi Doldu";
+          userPlanText = "Deneme suresi doldu";
+        }
       }
       document.getElementById("planBadge").textContent=planText;
       document.getElementById("planBadge").className="brand-badge"+(isPro?" pro":"");
@@ -786,7 +785,13 @@
     async function pmStart() {
       if (pmIsListening) return;
       const apiKey = currentSettings.apiKey;
-      if (!apiKey) { showToast("API Key gerekli!"); return; }
+      if (!apiKey) {
+        showToast("Guc Modu icin API Key gerekli! Ayarlar > API Key'den girin.");
+        updatePowerModeUI("error");
+        const hint = document.getElementById("pmStatusHint");
+        if (hint) hint.textContent = "Ayarlar > API Key kismindan Groq API anahtarinizi girin.";
+        return;
+      }
 
       try {
         updatePowerModeUI("loading");

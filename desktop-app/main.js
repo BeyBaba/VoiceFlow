@@ -240,9 +240,11 @@ function createHomeWindow(navigateTo) {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = display.workAreaSize;
 
-  // Open at 63% of screen size (responsive)
-  const winWidth = Math.round(screenWidth * 0.63);
-  const winHeight = Math.round(screenHeight * 0.63);
+  // Open at 63% of screen size (responsive), cap for ultra-wide displays
+  const rawWidth = Math.round(screenWidth * 0.63);
+  const rawHeight = Math.round(screenHeight * 0.63);
+  const winWidth = Math.min(rawWidth, 1600);
+  const winHeight = Math.min(rawHeight, 1000);
 
   homeWindow = new BrowserWindow({
     width: winWidth,
@@ -996,8 +998,14 @@ app.whenReady().then(async () => {
   // Always open home window on start
   createHomeWindow();
 
-  // Check license status from server (non-blocking)
-  checkLicenseOnStartup();
+  // Check license status from server (with timeout — don't block forever)
+  try {
+    const licensePromise = checkLicenseOnStartup();
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+    await Promise.race([licensePromise, timeoutPromise]);
+  } catch (err) {
+    console.log("License check skipped:", err.message);
+  }
 
   // Auto-start power mode if enabled
   const startSettings = loadSettings();
@@ -1005,12 +1013,24 @@ app.whenReady().then(async () => {
     powerModeActive = true;
   }
 
-  // Default: Windows başlatınca başlat (auto-start ON)
+  // Auto-start: enable on first run only, notify user via home window
   try {
-    const loginSettings = app.getLoginItemSettings();
-    if (!loginSettings.openAtLogin) {
+    const autoStartSettings = loadSettings();
+    if (autoStartSettings.autoStartInitialized === undefined) {
+      // First run — enable auto-start and mark as initialized
       app.setLoginItemSettings({ openAtLogin: true });
-      console.log("Auto-start enabled by default");
+      const s = loadSettings();
+      s.autoStartInitialized = true;
+      saveSettings(s);
+      console.log("Auto-start enabled on first run");
+      // Notify user after home window loads
+      if (homeWindow && !homeWindow.isDestroyed()) {
+        homeWindow.webContents.on("did-finish-load", () => {
+          homeWindow.webContents.executeJavaScript(`
+            if (typeof showToast === 'function') showToast('VoiceFlow Windows ile birlikte baslatilacak. Ayarlardan kapatabilirsiniz.');
+          `).catch(() => {});
+        });
+      }
     }
   } catch (err) {
     console.error("Auto-start setup error:", err);

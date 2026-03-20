@@ -175,12 +175,11 @@ async function init() {
       showView("idle");
       window.voiceflow.resizeWindow(380, 100);
 
-      // Check if trial expired for free users
+      // Check if trial expired for free users — show visual indicator
       if (!cachedSettings.isPro && cachedSettings.trialEndDate) {
         const trialEnd = new Date(cachedSettings.trialEndDate);
         if (trialEnd <= new Date()) {
-          console.log("Trial expired — upgrade required");
-          // Don't block, just log. Modal shows when they try to record.
+          showToast("Deneme sureniz doldu — Pro'ya yukseltin");
         }
       }
     } else {
@@ -452,6 +451,15 @@ async function startRecording() {
     window.voiceflow.resizeWindow(420, 560);
     showToast("Once API Key girin!");
     return;
+  }
+
+  // Check trial expiration for free users
+  if (!cachedSettings.isPro && cachedSettings.trialEndDate) {
+    const trialEnd = new Date(cachedSettings.trialEndDate);
+    if (trialEnd <= new Date()) {
+      showUpgradeModal(0, true);
+      return;
+    }
   }
 
   // Check word limit for free users
@@ -754,14 +762,19 @@ const upgradeModal = document.getElementById("upgradeModal");
 const upgradeBtn = document.getElementById("upgradeBtn");
 const upgradeCloseBtn = document.getElementById("upgradeCloseBtn");
 
-function showUpgradeModal(wordCount) {
+function showUpgradeModal(wordCount, trialExpired) {
   // Resize window to fit modal
   window.voiceflow.resizeWindow(380, 420);
 
   // Update word count display
   const wcEl = document.getElementById("upgradeWordCount");
-  if (wcEl) {
-    wcEl.textContent = wordCount ? wordCount.toLocaleString("tr-TR") : "2.000";
+  const msgEl = document.getElementById("upgradeMessage");
+  if (trialExpired) {
+    if (wcEl) wcEl.textContent = "";
+    if (msgEl) msgEl.textContent = "Deneme sureniz doldu. Pro'ya yukselterek sinirsiz kullanmaya devam edin.";
+  } else {
+    if (wcEl) wcEl.textContent = wordCount ? wordCount.toLocaleString("tr-TR") : "2.000";
+    if (msgEl) msgEl.textContent = "Gunluk 2.000 kelime limitine ulastiniz.";
   }
 
   upgradeModal.classList.remove("hidden");
