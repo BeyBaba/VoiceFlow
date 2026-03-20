@@ -1,0 +1,64 @@
+name: Build Windows Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versiyon numarasi (ornek: 4.0.1)'
+        required: true
+        default: '4.0.1'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update version
+        shell: bash
+        run: |
+          cd desktop-app
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version --allow-same-version
+
+      - name: Install dependencies
+        run: |
+          cd desktop-app
+          npm install
+
+      - name: Build Windows Setup
+        run: |
+          cd desktop-app
+          npm run build
+
+      - name: Upload Setup EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceFlow-Setup-${{ github.event.inputs.version }}
+          path: desktop-app/dist/*.exe
+          retention-days: 90
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: VoiceFlow v${{ github.event.inputs.version }}
+          body: |
+            ## VoiceFlow v${{ github.event.inputs.version }}
+
+            ### Kurulum
+            1. Asagidaki **VoiceFlow.Setup.${{ github.event.inputs.version }}.exe** dosyasini indirin
+            2. Cift tiklayin
+            3. Otomatik kurulacak ve calisacak
+
+            > Node.js, Electron veya baska bir sey yuklemenize gerek yok. Her sey paketin icinde.
+          files: desktop-app/dist/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
