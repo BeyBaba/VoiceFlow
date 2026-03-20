@@ -242,7 +242,7 @@
         <span class="user-plan free" id="userPlanBadge">Ucretsiz</span>
       </div>
       <button class="sidebar-logout" id="btnLogout">⬅ Cikis Yap</button>
-      <div class="sidebar-version" id="homeVersion">VoiceFlow v2.0.4</div>
+      <div class="sidebar-version" id="homeVersion">VoiceFlow</div>
     </div>
 
     <div class="content">
@@ -780,6 +780,8 @@
     let pmLastWakeTime = 0;
     let pmSpeechDetected = false;
     let pmSpeechStart = 0;
+    let pmRecorder = null;
+    let pmRecordChunks = [];
     const PM_THRESHOLD = 12;
     const PM_COOLDOWN = 4000;
 
@@ -822,16 +824,36 @@
             if (!pmSpeechDetected) {
               pmSpeechDetected = true;
               pmSpeechStart = Date.now();
+              // Start recording immediately when speech is detected
+              if (!pmRecorder && pmStream && !pmIsCapturing && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
+                try {
+                  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+                  pmRecorder = new MediaRecorder(pmStream, { mimeType });
+                  pmRecordChunks = [];
+                  pmRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmRecordChunks.push(e.data); };
+                  pmRecorder.start(100);
+                } catch(e) { console.error("PM recorder start error:", e); pmRecorder = null; }
+              }
             }
           } else if (pmSpeechDetected) {
             const duration = Date.now() - pmSpeechStart;
             if (duration > 300 && duration < 5000) {
               pmSpeechDetected = false;
-              pmCaptureAndCheck();
+              // Stop recorder and send the captured clip
+              if (pmRecorder && pmRecorder.state === "recording") {
+                const rec = pmRecorder;
+                const chunks = pmRecordChunks;
+                pmRecorder = null;
+                pmRecordChunks = [];
+                rec.onstop = () => { pmCaptureAndCheck(chunks, rec.mimeType); };
+                rec.stop();
+              }
             } else if (duration >= 5000) {
               pmSpeechDetected = false;
+              // Discard too-long recording
+              if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; }
             }
-            if (avg < 3) pmSpeechDetected = false;
+            if (avg < 3) { pmSpeechDetected = false; if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; } }
           }
         }, 50);
 
@@ -842,7 +864,7 @@
       }
     }
 
-    async function pmCaptureAndCheck() {
+    async function pmCaptureAndCheck(chunks, mimeType) {
       if (pmIsCapturing || !pmIsListening) return;
       if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
       pmIsCapturing = true;
@@ -851,81 +873,66 @@
       if (liveEl) { liveEl.textContent = "Ses kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
 
       try {
-        const clipStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+        if (!mimeType) mimeType = "audio/webm;codecs=opus";
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < 500) { pmIsCapturing = false; return; }
+
+        const fd = new FormData();
+        fd.append("file", blob, "clip.webm");
+        fd.append("model", "whisper-large-v3-turbo");
+        fd.append("language", currentSettings.language || "tr");
+        fd.append("temperature", "0");
+        fd.append("response_format", "json");
+
+        const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+          body: fd,
         });
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-        const recorder = new MediaRecorder(clipStream, { mimeType });
-        const chunks = [];
 
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = async () => {
-          clipStream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(chunks, { type: mimeType });
-          if (blob.size < 500) { pmIsCapturing = false; return; }
+        if (resp.ok) {
+          const result = await resp.json();
+          const text = (result.text || "").trim();
+          console.log("PowerMode heard:", text);
 
-          try {
-            const fd = new FormData();
-            fd.append("file", blob, "clip.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
+          if (text.length > 0) {
+            if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
+            const matchEl = document.getElementById("pmMatchIndicator");
 
-            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-              body: fd,
-            });
+            // Check wake word
+            const wk = (currentSettings.wakeWord || "").toLowerCase();
+            const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+            const nText = norm(text);
+            const nWake = norm(wk);
 
-            if (resp.ok) {
-              const result = await resp.json();
-              const text = (result.text || "").trim();
-              console.log("PowerMode heard:", text);
+            if (nText.includes(nWake)) {
+              pmLastWakeTime = Date.now();
+              if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+              if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
+              setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
 
-              if (text.length > 0) {
-                if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
-                const matchEl = document.getElementById("pmMatchIndicator");
-
-                // Check wake word
-                const wk = (currentSettings.wakeWord || "").toLowerCase();
-                const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
-                const nText = norm(text);
-                const nWake = norm(wk);
-
-                if (nText.includes(nWake)) {
-                  pmLastWakeTime = Date.now();
-                  if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-                  if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
-                  setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
-
-                  // Pause power mode and trigger recording
-                  pmPause();
-                  window.voiceflow.wakeWordDetected();
-                } else {
-                  if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
-                }
-              }
+              // Pause power mode and trigger recording
+              pmPause();
+              window.voiceflow.wakeWordDetected();
             } else {
-              console.error("PowerMode Groq error:", resp.status);
+              if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
             }
-          } catch (err) {
-            console.error("PowerMode Groq request error:", err);
           }
-          pmIsCapturing = false;
-        };
-
-        recorder.start();
-        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2000);
+        } else {
+          console.error("PowerMode Groq error:", resp.status);
+        }
       } catch (err) {
-        console.error("PowerMode capture error:", err);
-        pmIsCapturing = false;
+        console.error("PowerMode Groq request error:", err);
       }
+      pmIsCapturing = false;
     }
 
     function pmStop() {
       pmIsListening = false;
       pmIsCapturing = false;
+      if (pmRecorder && pmRecorder.state === "recording") { try { pmRecorder.stop(); } catch(e){} }
+      pmRecorder = null;
+      pmRecordChunks = [];
       if (pmCheckInterval) { clearInterval(pmCheckInterval); pmCheckInterval = null; }
       if (pmStream) { pmStream.getTracks().forEach(t => t.stop()); pmStream = null; }
       if (pmAudioCtx) { pmAudioCtx.close().catch(()=>{}); pmAudioCtx = null; }
@@ -1012,6 +1019,8 @@
     let pmTestListening = false;
     let pmTestSpeechDetected = false;
     let pmTestSpeechStart = 0;
+    let pmTestRecorder = null;
+    let pmTestRecordChunks = [];
 
     document.getElementById("pmTestBtn").addEventListener("click", async function() {
       const wakeWord = document.getElementById("sWakeWord").value.trim();
@@ -1065,14 +1074,34 @@
           if (num) num.textContent = Math.round(avg);
 
           if (avg > 12) {
-            if (!pmTestSpeechDetected) { pmTestSpeechDetected = true; pmTestSpeechStart = Date.now(); }
+            if (!pmTestSpeechDetected) {
+              pmTestSpeechDetected = true;
+              pmTestSpeechStart = Date.now();
+              // Start recording on speech start
+              if (!pmTestRecorder && pmTestStream) {
+                try {
+                  const mt = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+                  pmTestRecorder = new MediaRecorder(pmTestStream, { mimeType: mt });
+                  pmTestRecordChunks = [];
+                  pmTestRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmTestRecordChunks.push(e.data); };
+                  pmTestRecorder.start(100);
+                } catch(e) { console.error("Test recorder start error:", e); pmTestRecorder = null; }
+              }
+            }
           } else if (pmTestSpeechDetected) {
             const dur = Date.now() - pmTestSpeechStart;
             if (dur > 300 && dur < 5000) {
               pmTestSpeechDetected = false;
-              pmTestCapture();
+              if (pmTestRecorder && pmTestRecorder.state === "recording") {
+                const rec = pmTestRecorder;
+                const chunks = pmTestRecordChunks;
+                pmTestRecorder = null;
+                pmTestRecordChunks = [];
+                rec.onstop = () => { pmTestCapture(chunks, rec.mimeType); };
+                rec.stop();
+              }
             }
-            if (avg < 3) pmTestSpeechDetected = false;
+            if (avg < 3) { pmTestSpeechDetected = false; if (pmTestRecorder && pmTestRecorder.state === "recording") { pmTestRecorder.stop(); pmTestRecorder = null; pmTestRecordChunks = []; } }
           }
         }, 50);
       } catch (err) {
@@ -1082,80 +1111,68 @@
       }
     });
 
-    async function pmTestCapture() {
+    async function pmTestCapture(chunks, mimeType) {
       if (!pmTestListening) return;
       const liveEl = document.getElementById("pmLiveText");
       if (liveEl) { liveEl.textContent = "Dinleniyor, kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
 
       try {
-        const clipStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+        if (!mimeType) mimeType = "audio/webm;codecs=opus";
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < 500) return;
+
+        const fd = new FormData();
+        fd.append("file", blob, "test.webm");
+        fd.append("model", "whisper-large-v3-turbo");
+        fd.append("language", currentSettings.language || "tr");
+        fd.append("temperature", "0");
+        fd.append("response_format", "json");
+
+        const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+          body: fd,
         });
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-        const recorder = new MediaRecorder(clipStream, { mimeType });
-        const chunks = [];
 
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = async () => {
-          clipStream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(chunks, { type: mimeType });
-          if (blob.size < 500) return;
+        if (resp.ok) {
+          const result = await resp.json();
+          const text = (result.text || "").trim();
+          const wk = (currentSettings.wakeWord || "").toLowerCase();
+          const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
 
-          try {
-            const fd = new FormData();
-            fd.append("file", blob, "test.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
+          if (liveEl) { liveEl.textContent = text || "(sessizlik)"; liveEl.style.color = "var(--text-1)"; }
 
-            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-              body: fd,
-            });
+          const matchEl = document.getElementById("pmMatchIndicator");
+          if (text.length > 0 && norm(text).includes(norm(wk))) {
+            // SUCCESS — wake word detected in test!
+            pmTestPassed = true;
+            if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(wk) + '" algilandi! Test basarili!</span>';
 
-            if (resp.ok) {
-              const result = await resp.json();
-              const text = (result.text || "").trim();
-              const wk = (currentSettings.wakeWord || "").toLowerCase();
-              const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+            // Show activate section
+            document.getElementById("pmActivateSection").style.display = "block";
 
-              if (liveEl) { liveEl.textContent = text || "(sessizlik)"; liveEl.style.color = "var(--text-1)"; }
-
-              const matchEl = document.getElementById("pmMatchIndicator");
-              if (text.length > 0 && norm(text).includes(norm(wk))) {
-                // SUCCESS — wake word detected in test!
-                pmTestPassed = true;
-                if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-                if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(wk) + '" algilandi! Test basarili!</span>';
-
-                // Show activate section
-                document.getElementById("pmActivateSection").style.display = "block";
-
-                // Stop test after success
-                setTimeout(() => {
-                  pmStopTest();
-                  document.getElementById("pmTestBtn").textContent = "✅ Test Basarili — Tekrar Dene";
-                  document.getElementById("pmTestBtn").style.borderColor = "#10B981";
-                  document.getElementById("pmTestBtn").style.background = "rgba(16,185,129,0.08)";
-                  if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; }
-                }, 2000);
-              } else if (text.length > 0) {
-                if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-2)">Duyulan: "' + esc(text) + '" — tekrar deneyin</span>';
-                if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
-              }
-            }
-          } catch (err) { console.error("Test Groq error:", err); }
-        };
-
-        recorder.start();
-        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2500);
-      } catch (err) { console.error("Test capture error:", err); }
+            // Stop test after success
+            setTimeout(() => {
+              pmStopTest();
+              document.getElementById("pmTestBtn").textContent = "✅ Test Basarili — Tekrar Dene";
+              document.getElementById("pmTestBtn").style.borderColor = "#10B981";
+              document.getElementById("pmTestBtn").style.background = "rgba(16,185,129,0.08)";
+              if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; }
+            }, 2000);
+          } else if (text.length > 0) {
+            if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-2)">Duyulan: "' + esc(text) + '" — tekrar deneyin</span>';
+            if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
+          }
+        }
+      } catch (err) { console.error("Test Groq error:", err); }
     }
 
     function pmStopTest() {
       pmTestListening = false;
+      if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} }
+      pmTestRecorder = null;
+      pmTestRecordChunks = [];
       if (pmTestInterval) { clearInterval(pmTestInterval); pmTestInterval = null; }
       if (pmTestStream) { pmTestStream.getTracks().forEach(t => t.stop()); pmTestStream = null; }
       if (pmTestCtx) { pmTestCtx.close().catch(()=>{}); pmTestCtx = null; }
