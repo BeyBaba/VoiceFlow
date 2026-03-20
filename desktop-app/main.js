@@ -8,8 +8,10 @@ let mainWindow = null;
 let pillWindow = null;
 let settingsWindow = null;
 let homeWindow = null;
+// powerModeWindow removed — power mode runs in homeWindow
 let tray = null;
 let isRecording = false;
+let powerModeActive = false;
 
 // ========== SETTINGS ==========
 function getSettingsPath() {
@@ -238,9 +240,9 @@ function createHomeWindow(navigateTo) {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = display.workAreaSize;
 
-  // Open at 90% of screen size for a spacious feel
-  const winWidth = Math.round(screenWidth * 0.9);
-  const winHeight = Math.round(screenHeight * 0.9);
+  // Open at 63% of screen size (30% smaller than before)
+  const winWidth = Math.round(screenWidth * 0.63);
+  const winHeight = Math.round(screenHeight * 0.63);
 
   homeWindow = new BrowserWindow({
     width: winWidth,
@@ -337,7 +339,7 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: "Dikte Et (Ctrl+Space)",
+      label: "Dikte Et (" + ((loadSettings().shortcuts || {}).dictate || "CommandOrControl+Space").replace("CommandOrControl+","Ctrl+") + ")",
       click: () => toggleRecording(),
     },
     { type: "separator" },
@@ -431,7 +433,7 @@ function rebuildTrayMenu() {
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: "Dikte Et (Ctrl+Space)",
+        label: "Dikte Et (" + ((loadSettings().shortcuts || {}).dictate || "CommandOrControl+Space").replace("CommandOrControl+","Ctrl+") + ")",
         click: () => toggleRecording(),
       },
       { type: "separator" },
@@ -512,6 +514,19 @@ function createFallbackIcon() {
   return nativeImage.createFromBuffer(buffer, { width: size, height: size });
 }
 
+// ========== POWER MODE (Wake Word Detection) ==========
+// Power mode now runs directly in home.html — no separate window needed
+
+function startPowerMode() {
+  powerModeActive = true;
+  console.log("Power mode activated (state tracked)");
+}
+
+function stopPowerMode() {
+  powerModeActive = false;
+  console.log("Power mode deactivated (state tracked)");
+}
+
 // ========== RECORDING ==========
 function toggleRecording() {
   if (!mainWindow) return;
@@ -534,13 +549,31 @@ function toggleRecording() {
 }
 
 function registerShortcuts() {
-  const ret = globalShortcut.register("CommandOrControl+Space", () => {
-    toggleRecording();
-  });
+  globalShortcut.unregisterAll();
+  const settings = loadSettings();
+  const sc = settings.shortcuts || {};
 
-  if (!ret) {
-    console.error("Ctrl+Space shortcut registration failed");
-  }
+  // Dictate (toggle recording)
+  const dictateKey = sc.dictate || "CommandOrControl+Space";
+  try {
+    const r = globalShortcut.register(dictateKey, () => toggleRecording());
+    if (r) console.log("Shortcut dictate:", dictateKey);
+    else console.warn("Shortcut dictate failed:", dictateKey);
+  } catch (e) { console.warn("Shortcut dictate error:", e.message); }
+
+  // Paste last text
+  const pasteKey = sc.paste || "CommandOrControl+Shift+V";
+  try {
+    const r = globalShortcut.register(pasteKey, () => autoPasteToApp());
+    if (r) console.log("Shortcut paste:", pasteKey);
+  } catch (e) { console.warn("Shortcut paste error:", e.message); }
+
+  // Open home
+  const homeKey = sc.home || "CommandOrControl+Shift+H";
+  try {
+    const r = globalShortcut.register(homeKey, () => createHomeWindow());
+    if (r) console.log("Shortcut home:", homeKey);
+  } catch (e) { console.warn("Shortcut home error:", e.message); }
 }
 
 // ========== GOOGLE OAUTH (System Browser + Local HTTP Server) ==========
@@ -695,11 +728,6 @@ function autoPasteToApp() {
 }
 
 // ========== IPC HANDLERS ==========
-ipcMain.on("recording-state", (event, state) => {
-  isRecording = state;
-  updatePillState(state ? "recording" : "idle");
-});
-
 ipcMain.on("show-result", (event, text) => {
   isRecording = false;
   updatePillState("result");
@@ -799,6 +827,90 @@ ipcMain.handle("google-auth", async () => {
   }
 });
 
+// Power Mode IPC
+ipcMain.on("power-mode-status", (event, status) => {
+  console.log("Power mode status:", status);
+  // Update tray icon tooltip based on status
+  if (tray) {
+    const labels = { loading: "Yukleniyor...", listening: "Dinliyor...", off: "Kapali", error: "Hata" };
+    tray.setToolTip("VoiceFlow - Guc Modu: " + (labels[status] || status));
+  }
+  // Notify home window
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.webContents.send("power-mode-update", status);
+  }
+});
+
+// Forward what Vosk hears to home window (for test/debug display)
+ipcMain.on("power-mode-heard", (event, text, isPartial) => {
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.webContents.send("power-mode-heard", text, isPartial);
+  }
+});
+
+ipcMain.on("wake-word-detected", () => {
+  console.log("Wake word detected! isRecording:", isRecording);
+
+  // Toggle recording — wake word starts/stops dictation
+  toggleRecording();
+});
+
+// Resume power mode when recording finishes
+ipcMain.on("recording-state", (event, state) => {
+  isRecording = state;
+  updatePillState(state ? "recording" : "idle");
+
+  // When recording stops, resume power mode listening in home window
+  if (!state && powerModeActive) {
+    setTimeout(() => {
+      if (homeWindow && !homeWindow.isDestroyed()) {
+        homeWindow.webContents.send("power-mode-resume");
+      }
+    }, 3000); // Wait for transcription to finish
+  }
+});
+
+// Power mode toggle
+ipcMain.handle("toggle-power-mode", (event, enabled) => {
+  if (enabled) {
+    startPowerMode();
+    return { success: true, status: "starting" };
+  } else {
+    stopPowerMode();
+    return { success: true, status: "stopped" };
+  }
+});
+
+// Change shortcut
+ipcMain.handle("change-shortcut", (event, newShortcut, shortcutId) => {
+  try {
+    const settings = loadSettings();
+    if (!settings.shortcuts) settings.shortcuts = {};
+
+    // Check conflict with other shortcuts — remove if exists
+    let removedFrom = null;
+    for (const [id, sc] of Object.entries(settings.shortcuts)) {
+      if (id !== shortcutId && sc === newShortcut) {
+        removedFrom = id;
+        delete settings.shortcuts[id];
+      }
+    }
+
+    settings.shortcuts[shortcutId] = newShortcut;
+    saveSettings(settings);
+
+    // Re-register all shortcuts
+    registerShortcuts();
+    rebuildTrayMenu();
+
+    console.log(`Shortcut ${shortcutId} changed to: ${newShortcut}`);
+    return { success: true, shortcut: newShortcut, removedFrom };
+  } catch (err) {
+    registerShortcuts();
+    return { success: false, error: err.message };
+  }
+});
+
 // Reset settings
 ipcMain.on("reset-settings", () => {
   saveSettings({});
@@ -832,9 +944,13 @@ app.whenReady().then(() => {
   registerShortcuts();
 
   // Always open home window on start
-  // - Fresh install (no auth) → shows login/registration page
-  // - Returning user (authenticated) → shows dashboard
   createHomeWindow();
+
+  // Auto-start power mode if enabled (handled by home.html on load)
+  const startSettings = loadSettings();
+  if (startSettings.powerMode) {
+    powerModeActive = true;
+  }
 
   console.log("VoiceFlow started successfully!");
   console.log("Settings path:", getSettingsPath());

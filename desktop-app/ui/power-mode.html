@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>VoiceFlow Power Mode</title></head>
+<body>
+<script>
+  // Power Mode — Wake word detection via short Groq Whisper clips
+  // No WASM, no model loading — uses existing Groq API
+  let mediaStream = null;
+  let audioContext = null;
+  let analyser = null;
+  let isListening = false;
+  let isCapturing = false;
+  let wakeWord = "profesör";
+  let apiKey = "";
+  let lastWakeTime = 0;
+  const WAKE_COOLDOWN = 4000;
+  const SPEECH_THRESHOLD = 15;  // Audio level to consider as speech
+  const CLIP_DURATION = 2000;   // 2 second clips
+  const SILENCE_AFTER_SPEECH = 800; // Wait for speech to end before sending
+  let speechStartTime = 0;
+  let speechDetected = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let checkInterval = null;
+
+  async function startListening(config) {
+    if (isListening) return;
+
+    try {
+      wakeWord = (config.wakeWord || "profesör").toLowerCase().trim();
+      apiKey = config.apiKey || "";
+
+      if (!apiKey) {
+        console.error("[PowerMode] No API key!");
+        window.voiceflow.powerModeStatus("error");
+        return;
+      }
+
+      console.log("[PowerMode] Starting with Groq-based detection...");
+      window.voiceflow.powerModeStatus("loading");
+
+      // Get microphone
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
+
+      audioContext = new AudioContext({ sampleRate: 16000 });
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      // Monitor audio levels — detect speech
+      checkInterval = setInterval(() => {
+        if (!analyser || !isListening || isCapturing) return;
+
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        const avg = sum / dataArray.length;
+
+        // Send audio level to UI
+        window.voiceflow.powerModeHeard("__level__" + Math.round(avg), true);
+
+        if (avg > SPEECH_THRESHOLD) {
+          if (!speechDetected) {
+            speechDetected = true;
+            speechStartTime = Date.now();
+            console.log("[PowerMode] Speech detected, level:", Math.round(avg));
+          }
+        } else {
+          // Speech ended — if we had speech for at least 0.3s, capture a clip
+          if (speechDetected && (Date.now() - speechStartTime) > 300) {
+            speechDetected = false;
+            captureAndCheck();
+          } else if (speechDetected && (Date.now() - speechStartTime) > 3000) {
+            // Too long speech — capture anyway
+            speechDetected = false;
+            captureAndCheck();
+          }
+          if (avg < 3) speechDetected = false;
+        }
+      }, 50);
+
+      isListening = true;
+      window.voiceflow.powerModeStatus("listening");
+      console.log("[PowerMode] Listening for wake word:", wakeWord);
+    } catch (err) {
+      console.error("[PowerMode] Start error:", err);
+      window.voiceflow.powerModeStatus("error");
+    }
+  }
+
+  async function captureAndCheck() {
+    if (isCapturing || !isListening) return;
+    const now = Date.now();
+    if (now - lastWakeTime < WAKE_COOLDOWN) return;
+
+    isCapturing = true;
+    console.log("[PowerMode] Capturing clip for wake word check...");
+    window.voiceflow.powerModeHeard("Dinlenen ses kontrol ediliyor...", true);
+
+    try {
+      // Record a short clip
+      const clipStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+      });
+
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus" : "audio/webm";
+      const recorder = new MediaRecorder(clipStream, { mimeType });
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = async () => {
+        clipStream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: mimeType });
+
+        if (blob.size < 500) {
+          console.log("[PowerMode] Clip too small, skipping");
+          isCapturing = false;
+          return;
+        }
+
+        // Send to Groq Whisper
+        try {
+          const formData = new FormData();
+          formData.append("file", blob, "clip.webm");
+          formData.append("model", "whisper-large-v3-turbo");
+          formData.append("language", "tr");
+          formData.append("temperature", "0");
+          formData.append("response_format", "json");
+
+          const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + apiKey },
+            body: formData,
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const text = (result.text || "").toLowerCase().trim();
+            console.log("[PowerMode] Groq heard:", text);
+
+            if (text.length > 0) {
+              window.voiceflow.powerModeHeard(text, false);
+
+              // Check for wake word
+              if (matchWakeWord(text, wakeWord)) {
+                console.log("[PowerMode] WAKE WORD FOUND:", text);
+                lastWakeTime = Date.now();
+                window.voiceflow.wakeWordDetected();
+              }
+            }
+          } else {
+            console.error("[PowerMode] Groq error:", response.status);
+          }
+        } catch (err) {
+          console.error("[PowerMode] Groq request error:", err);
+        }
+
+        isCapturing = false;
+      };
+
+      recorder.start();
+      setTimeout(() => {
+        if (recorder.state === "recording") recorder.stop();
+      }, CLIP_DURATION);
+
+    } catch (err) {
+      console.error("[PowerMode] Capture error:", err);
+      isCapturing = false;
+    }
+  }
+
+  function matchWakeWord(text, target) {
+    // Normalize Turkish characters
+    const normalize = (s) => s
+      .replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c")
+      .replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i")
+      .replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u");
+
+    const nText = normalize(text);
+    const nTarget = normalize(target);
+
+    // Direct contains
+    if (nText.includes(nTarget)) return true;
+
+    // Word-by-word check
+    const words = nText.split(/[\s,.!?]+/);
+    return words.some(w => {
+      if (w === nTarget) return true;
+      if (w.startsWith(nTarget)) return true;
+      // Allow 2 char difference
+      if (w.length >= 4 && nTarget.length >= 4 && Math.abs(w.length - nTarget.length) <= 2) {
+        let diff = 0;
+        const len = Math.min(w.length, nTarget.length);
+        for (let i = 0; i < len; i++) {
+          if (w[i] !== nTarget[i]) diff++;
+        }
+        return diff <= 2;
+      }
+      return false;
+    });
+  }
+
+  function stopListening() {
+    isListening = false;
+    isCapturing = false;
+    if (checkInterval) { clearInterval(checkInterval); checkInterval = null; }
+    if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+    if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
+    analyser = null;
+    window.voiceflow.powerModeStatus("off");
+    console.log("[PowerMode] Stopped");
+  }
+
+  function pauseListening() {
+    if (audioContext && audioContext.state === "running") {
+      audioContext.suspend();
+      isListening = false;
+      console.log("[PowerMode] Paused");
+    }
+  }
+
+  function resumeListening() {
+    if (audioContext && audioContext.state === "suspended") {
+      audioContext.resume();
+      isListening = true;
+      console.log("[PowerMode] Resumed");
+    }
+  }
+
+  // IPC: Main process commands
+  window.voiceflow.onPowerModeCommand((cmd, config) => {
+    if (cmd === "start") startListening(config || {});
+    else if (cmd === "stop") stopListening();
+    else if (cmd === "pause") pauseListening();
+    else if (cmd === "resume") resumeListening();
+  });
+
+  console.log("[PowerMode] Window ready (Groq-based)");
+</script>
+</body>
+</html>

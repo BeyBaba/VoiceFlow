@@ -39,6 +39,11 @@ contextBridge.exposeInMainWorld("voiceflow", {
   // Reset
   resetSettings: () => ipcRenderer.send("reset-settings"),
 
+  // Change shortcut
+  changeShortcut: async (shortcut, shortcutId) => {
+    return await ipcRenderer.invoke("change-shortcut", shortcut, shortcutId);
+  },
+
   // Google OAuth
   googleAuth: async () => {
     return await ipcRenderer.invoke("google-auth");
@@ -53,5 +58,25 @@ contextBridge.exposeInMainWorld("voiceflow", {
   // Navigation from main process (e.g., tray → settings page)
   onShowPage: (callback) => {
     ipcRenderer.on("show-page", (event, page) => callback(page));
+  },
+
+  // Power Mode API
+  powerModeStatus: (status) => ipcRenderer.send("power-mode-status", status),
+  wakeWordDetected: () => ipcRenderer.send("wake-word-detected"),
+  powerModeHeard: (text, isPartial) => ipcRenderer.send("power-mode-heard", text, isPartial),
+  togglePowerMode: async (enabled) => {
+    return await ipcRenderer.invoke("toggle-power-mode", enabled);
+  },
+  onPowerModeCommand: (callback) => {
+    ipcRenderer.on("power-mode-command", (event, cmd, config) => callback(cmd, config));
+  },
+  onPowerModeUpdate: (callback) => {
+    ipcRenderer.on("power-mode-update", (event, status) => callback(status));
+  },
+  onPowerModeHeard: (callback) => {
+    ipcRenderer.on("power-mode-heard", (event, text, isPartial) => callback(text, isPartial));
+  },
+  onPowerModeResume: (callback) => {
+    ipcRenderer.on("power-mode-resume", () => callback());
   },
 });

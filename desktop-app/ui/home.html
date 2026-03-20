@@ -220,6 +220,7 @@
         <div class="nav-item" data-page="scratchpad"><span class="nav-icon">📝</span> Scratchpad</div>
         <div class="nav-item" data-page="history"><span class="nav-icon">📋</span> Gecmis</div>
         <div class="nav-item" data-page="shortcuts"><span class="nav-icon">⌨️</span> Kisayollar</div>
+        <div class="nav-item" data-page="powermode"><span class="nav-icon">⚡</span> Guc Modu</div>
         <div class="nav-divider"></div>
         <div class="nav-label">AYARLAR</div>
         <div class="nav-item" data-page="s-general"><span class="nav-icon">⚙️</span> Genel</div>
@@ -258,6 +259,7 @@
             <div class="status-card" style="display:none"><span class="status-card-icon">🔑</span><div class="status-card-label">API Key</div><div class="status-card-value ok" id="statusApi">Aktif</div></div>
             <div class="status-card"><span class="status-card-icon">🎙️</span><div class="status-card-label">Mikrofon</div><div class="status-card-value ok">Hazir</div></div>
             <div class="status-card"><span class="status-card-icon">⌨️</span><div class="status-card-label">Kisayol</div><div class="status-card-value ok">Ctrl+Space</div></div>
+            <div class="status-card"><span class="status-card-icon">⚡</span><div class="status-card-label">Guc Modu</div><div class="status-card-value" id="statusPower" style="color:var(--text-3)">Kapali</div></div>
           </div>
           <div class="list-toolbar"><div class="sec-label">Son Transkripsiyon</div><div class="list-toolbar-actions" id="recentToolbar" style="display:none"><button class="toolbar-btn danger" onclick="clearAllHistory()">Tumunu Sil</button></div></div>
           <div id="recentList"><div class="recent-empty"><div class="recent-empty-icon">📝</div><div class="recent-empty-text">Henuz transkripsiyon yok. Ctrl+Space ile baslayin!</div></div></div>
@@ -284,13 +286,124 @@
 
       <!-- SHORTCUTS -->
       <div class="page" id="page-shortcuts">
-        <div class="page-header"><h1 class="page-title">Kisayollar</h1><p class="page-desc">Klavye kisayollari</p></div>
+        <div class="page-header"><h1 class="page-title">Kisayollar</h1><p class="page-desc">Klavye kisayollari — degistirmek icin "Degistir" butonuna tiklayin</p></div>
         <div class="page-body">
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Dikte Baslat / Durdur</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></div></div></div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Son Metni Yapistir</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></div></div></div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Ana Sayfa</div></div><div class="shortcut-display"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>H</kbd></div></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Dikte Baslat / Durdur</div><div class="card-hint">Kaydi baslatir veya durdurur</div></div><div style="display:flex;align-items:center;gap:8px"><div class="shortcut-display" id="sd_dictate"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></div><button class="toolbar-btn btn-sc" data-sc="dictate" style="font-size:11px;padding:4px 10px">Degistir</button></div></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Son Metni Yapistir</div><div class="card-hint">Son transkripsiyon metnini aktif pencereye yapistir</div></div><div style="display:flex;align-items:center;gap:8px"><div class="shortcut-display" id="sd_paste"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></div><button class="toolbar-btn btn-sc" data-sc="paste" style="font-size:11px;padding:4px 10px">Degistir</button></div></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Ana Sayfa</div><div class="card-hint">Ana sayfa penceresini ac/kapat</div></div><div style="display:flex;align-items:center;gap:8px"><div class="shortcut-display" id="sd_home"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>H</kbd></div><button class="toolbar-btn btn-sc" data-sc="home" style="font-size:11px;padding:4px 10px">Degistir</button></div></div></div>
         </div>
       </div>
+
+      <!-- POWER MODE -->
+      <div class="page" id="page-powermode">
+        <div class="page-header"><h1 class="page-title">⚡ Guc Modu</h1><p class="page-desc">Sesle aktive olan eller-serbest dikte</p></div>
+        <div class="page-body">
+
+          <!-- Step 1: Wake word input -->
+          <div class="card" style="padding:20px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Kelimesi Belirleyin</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimeyi soylediginizde dikte otomatik baslar. Istediginiz kelimeyi yazin:</div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input type="text" class="card-input" id="sWakeWord" placeholder="Ornek: Profesör, Başla, Yaz..." style="flex:1;text-align:center;font-weight:700;font-size:16px;padding:10px">
+            </div>
+          </div>
+
+          <!-- Step 2: Test -->
+          <div class="card" style="padding:20px" id="pmTestSection">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">2. Ses Testi</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Uyanma kelimenizi soyleyerek calısıp calismadigini test edin:</div>
+
+            <button id="pmTestBtn" style="width:100%;padding:12px;border:2px solid var(--accent);border-radius:10px;background:transparent;color:var(--accent-text);cursor:pointer;font-size:14px;font-weight:700;margin-bottom:14px;transition:all .2s">🎙️ Test Et — Mikrofonla Dene</button>
+
+            <!-- Audio level bar -->
+            <div id="pmTestArea" style="display:none">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-size:14px;min-width:24px">🎙️</span>
+                <div style="flex:1;height:10px;background:var(--bg-input);border-radius:5px;overflow:hidden">
+                  <div id="pmLevelBar" style="width:0%;height:100%;background:linear-gradient(90deg,#10B981,#F59E0B,#EF4444);border-radius:5px;transition:width 0.1s"></div>
+                </div>
+                <span id="pmLevelNum" style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">0</span>
+              </div>
+
+              <div id="pmLiveText" style="min-height:48px;padding:12px 14px;background:var(--bg-input);border-radius:8px;font-size:15px;color:var(--text-1);word-break:break-word;border:2px solid var(--border);transition:all .3s">
+                <span style="color:var(--text-3);font-style:italic">Simdi uyanma kelimenizi soyleyin...</span>
+              </div>
+              <div id="pmMatchIndicator" style="margin-top:8px;font-size:13px;font-weight:600;min-height:20px"></div>
+            </div>
+          </div>
+
+          <!-- Step 3: Activate (shown after successful test) -->
+          <div class="card" style="padding:20px;display:none" id="pmActivateSection">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">3. Guc Modunu Etkinlestir</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Test basarili! Simdi guc modunu aktif edebilirsiniz:</div>
+            <div class="card-row" style="padding:0">
+              <div class="card-label-wrap">
+                <div class="card-label" style="font-size:15px;font-weight:700;color:var(--accent-text)">Guc Modu</div>
+                <div class="card-hint" id="pmActivateHint">Kapali</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="sPowerMode"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            </div>
+          </div>
+
+          <!-- Status indicator (shown when active) -->
+          <div id="powerModeStatusCard" class="card" style="text-align:center;padding:16px;display:none">
+            <div id="pmStatusIcon" style="font-size:32px;margin-bottom:6px">🔇</div>
+            <div id="pmStatusText" style="font-size:13px;font-weight:600;color:var(--text-2)">Kapali</div>
+            <div id="pmStatusHint" style="font-size:11px;color:var(--text-3);margin-top:4px"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card">
+            <div class="card-row">
+              <div class="card-label-wrap">
+                <div class="card-label">Cift tikla yapistir</div>
+                <div class="card-hint">Dikte bitince farenin sol tusuna cift tiklayarak yapistirir</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="sPowerDblClick" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-row">
+              <div class="card-label-wrap">
+                <div class="card-label">Uygulama baslangicinda etkinlestir</div>
+                <div class="card-hint">VoiceFlow acildiginda guc modu otomatik baslasin</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="sPowerAutoStart"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            </div>
+          </div>
+
+          <div class="info-box" style="margin-top:12px">
+            <p>🧠 <strong>Nasil calisir?</strong> Guc modu aktifken VoiceFlow arka planda dinler. Uyanma kelimenizi soyleyin — dikte baslar. Tekrar soyleyin veya Ctrl+Space basin — kayit durur.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shortcut Change Modal -->
+      <div id="scModal" tabindex="0" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;outline:none">
+        <div style="background:var(--bg-card);border-radius:16px;padding:32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:380px;width:90%">
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">Yeni Kisayol Belirle</div>
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:4px" id="scLabel"></div>
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:16px">Istediginiz tus kombinasyonuna basin (Ctrl/Alt/Shift + bir tus)</div>
+          <div id="scCapture" style="padding:16px 24px;border:2px dashed var(--accent);border-radius:10px;font-size:18px;font-weight:700;color:var(--accent-text);min-height:52px;display:flex;align-items:center;justify-content:center;transition:all .2s">Tuslara basin...</div>
+          <div id="scWarning" style="font-size:11px;color:#F59E0B;margin-top:8px;min-height:16px"></div>
+          <div style="display:flex;gap:10px;margin-top:16px;justify-content:center">
+            <button id="scCancel" style="padding:8px 22px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-1);cursor:pointer;font-size:13px">Iptal</button>
+            <button id="scSave" style="padding:8px 22px;border:none;border-radius:8px;background:var(--accent);color:white;cursor:pointer;font-size:13px;opacity:0.4;font-weight:600" disabled>Kaydet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Toast Modal -->
+      <div id="successModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10000;align-items:center;justify-content:center">
+        <div style="background:var(--bg-card);border-radius:16px;padding:36px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:340px;animation:modalPop .3s ease">
+          <div style="font-size:48px;margin-bottom:12px">✅</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px">Kaydedildi!</div>
+          <div id="successMsg" style="font-size:13px;color:var(--text-2)"></div>
+        </div>
+      </div>
+      <style>@keyframes modalPop{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}</style>
 
       <!-- SETTINGS: GENERAL -->
       <div class="page" id="page-s-general">
@@ -364,7 +477,7 @@
           <div class="card" style="text-align:center;padding:20px">
             <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#4F46E5);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
             <div style="font-size:16px;font-weight:800;">VoiceFlow</div>
-            <div style="font-size:11px;color:var(--text-2);margin-top:4px" id="aboutVersion">v2.0.4</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:4px" id="aboutVersion">v3.0.1</div>
           </div>
           <a href="#" class="about-link" id="aboutWebsite">🌐 Web Sitesi</a>
           <a href="#" class="about-link" id="aboutGroq" style="display:none">🔑 Groq Console</a>
@@ -523,7 +636,13 @@
       if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
       document.getElementById("sSendStats").checked=!!s.sendStats;
       document.getElementById("sKeepHistory").checked=!!s.keepHistory;
-      loadAutoStart(); loadAudioDevices();
+      loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
+      // Power mode
+      document.getElementById("sPowerMode").checked=!!s.powerMode;
+      document.getElementById("sWakeWord").value=s.wakeWord||"";
+      document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
+      document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
+      if(s.powerMode) { setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -570,6 +689,530 @@
       document.getElementById("sResetBtn").addEventListener("click",()=>{if(confirm("Tum ayarlar sifirlanacak. Emin misiniz?")){window.voiceflow.resetSettings();showToast("Sifirlandi!");location.reload();}});
     }
     setupSettingsListeners();
+
+    // POWER MODE — runs directly in this window (no hidden window needed)
+    let pmStream = null;
+    let pmAudioCtx = null;
+    let pmAnalyser = null;
+    let pmCheckInterval = null;
+    let pmIsListening = false;
+    let pmIsCapturing = false;
+    let pmLastWakeTime = 0;
+    let pmSpeechDetected = false;
+    let pmSpeechStart = 0;
+    const PM_THRESHOLD = 12;
+    const PM_COOLDOWN = 4000;
+
+    async function pmStart() {
+      if (pmIsListening) return;
+      const apiKey = currentSettings.apiKey;
+      if (!apiKey) { showToast("API Key gerekli!"); return; }
+
+      try {
+        updatePowerModeUI("loading");
+
+        pmStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
+        });
+
+        pmAudioCtx = new AudioContext({ sampleRate: 16000 });
+        const source = pmAudioCtx.createMediaStreamSource(pmStream);
+        pmAnalyser = pmAudioCtx.createAnalyser();
+        pmAnalyser.fftSize = 512;
+        source.connect(pmAnalyser);
+
+        const dataArray = new Uint8Array(pmAnalyser.frequencyBinCount);
+        pmIsListening = true;
+        updatePowerModeUI("listening");
+
+        pmCheckInterval = setInterval(() => {
+          if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
+          pmAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length;
+
+          // Update level bar
+          const bar = document.getElementById("pmLevelBar");
+          const num = document.getElementById("pmLevelNum");
+          if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
+          if (num) num.textContent = Math.round(avg);
+
+          if (avg > PM_THRESHOLD) {
+            if (!pmSpeechDetected) {
+              pmSpeechDetected = true;
+              pmSpeechStart = Date.now();
+            }
+          } else if (pmSpeechDetected) {
+            const duration = Date.now() - pmSpeechStart;
+            if (duration > 300 && duration < 5000) {
+              pmSpeechDetected = false;
+              pmCaptureAndCheck();
+            } else if (duration >= 5000) {
+              pmSpeechDetected = false;
+            }
+            if (avg < 3) pmSpeechDetected = false;
+          }
+        }, 50);
+
+      } catch (err) {
+        console.error("PowerMode start error:", err);
+        updatePowerModeUI("error");
+        showToast("Mikrofon erisimi yok!");
+      }
+    }
+
+    async function pmCaptureAndCheck() {
+      if (pmIsCapturing || !pmIsListening) return;
+      if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
+      pmIsCapturing = true;
+
+      const liveEl = document.getElementById("pmLiveText");
+      if (liveEl) { liveEl.textContent = "Ses kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
+
+      try {
+        const clipStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+        });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+        const recorder = new MediaRecorder(clipStream, { mimeType });
+        const chunks = [];
+
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          clipStream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(chunks, { type: mimeType });
+          if (blob.size < 500) { pmIsCapturing = false; return; }
+
+          try {
+            const fd = new FormData();
+            fd.append("file", blob, "clip.webm");
+            fd.append("model", "whisper-large-v3-turbo");
+            fd.append("language", currentSettings.language || "tr");
+            fd.append("temperature", "0");
+            fd.append("response_format", "json");
+
+            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+              body: fd,
+            });
+
+            if (resp.ok) {
+              const result = await resp.json();
+              const text = (result.text || "").trim();
+              console.log("PowerMode heard:", text);
+
+              if (text.length > 0) {
+                if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
+                const matchEl = document.getElementById("pmMatchIndicator");
+
+                // Check wake word
+                const wk = (currentSettings.wakeWord || "").toLowerCase();
+                const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+                const nText = norm(text);
+                const nWake = norm(wk);
+
+                if (nText.includes(nWake)) {
+                  pmLastWakeTime = Date.now();
+                  if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+                  if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
+                  setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
+
+                  // Pause power mode and trigger recording
+                  pmPause();
+                  window.voiceflow.wakeWordDetected();
+                } else {
+                  if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
+                }
+              }
+            } else {
+              console.error("PowerMode Groq error:", resp.status);
+            }
+          } catch (err) {
+            console.error("PowerMode Groq request error:", err);
+          }
+          pmIsCapturing = false;
+        };
+
+        recorder.start();
+        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2000);
+      } catch (err) {
+        console.error("PowerMode capture error:", err);
+        pmIsCapturing = false;
+      }
+    }
+
+    function pmStop() {
+      pmIsListening = false;
+      pmIsCapturing = false;
+      if (pmCheckInterval) { clearInterval(pmCheckInterval); pmCheckInterval = null; }
+      if (pmStream) { pmStream.getTracks().forEach(t => t.stop()); pmStream = null; }
+      if (pmAudioCtx) { pmAudioCtx.close().catch(()=>{}); pmAudioCtx = null; }
+      pmAnalyser = null;
+      updatePowerModeUI("off");
+    }
+
+    function pmPause() {
+      if (pmAudioCtx && pmAudioCtx.state === "running") pmAudioCtx.suspend();
+      pmIsListening = false;
+    }
+
+    function pmResume() {
+      if (pmAudioCtx && pmAudioCtx.state === "suspended") { pmAudioCtx.resume(); pmIsListening = true; }
+    }
+
+    // POWER MODE UI
+    function updatePowerModeUI(status) {
+      const icon = document.getElementById("pmStatusIcon");
+      const text = document.getElementById("pmStatusText");
+      const hint = document.getElementById("pmStatusHint");
+      const card = document.getElementById("powerModeStatusCard");
+      const dash = document.getElementById("statusPower");
+
+      if (card) card.style.display = "block";
+
+      const states = {
+        loading: { icon: "⏳", text: "Mikrofon hazirlaniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
+        listening: { icon: "👂", text: "Dinliyor — \"" + (currentSettings.wakeWord || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
+        off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
+        error: { icon: "❌", text: "Hata olustu", hint: "Mikrofon erisimi kontrol edin", color: "#EF4444", dash: "Hata" },
+      };
+
+      const s = states[status] || states.off;
+      if (icon) icon.textContent = s.icon;
+      if (text) { text.textContent = s.text; text.style.color = s.color; }
+      if (hint) hint.textContent = s.hint;
+      if (dash) { dash.textContent = s.dash; dash.style.color = s.color; }
+    }
+
+    // Listen for power mode updates from main process
+    if (window.voiceflow.onPowerModeUpdate) {
+      window.voiceflow.onPowerModeUpdate((status) => updatePowerModeUI(status));
+    }
+
+    // Resume power mode after recording finishes
+    if (window.voiceflow.onPowerModeResume) {
+      window.voiceflow.onPowerModeResume(() => {
+        console.log("Power mode resume signal received");
+        pmResume();
+      });
+    }
+
+    // Power mode toggle
+    document.getElementById("sPowerMode").addEventListener("change", function() {
+      const enabled = this.checked;
+      saveSetting("powerMode", enabled);
+      document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
+      if (enabled) pmStart();
+      else pmStop();
+    });
+
+    // Wake word save on blur
+    document.getElementById("sWakeWord").addEventListener("blur", function() {
+      const word = this.value.trim();
+      if (word.length >= 2) {
+        saveSetting("wakeWord", word);
+        // Reset test state — user changed the word
+        pmTestPassed = false;
+        document.getElementById("pmActivateSection").style.display = "none";
+      }
+    });
+    // Also on Enter key
+    document.getElementById("sWakeWord").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+    });
+
+    // TEST BUTTON — starts mic test for wake word
+    let pmTestPassed = false;
+    let pmTestStream = null;
+    let pmTestCtx = null;
+    let pmTestAnalyser = null;
+    let pmTestInterval = null;
+    let pmTestListening = false;
+    let pmTestSpeechDetected = false;
+    let pmTestSpeechStart = 0;
+
+    document.getElementById("pmTestBtn").addEventListener("click", async function() {
+      const wakeWord = document.getElementById("sWakeWord").value.trim();
+      if (wakeWord.length < 2) { showToast("Once uyanma kelimesi yazin!"); return; }
+      saveSetting("wakeWord", wakeWord);
+
+      const testArea = document.getElementById("pmTestArea");
+      const btn = this;
+
+      if (pmTestListening) {
+        // Stop test
+        pmStopTest();
+        btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
+        btn.style.borderColor = "";
+        btn.style.background = "";
+        return;
+      }
+
+      // Start test
+      btn.textContent = "⏹️ Testi Durdur";
+      btn.style.borderColor = "#EF4444";
+      testArea.style.display = "block";
+      document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wakeWord) + '" deyin...</span>';
+      document.getElementById("pmMatchIndicator").textContent = "";
+
+      try {
+        pmTestStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
+        });
+
+        pmTestCtx = new AudioContext({ sampleRate: 16000 });
+        const source = pmTestCtx.createMediaStreamSource(pmTestStream);
+        pmTestAnalyser = pmTestCtx.createAnalyser();
+        pmTestAnalyser.fftSize = 512;
+        source.connect(pmTestAnalyser);
+
+        const dataArray = new Uint8Array(pmTestAnalyser.frequencyBinCount);
+        pmTestListening = true;
+        pmTestSpeechDetected = false;
+
+        pmTestInterval = setInterval(() => {
+          if (!pmTestAnalyser || !pmTestListening) return;
+          pmTestAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length;
+
+          const bar = document.getElementById("pmLevelBar");
+          const num = document.getElementById("pmLevelNum");
+          if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
+          if (num) num.textContent = Math.round(avg);
+
+          if (avg > 12) {
+            if (!pmTestSpeechDetected) { pmTestSpeechDetected = true; pmTestSpeechStart = Date.now(); }
+          } else if (pmTestSpeechDetected) {
+            const dur = Date.now() - pmTestSpeechStart;
+            if (dur > 300 && dur < 5000) {
+              pmTestSpeechDetected = false;
+              pmTestCapture();
+            }
+            if (avg < 3) pmTestSpeechDetected = false;
+          }
+        }, 50);
+      } catch (err) {
+        showToast("Mikrofon erisimi yok!");
+        btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
+        btn.style.borderColor = "";
+      }
+    });
+
+    async function pmTestCapture() {
+      if (!pmTestListening) return;
+      const liveEl = document.getElementById("pmLiveText");
+      if (liveEl) { liveEl.textContent = "Dinleniyor, kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
+
+      try {
+        const clipStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+        });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+        const recorder = new MediaRecorder(clipStream, { mimeType });
+        const chunks = [];
+
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          clipStream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(chunks, { type: mimeType });
+          if (blob.size < 500) return;
+
+          try {
+            const fd = new FormData();
+            fd.append("file", blob, "test.webm");
+            fd.append("model", "whisper-large-v3-turbo");
+            fd.append("language", currentSettings.language || "tr");
+            fd.append("temperature", "0");
+            fd.append("response_format", "json");
+
+            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+              body: fd,
+            });
+
+            if (resp.ok) {
+              const result = await resp.json();
+              const text = (result.text || "").trim();
+              const wk = (currentSettings.wakeWord || "").toLowerCase();
+              const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+
+              if (liveEl) { liveEl.textContent = text || "(sessizlik)"; liveEl.style.color = "var(--text-1)"; }
+
+              const matchEl = document.getElementById("pmMatchIndicator");
+              if (text.length > 0 && norm(text).includes(norm(wk))) {
+                // SUCCESS — wake word detected in test!
+                pmTestPassed = true;
+                if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+                if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(wk) + '" algilandi! Test basarili!</span>';
+
+                // Show activate section
+                document.getElementById("pmActivateSection").style.display = "block";
+
+                // Stop test after success
+                setTimeout(() => {
+                  pmStopTest();
+                  document.getElementById("pmTestBtn").textContent = "✅ Test Basarili — Tekrar Dene";
+                  document.getElementById("pmTestBtn").style.borderColor = "#10B981";
+                  document.getElementById("pmTestBtn").style.background = "rgba(16,185,129,0.08)";
+                  if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; }
+                }, 2000);
+              } else if (text.length > 0) {
+                if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-2)">Duyulan: "' + esc(text) + '" — tekrar deneyin</span>';
+                if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
+              }
+            }
+          } catch (err) { console.error("Test Groq error:", err); }
+        };
+
+        recorder.start();
+        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2500);
+      } catch (err) { console.error("Test capture error:", err); }
+    }
+
+    function pmStopTest() {
+      pmTestListening = false;
+      if (pmTestInterval) { clearInterval(pmTestInterval); pmTestInterval = null; }
+      if (pmTestStream) { pmTestStream.getTracks().forEach(t => t.stop()); pmTestStream = null; }
+      if (pmTestCtx) { pmTestCtx.close().catch(()=>{}); pmTestCtx = null; }
+      pmTestAnalyser = null;
+    }
+
+    document.getElementById("sPowerDblClick").addEventListener("change", function() {
+      saveSetting("powerDblClick", this.checked);
+    });
+
+    document.getElementById("sPowerAutoStart").addEventListener("change", function() {
+      saveSetting("powerAutoStart", this.checked);
+    });
+
+    // SHORTCUT CHANGE
+    const SHORTCUT_DEFAULTS = { dictate: "CommandOrControl+Space", paste: "CommandOrControl+Shift+V", home: "CommandOrControl+Shift+H" };
+    const SHORTCUT_LABELS = { dictate: "Dikte Baslat / Durdur", paste: "Son Metni Yapistir", home: "Ana Sayfa" };
+    let scActiveId = "";
+    let scCaptured = "";
+    const scModal = document.getElementById("scModal");
+    const scCapture = document.getElementById("scCapture");
+    const scSave = document.getElementById("scSave");
+    const scWarning = document.getElementById("scWarning");
+
+    function shortcutToDisplay(electronKey) {
+      return electronKey.replace("CommandOrControl+","Ctrl+");
+    }
+    function updateShortcutDisplay(id, electronKey) {
+      const dk = shortcutToDisplay(electronKey);
+      const keys = dk.split("+");
+      const html = keys.map(k=>'<kbd>'+k+'</kbd>').join('<span class="plus">+</span>');
+      const el = document.getElementById("sd_"+id);
+      if (el) el.innerHTML = html;
+      // Update dashboard status card for dictate
+      if (id === "dictate") {
+        const sc = document.querySelector(".status-card-value.ok");
+        if (sc && sc.closest(".status-card") && sc.closest(".status-card").querySelector(".status-card-label").textContent === "Kisayol") sc.textContent = dk;
+      }
+    }
+    function loadShortcutDisplays() {
+      const sc = currentSettings.shortcuts || {};
+      updateShortcutDisplay("dictate", sc.dictate || SHORTCUT_DEFAULTS.dictate);
+      updateShortcutDisplay("paste", sc.paste || SHORTCUT_DEFAULTS.paste);
+      updateShortcutDisplay("home", sc.home || SHORTCUT_DEFAULTS.home);
+    }
+
+    document.querySelectorAll(".btn-sc").forEach(btn => {
+      btn.addEventListener("click", () => {
+        scActiveId = btn.dataset.sc;
+        scCaptured = "";
+        scCapture.textContent = "Tuslara basin...";
+        scCapture.style.borderColor = "";
+        scWarning.textContent = "";
+        scSave.disabled = true;
+        scSave.style.opacity = "0.4";
+        document.getElementById("scLabel").textContent = SHORTCUT_LABELS[scActiveId] + " icin yeni kisayol";
+        scModal.style.display = "flex";
+        setTimeout(() => scModal.focus(), 50);
+      });
+    });
+
+    document.getElementById("scCancel").addEventListener("click", () => { scModal.style.display = "none"; });
+
+    scModal.addEventListener("keydown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const parts = [];
+      if (e.ctrlKey || e.metaKey) parts.push("Ctrl");
+      if (e.shiftKey) parts.push("Shift");
+      if (e.altKey) parts.push("Alt");
+      let key = e.key;
+      if (["Control","Shift","Alt","Meta"].includes(key)) return;
+      if (key === " ") key = "Space";
+      else if (key === "Escape") { scModal.style.display = "none"; return; }
+      else if (key.length === 1) key = key.toUpperCase();
+      // Must have modifier
+      if (parts.length === 0) {
+        scCapture.textContent = key;
+        scWarning.textContent = "Tek tus kullanilamaz — Ctrl, Alt veya Shift ile birlikte basin.";
+        scWarning.style.color = "#EF4444";
+        scSave.disabled = true;
+        scSave.style.opacity = "0.4";
+        return;
+      }
+      parts.push(key);
+      const display = parts.join("+");
+      scCapture.textContent = display;
+      scCaptured = display.replace("Ctrl+","CommandOrControl+");
+      // Check conflicts with other shortcuts
+      const shortcuts = currentSettings.shortcuts || {};
+      let conflict = "";
+      for (const [id, val] of Object.entries(shortcuts)) {
+        if (id !== scActiveId && val === scCaptured) conflict = SHORTCUT_LABELS[id] || id;
+      }
+      // Also check defaults
+      for (const [id, val] of Object.entries(SHORTCUT_DEFAULTS)) {
+        if (id !== scActiveId && !shortcuts[id] && val === scCaptured) conflict = SHORTCUT_LABELS[id] || id;
+      }
+      if (conflict) {
+        scWarning.textContent = "⚠️ Bu kisayol \"" + conflict + "\" tarafindan kullaniliyor. Yine de atayabilirsiniz, eski atama kaldirilir.";
+        scWarning.style.color = "#F59E0B";
+      } else {
+        scWarning.textContent = "";
+      }
+      // Check common Windows conflicts
+      const winConflicts = {"CommandOrControl+C":"Kopyala","CommandOrControl+V":"Yapistir","CommandOrControl+X":"Kes","CommandOrControl+Z":"Geri Al","CommandOrControl+A":"Tumunu Sec","CommandOrControl+S":"Kaydet","CommandOrControl+W":"Pencere Kapat","CommandOrControl+Tab":"Sekme Degistir"};
+      if (winConflicts[scCaptured]) {
+        scWarning.textContent = "⚠️ Windows sistemi bu kisayolu kullaniyor: " + winConflicts[scCaptured] + ". Farkli bir kombinasyon secmeniz onerilir.";
+        scWarning.style.color = "#F59E0B";
+      }
+      scSave.disabled = false;
+      scSave.style.opacity = "1";
+    });
+
+    scSave.addEventListener("click", async () => {
+      if (!scCaptured || !scActiveId) return;
+      scSave.textContent = "Kaydediliyor...";
+      const result = await window.voiceflow.changeShortcut(scCaptured, scActiveId);
+      if (result.success) {
+        // Update local cache
+        if (!currentSettings.shortcuts) currentSettings.shortcuts = {};
+        currentSettings.shortcuts[scActiveId] = scCaptured;
+        if (result.removedFrom) delete currentSettings.shortcuts[result.removedFrom];
+        loadShortcutDisplays();
+        scModal.style.display = "none";
+        // Show success modal
+        const dk = shortcutToDisplay(scCaptured);
+        document.getElementById("successMsg").textContent = SHORTCUT_LABELS[scActiveId] + " kisayolu " + dk + " olarak ayarlandi.";
+        document.getElementById("successModal").style.display = "flex";
+        setTimeout(() => { document.getElementById("successModal").style.display = "none"; }, 2000);
+      } else {
+        scCapture.textContent = result.error || "Bu kisayol atanamadi!";
+        scCapture.style.borderColor = "#EF4444";
+        setTimeout(() => { scCapture.style.borderColor = ""; }, 2000);
+      }
+      scSave.textContent = "Kaydet";
+    });
 
     // LOGOUT
     document.getElementById("btnLogout").addEventListener("click",async()=>{
