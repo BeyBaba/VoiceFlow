@@ -12,6 +12,7 @@ let homeWindow = null;
 let tray = null;
 let isRecording = false;
 let powerModeActive = false;
+let wakeWordTriggered = false; // Prevents blur from hiding window during wake word activation
 
 // ========== SETTINGS ==========
 function getSettingsPath() {
@@ -91,9 +92,9 @@ function createMainWindow() {
 
   mainWindow.on("blur", () => {
     const currentSettings = loadSettings();
-    if (!isRecording && currentSettings.setupComplete && currentSettings.isAuthenticated) {
+    if (!isRecording && !wakeWordTriggered && currentSettings.setupComplete && currentSettings.isAuthenticated) {
       setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed() && !isRecording) {
+        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered) {
           mainWindow.hide();
         }
       }, 200);
@@ -545,11 +546,20 @@ function toggleRecording() {
   const newX = Math.round((screenWidth - mainBounds.width) / 2);
   const newY = screenHeight - 52 - mainBounds.height - 12;
 
+  // Restore if minimized
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
   if (!mainWindow.isVisible()) {
     mainWindow.setPosition(newX, newY);
     mainWindow.show();
   }
+
+  // Force window to front — especially needed when called from wake word in background
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.focus();
+  mainWindow.moveTop();
 
   mainWindow.webContents.send("toggle-recording");
 }
@@ -857,8 +867,16 @@ ipcMain.on("power-mode-heard", (event, text, isPartial) => {
 ipcMain.on("wake-word-detected", () => {
   console.log("Wake word detected! isRecording:", isRecording);
 
+  // Set flag to prevent blur handler from hiding window during activation
+  wakeWordTriggered = true;
+
   // Toggle recording — wake word starts/stops dictation
   toggleRecording();
+
+  // Clear the flag after recording has had time to start
+  setTimeout(() => {
+    wakeWordTriggered = false;
+  }, 2000);
 });
 
 // Resume power mode when recording finishes
