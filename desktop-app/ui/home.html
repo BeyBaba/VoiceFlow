@@ -299,12 +299,23 @@
         <div class="page-header"><h1 class="page-title">⚡ Guc Modu</h1><p class="page-desc">Sesle aktive olan eller-serbest dikte</p></div>
         <div class="page-body">
 
-          <!-- Step 1: Wake word input -->
+          <!-- Step 1: Wake word inputs (up to 3) -->
           <div class="card" style="padding:20px">
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Kelimesi Belirleyin</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimeyi soylediginizde dikte otomatik baslar. Istediginiz kelimeyi yazin:</div>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="text" class="card-input" id="sWakeWord" placeholder="Ornek: Profesör, Başla, Yaz..." style="flex:1;text-align:center;font-weight:700;font-size:16px;padding:10px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Komutlari Belirleyin</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimelerden birini soylediginizde dikte otomatik baslar. En az 1, en fazla 3 komut yazin:</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">1.</span>
+                <input type="text" class="card-input" id="sWakeWord1" placeholder="Ornek: Yaz, Basla, Hey..." style="flex:1;text-align:center;font-weight:700;font-size:15px;padding:9px">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">2.</span>
+                <input type="text" class="card-input" id="sWakeWord2" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">3.</span>
+                <input type="text" class="card-input" id="sWakeWord3" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+              </div>
             </div>
           </div>
 
@@ -719,7 +730,11 @@
       loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
       document.getElementById("sPowerMode").checked=!!s.powerMode;
-      document.getElementById("sWakeWord").value=s.wakeWord||"";
+      // Load wake words (support legacy single + new multi)
+      const ww = s.wakeWords || [];
+      document.getElementById("sWakeWord1").value = ww[0] || s.wakeWord || "";
+      document.getElementById("sWakeWord2").value = ww[1] || "";
+      document.getElementById("sWakeWord3").value = ww[2] || "";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
       document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
       if(s.powerMode) { setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
@@ -899,13 +914,13 @@
             if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
             const matchEl = document.getElementById("pmMatchIndicator");
 
-            // Check wake word
-            const wk = (currentSettings.wakeWord || "").toLowerCase();
-            const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+            // Check wake words (multi-command support)
+            const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
+            const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
             const nText = norm(text);
-            const nWake = norm(wk);
+            const matchedWord = wakeWords.find(w => w.length >= 2 && nText.includes(norm(w)));
 
-            if (nText.includes(nWake)) {
+            if (matchedWord) {
               pmLastWakeTime = Date.now();
               if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
               if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
@@ -961,7 +976,7 @@
 
       const states = {
         loading: { icon: "⏳", text: "Mikrofon hazirlaniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
-        listening: { icon: "👂", text: "Dinliyor — \"" + (currentSettings.wakeWord || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
+        listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
         off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
         error: { icon: "❌", text: "Hata olustu", hint: "Mikrofon erisimi kontrol edin", color: "#EF4444", dash: "Hata" },
       };
@@ -995,19 +1010,28 @@
       else pmStop();
     });
 
-    // Wake word save on blur
-    document.getElementById("sWakeWord").addEventListener("blur", function() {
-      const word = this.value.trim();
-      if (word.length >= 2) {
-        saveSetting("wakeWord", word);
-        // Reset test state — user changed the word
-        pmTestPassed = false;
-        document.getElementById("pmActivateSection").style.display = "none";
-      }
-    });
-    // Also on Enter key
-    document.getElementById("sWakeWord").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+    // Wake words save helper
+    function getWakeWords() {
+      return [
+        document.getElementById("sWakeWord1").value.trim(),
+        document.getElementById("sWakeWord2").value.trim(),
+        document.getElementById("sWakeWord3").value.trim()
+      ].filter(w => w.length >= 2);
+    }
+    function saveWakeWords() {
+      const words = getWakeWords();
+      saveSetting("wakeWords", words);
+      saveSetting("wakeWord", words[0] || ""); // backwards compat
+      // Reset test state when words change
+      pmTestPassed = false;
+      document.getElementById("pmActivateSection").style.display = "none";
+    }
+    // Save on blur for each input
+    ["sWakeWord1","sWakeWord2","sWakeWord3"].forEach(id => {
+      document.getElementById(id).addEventListener("blur", saveWakeWords);
+      document.getElementById(id).addEventListener("keydown", function(e) {
+        if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+      });
     });
 
     // TEST BUTTON — starts mic test for wake word
@@ -1023,9 +1047,9 @@
     let pmTestRecordChunks = [];
 
     document.getElementById("pmTestBtn").addEventListener("click", async function() {
-      const wakeWord = document.getElementById("sWakeWord").value.trim();
-      if (wakeWord.length < 2) { showToast("Once uyanma kelimesi yazin (en az 2 harf)!"); return; }
-      saveSetting("wakeWord", wakeWord);
+      const words = getWakeWords();
+      if (words.length === 0) { showToast("Once en az bir uyanma kelimesi yazin (en az 2 harf)!"); return; }
+      saveWakeWords();
 
       const testArea = document.getElementById("pmTestArea");
       const btn = this;
@@ -1050,7 +1074,7 @@
       btn.style.borderColor = "#EF4444";
       btn.style.background = "";
       testArea.style.display = "block";
-      document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wakeWord) + '" deyin...</span>';
+      document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(words.join('" veya "')) + '" deyin...</span>';
       document.getElementById("pmLiveText").style.borderColor = "";
       document.getElementById("pmLiveText").style.background = "";
       document.getElementById("pmMatchIndicator").textContent = "";
@@ -1166,7 +1190,7 @@
           const text = (result.text || "").trim();
           console.log("Test Groq heard:", text);
 
-          const wk = (currentSettings.wakeWord || "").toLowerCase().trim();
+          const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
           const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
 
           if (text.length === 0) {
@@ -1176,11 +1200,14 @@
 
           if (liveEl) { liveEl.textContent = '🗣️ Duyulan: "' + text + '"'; liveEl.style.color = "var(--text-1)"; }
 
-          if (norm(text).includes(norm(wk))) {
+          const nText = norm(text);
+          const matchedWord = wakeWords.find(w => w.length >= 2 && nText.includes(norm(w)));
+
+          if (matchedWord) {
             // SUCCESS
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(wk) + '" algilandi! Test basarili!</span>';
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
 
             document.getElementById("pmActivateSection").style.display = "block";
 
@@ -1192,12 +1219,12 @@
               btn.style.background = "rgba(16,185,129,0.08)";
             }, 2500);
           } else {
+            const wordsStr = wakeWords.map(w => '"' + w + '"').join(" veya ");
             if (matchEl) matchEl.innerHTML = '<span style="color:#F59E0B">⚠️ Duyulan: "' + esc(text) + '" — kelime eslesmiyor, tekrar deneyin</span>';
-            // Keep listening — don't stop, let them try again
             if (liveEl) {
               setTimeout(() => {
                 if (pmTestListening) {
-                  liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
+                  liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi ' + esc(wordsStr) + ' deyin...</span>';
                   liveEl.style.color = "";
                 }
               }, 2000);

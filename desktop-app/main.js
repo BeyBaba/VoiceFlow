@@ -274,8 +274,12 @@ function createHomeWindow(navigateTo) {
     }
   });
 
-  homeWindow.on("closed", () => {
-    homeWindow = null;
+  // Don't destroy on close — hide instead (keeps Power Mode mic alive)
+  homeWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      homeWindow.hide();
+    }
   });
 }
 
@@ -375,7 +379,7 @@ function createTray() {
       click: () => {
         app.isQuitting = true;
         if (pillWindow) pillWindow.destroy();
-        if (homeWindow) homeWindow.destroy();
+        if (homeWindow && !homeWindow.isDestroyed()) homeWindow.destroy();
         if (mainWindow) mainWindow.destroy();
         app.quit();
       },
@@ -469,7 +473,7 @@ function rebuildTrayMenu() {
         click: () => {
           app.isQuitting = true;
           if (pillWindow) pillWindow.destroy();
-          if (homeWindow) homeWindow.destroy();
+          if (homeWindow && !homeWindow.isDestroyed()) homeWindow.destroy();
           if (mainWindow) mainWindow.destroy();
           app.quit();
         },
@@ -934,8 +938,10 @@ ipcMain.on("reset-settings", () => {
 
   // Re-open home window → will show login page (no auth)
   if (homeWindow && !homeWindow.isDestroyed()) {
+    app.isQuitting = true; // allow real close
     homeWindow.close();
     homeWindow = null;
+    app.isQuitting = false;
   }
   createHomeWindow();
 });
