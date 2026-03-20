@@ -794,10 +794,10 @@
         updatePowerModeUI("loading");
 
         pmStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
         });
 
-        pmAudioCtx = new AudioContext({ sampleRate: 16000 });
+        pmAudioCtx = new AudioContext();
         const source = pmAudioCtx.createMediaStreamSource(pmStream);
         pmAnalyser = pmAudioCtx.createAnalyser();
         pmAnalyser.fftSize = 512;
@@ -1024,34 +1024,44 @@
 
     document.getElementById("pmTestBtn").addEventListener("click", async function() {
       const wakeWord = document.getElementById("sWakeWord").value.trim();
-      if (wakeWord.length < 2) { showToast("Once uyanma kelimesi yazin!"); return; }
+      if (wakeWord.length < 2) { showToast("Once uyanma kelimesi yazin (en az 2 harf)!"); return; }
       saveSetting("wakeWord", wakeWord);
 
       const testArea = document.getElementById("pmTestArea");
       const btn = this;
 
       if (pmTestListening) {
-        // Stop test
         pmStopTest();
         btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
         btn.style.borderColor = "";
         btn.style.background = "";
+        testArea.style.display = "none";
         return;
       }
 
-      // Start test
+      // Full state reset before starting
+      pmStopTest();
+      pmTestSpeechDetected = false;
+      pmTestSpeechStart = 0;
+      pmTestRecorder = null;
+      pmTestRecordChunks = [];
+
       btn.textContent = "⏹️ Testi Durdur";
       btn.style.borderColor = "#EF4444";
+      btn.style.background = "";
       testArea.style.display = "block";
       document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wakeWord) + '" deyin...</span>';
+      document.getElementById("pmLiveText").style.borderColor = "";
+      document.getElementById("pmLiveText").style.background = "";
       document.getElementById("pmMatchIndicator").textContent = "";
 
       try {
         pmTestStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
         });
 
-        pmTestCtx = new AudioContext({ sampleRate: 16000 });
+        // Use default sample rate — don't force 16000 (some systems reject it)
+        pmTestCtx = new AudioContext();
         const source = pmTestCtx.createMediaStreamSource(pmTestStream);
         pmTestAnalyser = pmTestCtx.createAnalyser();
         pmTestAnalyser.fftSize = 512;
@@ -1060,6 +1070,8 @@
         const dataArray = new Uint8Array(pmTestAnalyser.frequencyBinCount);
         pmTestListening = true;
         pmTestSpeechDetected = false;
+
+        console.log("Test mic started, sampleRate:", pmTestCtx.sampleRate);
 
         pmTestInterval = setInterval(() => {
           if (!pmTestAnalyser || !pmTestListening) return;
@@ -1073,11 +1085,10 @@
           if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
           if (num) num.textContent = Math.round(avg);
 
-          if (avg > 12) {
+          if (avg > 8) {
             if (!pmTestSpeechDetected) {
               pmTestSpeechDetected = true;
               pmTestSpeechStart = Date.now();
-              // Start recording on speech start
               if (!pmTestRecorder && pmTestStream) {
                 try {
                   const mt = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
@@ -1085,41 +1096,52 @@
                   pmTestRecordChunks = [];
                   pmTestRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmTestRecordChunks.push(e.data); };
                   pmTestRecorder.start(100);
+                  console.log("Test recorder started");
                 } catch(e) { console.error("Test recorder start error:", e); pmTestRecorder = null; }
               }
             }
           } else if (pmTestSpeechDetected) {
             const dur = Date.now() - pmTestSpeechStart;
-            if (dur > 300 && dur < 5000) {
+            if (dur > 400 && dur < 8000) {
               pmTestSpeechDetected = false;
               if (pmTestRecorder && pmTestRecorder.state === "recording") {
                 const rec = pmTestRecorder;
-                const chunks = pmTestRecordChunks;
+                const chunks = [...pmTestRecordChunks];
                 pmTestRecorder = null;
                 pmTestRecordChunks = [];
                 rec.onstop = () => { pmTestCapture(chunks, rec.mimeType); };
-                rec.stop();
+                try { rec.stop(); } catch(e) { console.error("rec.stop error:", e); }
               }
+            } else if (dur >= 8000) {
+              pmTestSpeechDetected = false;
+              if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} pmTestRecorder = null; pmTestRecordChunks = []; }
             }
-            if (avg < 3) { pmTestSpeechDetected = false; if (pmTestRecorder && pmTestRecorder.state === "recording") { pmTestRecorder.stop(); pmTestRecorder = null; pmTestRecordChunks = []; } }
+            if (avg < 2) { pmTestSpeechDetected = false; if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} pmTestRecorder = null; pmTestRecordChunks = []; } }
           }
         }, 50);
       } catch (err) {
-        showToast("Mikrofon erisimi yok!");
+        console.error("Test mic error:", err);
+        showToast("Mikrofon erisimi yok! Hata: " + err.message);
         btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
         btn.style.borderColor = "";
+        testArea.style.display = "none";
       }
     });
 
     async function pmTestCapture(chunks, mimeType) {
       if (!pmTestListening) return;
       const liveEl = document.getElementById("pmLiveText");
-      if (liveEl) { liveEl.textContent = "Dinleniyor, kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
+      const matchEl = document.getElementById("pmMatchIndicator");
+      if (liveEl) { liveEl.textContent = "🔄 Ses kontrol ediliyor..."; liveEl.style.color = "#F59E0B"; }
 
       try {
         if (!mimeType) mimeType = "audio/webm;codecs=opus";
         const blob = new Blob(chunks, { type: mimeType });
-        if (blob.size < 500) return;
+        console.log("Test blob size:", blob.size);
+        if (blob.size < 200) {
+          if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Ses cok kisa, tekrar deneyin...</span>';
+          return;
+        }
 
         const fd = new FormData();
         fd.append("file", blob, "test.webm");
@@ -1128,54 +1150,88 @@
         fd.append("temperature", "0");
         fd.append("response_format", "json");
 
+        const apiKey = currentSettings.apiKey;
+        if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
+
         const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
-          headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+          headers: { "Authorization": "Bearer " + apiKey },
           body: fd,
         });
+
+        console.log("Test Groq response status:", resp.status);
 
         if (resp.ok) {
           const result = await resp.json();
           const text = (result.text || "").trim();
-          const wk = (currentSettings.wakeWord || "").toLowerCase();
-          const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
+          console.log("Test Groq heard:", text);
 
-          if (liveEl) { liveEl.textContent = text || "(sessizlik)"; liveEl.style.color = "var(--text-1)"; }
+          const wk = (currentSettings.wakeWord || "").toLowerCase().trim();
+          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
 
-          const matchEl = document.getElementById("pmMatchIndicator");
-          if (text.length > 0 && norm(text).includes(norm(wk))) {
-            // SUCCESS — wake word detected in test!
+          if (text.length === 0) {
+            if (liveEl) { liveEl.textContent = "(sessizlik — tekrar deneyin)"; liveEl.style.color = "var(--text-3)"; }
+            return;
+          }
+
+          if (liveEl) { liveEl.textContent = '🗣️ Duyulan: "' + text + '"'; liveEl.style.color = "var(--text-1)"; }
+
+          if (norm(text).includes(norm(wk))) {
+            // SUCCESS
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(wk) + '" algilandi! Test basarili!</span>';
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(wk) + '" algilandi! Test basarili!</span>';
 
-            // Show activate section
             document.getElementById("pmActivateSection").style.display = "block";
 
-            // Stop test after success
             setTimeout(() => {
               pmStopTest();
-              document.getElementById("pmTestBtn").textContent = "✅ Test Basarili — Tekrar Dene";
-              document.getElementById("pmTestBtn").style.borderColor = "#10B981";
-              document.getElementById("pmTestBtn").style.background = "rgba(16,185,129,0.08)";
-              if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; }
-            }, 2000);
-          } else if (text.length > 0) {
-            if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-2)">Duyulan: "' + esc(text) + '" — tekrar deneyin</span>';
-            if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
+              const btn = document.getElementById("pmTestBtn");
+              btn.textContent = "✅ Test Basarili — Tekrar Dene";
+              btn.style.borderColor = "#10B981";
+              btn.style.background = "rgba(16,185,129,0.08)";
+            }, 2500);
+          } else {
+            if (matchEl) matchEl.innerHTML = '<span style="color:#F59E0B">⚠️ Duyulan: "' + esc(text) + '" — kelime eslesmiyor, tekrar deneyin</span>';
+            // Keep listening — don't stop, let them try again
+            if (liveEl) {
+              setTimeout(() => {
+                if (pmTestListening) {
+                  liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
+                  liveEl.style.color = "";
+                }
+              }, 2000);
+            }
           }
+        } else {
+          const errText = await resp.text();
+          console.error("Test Groq error:", resp.status, errText);
+          if (liveEl) { liveEl.textContent = "API hatasi: " + resp.status; liveEl.style.color = "#EF4444"; }
         }
-      } catch (err) { console.error("Test Groq error:", err); }
+      } catch (err) {
+        console.error("Test Groq request error:", err);
+        if (liveEl) { liveEl.textContent = "Baglanti hatasi: " + err.message; liveEl.style.color = "#EF4444"; }
+      }
     }
 
     function pmStopTest() {
+      console.log("pmStopTest called");
       pmTestListening = false;
-      if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} }
-      pmTestRecorder = null;
+      pmTestSpeechDetected = false;
+      if (pmTestRecorder) {
+        try { if (pmTestRecorder.state === "recording") pmTestRecorder.stop(); } catch(e){}
+        pmTestRecorder = null;
+      }
       pmTestRecordChunks = [];
       if (pmTestInterval) { clearInterval(pmTestInterval); pmTestInterval = null; }
-      if (pmTestStream) { pmTestStream.getTracks().forEach(t => t.stop()); pmTestStream = null; }
-      if (pmTestCtx) { pmTestCtx.close().catch(()=>{}); pmTestCtx = null; }
+      if (pmTestStream) {
+        try { pmTestStream.getTracks().forEach(t => t.stop()); } catch(e){}
+        pmTestStream = null;
+      }
+      if (pmTestCtx) {
+        try { pmTestCtx.close(); } catch(e){}
+        pmTestCtx = null;
+      }
       pmTestAnalyser = null;
     }
 
