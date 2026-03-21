@@ -871,6 +871,11 @@ ipcMain.on("recording-state", (event, state) => {
   isRecording = state;
   updatePillState(state ? "recording" : "idle");
 
+  // Notify home window about recording state (for watchdog)
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.webContents.send("dictation-state", state);
+  }
+
   // When recording stops, resume power mode listening in home window
   if (!state && powerModeActive) {
     setTimeout(() => {

@@ -824,6 +824,7 @@
         const dataArray = new Uint8Array(pmAnalyser.frequencyBinCount);
         pmIsListening = true;
         updatePowerModeUI("listening");
+        pmStartWatchdog(); // Start watchdog to keep Power Mode alive
 
         pmCheckInterval = setInterval(() => {
           if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
@@ -961,6 +962,7 @@
     function pmStop() {
       pmIsListening = false;
       pmIsCapturing = false;
+      pmStopWatchdog(); // Stop watchdog
       if (pmRecorder && pmRecorder.state === "recording") { try { pmRecorder.stop(); } catch(e){} }
       pmRecorder = null;
       pmRecordChunks = [];
@@ -992,6 +994,74 @@
       pmStop();
       setTimeout(() => pmStart(), 500);
     }
+
+    // ===== WATCHDOG: Keep Power Mode alive =====
+    // Checks every 30s if AudioContext/mic stream died and restarts
+    let pmWatchdogInterval = null;
+    function pmStartWatchdog() {
+      if (pmWatchdogInterval) clearInterval(pmWatchdogInterval);
+      pmWatchdogInterval = setInterval(() => {
+        // Only check if power mode should be active
+        if (!currentSettings.powerMode) return;
+
+        const ctxState = pmAudioCtx ? pmAudioCtx.state : "none";
+        const streamActive = pmStream ? pmStream.active : false;
+        const tracksLive = pmStream ? pmStream.getAudioTracks().some(t => t.readyState === "live") : false;
+
+        console.log("PM Watchdog: listening=" + pmIsListening + " ctx=" + ctxState + " stream=" + streamActive + " tracks=" + tracksLive);
+
+        // Case 1: AudioContext suspended unexpectedly (not during dictation)
+        if (pmIsListening && pmAudioCtx && ctxState === "suspended" && !isRecordingActive()) {
+          console.log("PM Watchdog: AudioContext suspended, resuming...");
+          pmAudioCtx.resume().then(() => {
+            console.log("PM Watchdog: AudioContext resumed OK");
+          }).catch(e => {
+            console.error("PM Watchdog: AudioContext resume failed, restarting...");
+            pmStop();
+            setTimeout(() => pmStart(), 1000);
+          });
+          return;
+        }
+
+        // Case 2: Stream died (mic disconnected, system sleep, etc.)
+        if (pmIsListening && (!streamActive || !tracksLive)) {
+          console.log("PM Watchdog: Mic stream died, restarting Power Mode...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+
+        // Case 3: Should be listening but isn't (stuck state)
+        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive()) {
+          console.log("PM Watchdog: Power Mode stuck, restarting...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+
+        // Case 4: AudioContext closed unexpectedly
+        if (pmIsListening && (!pmAudioCtx || ctxState === "closed")) {
+          console.log("PM Watchdog: AudioContext closed, restarting...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+      }, 30000); // Check every 30 seconds
+    }
+
+    function pmStopWatchdog() {
+      if (pmWatchdogInterval) { clearInterval(pmWatchdogInterval); pmWatchdogInterval = null; }
+    }
+
+    // Track dictation state from main process
+    let pmDictationActive = false;
+    if (window.voiceflow.onDictationState) {
+      window.voiceflow.onDictationState((state) => {
+        pmDictationActive = state;
+        console.log("Dictation state:", state);
+      });
+    }
+    function isRecordingActive() { return pmDictationActive; }
 
     // POWER MODE UI
     function updatePowerModeUI(status) {
