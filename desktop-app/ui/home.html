@@ -1001,9 +1001,12 @@
       updatePowerModeUI("off");
     }
 
+    let pmPauseTime = 0; // Track when we paused (for watchdog grace period)
     function pmPause() {
       if (pmAudioCtx && pmAudioCtx.state === "running") pmAudioCtx.suspend();
       pmIsListening = false;
+      pmPauseTime = Date.now();
+      console.log("pmPause: paused at", pmPauseTime);
     }
 
     function pmResume() {
@@ -1060,8 +1063,10 @@
         }
 
         // Case 3: Should be listening but isn't (stuck state)
-        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive()) {
-          console.log("PM Watchdog: Power Mode stuck, restarting...");
+        // Grace period: don't restart within 30s of a pause (dikte transition)
+        const timeSincePause = Date.now() - pmPauseTime;
+        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive() && timeSincePause > 30000) {
+          console.log("PM Watchdog: Power Mode stuck (paused " + Math.round(timeSincePause/1000) + "s ago), restarting...");
           pmStop();
           setTimeout(() => pmStart(), 1000);
           return;
