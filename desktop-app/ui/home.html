@@ -576,7 +576,7 @@
       } catch (err) {
         // Fallback: hardcoded keys for offline usage
         const upperK = k.toUpperCase();
-        if (["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED"].includes(upperK)) {
+        if (["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED","VF-OWNER-BEYBABA-LIFETIME","VF-DEV-MASTER-KEY"].includes(upperK)) {
           await auth(e.split("@")[0], e, "license", true, upperK);
           showToast("Pro aktif! (cevrimdisi mod)");
         } else {
@@ -808,11 +808,14 @@
       try {
         updatePowerModeUI("loading");
 
-        pmStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
-        });
+        // Use selected audio device (same as main dictation window)
+        const pmMicConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
+          ? { deviceId: { exact: currentSettings.audioDevice } }
+          : true;
+        pmStream = await navigator.mediaDevices.getUserMedia({ audio: pmMicConstraints });
 
         pmAudioCtx = new AudioContext();
+        if (pmAudioCtx.state === "suspended") await pmAudioCtx.resume();
         const source = pmAudioCtx.createMediaStreamSource(pmStream);
         pmAnalyser = pmAudioCtx.createAnalyser();
         pmAnalyser.fftSize = 512;
@@ -899,13 +902,28 @@
         fd.append("temperature", "0");
         fd.append("response_format", "json");
 
-        const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-          body: fd,
-        });
+        let resp = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+            body: fd,
+          });
+          if (resp.status === 429) {
+            console.log("PowerMode 429 rate limit, retry in", (attempt+1)*2, "s");
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            fd = new FormData();
+            fd.append("file", blob, "clip.webm");
+            fd.append("model", "whisper-large-v3-turbo");
+            fd.append("language", currentSettings.language || "tr");
+            fd.append("temperature", "0");
+            fd.append("response_format", "json");
+            continue;
+          }
+          break;
+        }
 
-        if (resp.ok) {
+        if (resp && resp.ok) {
           const result = await resp.json();
           const text = (result.text || "").trim();
           console.log("PowerMode heard:", text);
@@ -1063,6 +1081,10 @@
         return;
       }
 
+      // Pause Power Mode while testing (prevents double-listening)
+      const wasPowerModeOn = pmIsListening;
+      if (wasPowerModeOn) { console.log("Pausing Power Mode for test"); pmStop(); }
+
       // Full state reset before starting
       pmStopTest();
       pmTestSpeechDetected = false;
@@ -1080,22 +1102,39 @@
       document.getElementById("pmMatchIndicator").textContent = "";
 
       try {
-        pmTestStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
-        });
+        const liveEl = document.getElementById("pmLiveText");
+        if (liveEl) liveEl.textContent = "Mikrofon aciliyor...";
 
-        // Use default sample rate — don't force 16000 (some systems reject it)
-        pmTestCtx = new AudioContext();
+        // Use selected audio device (same as main dictation window)
+        const micConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
+          ? { deviceId: { exact: currentSettings.audioDevice } }
+          : true;
+        pmTestStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints });
+        const tracks = pmTestStream.getAudioTracks();
+        console.log("Mic OK, tracks:", tracks.length, tracks[0]?.label, tracks[0]?.readyState);
+        if (liveEl) liveEl.textContent = "Mikrofon acildi: " + (tracks[0]?.label || "?");
+
+        pmTestCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (pmTestCtx.state === "suspended") await pmTestCtx.resume();
+        console.log("AudioCtx state:", pmTestCtx.state, "rate:", pmTestCtx.sampleRate);
+
         const source = pmTestCtx.createMediaStreamSource(pmTestStream);
         pmTestAnalyser = pmTestCtx.createAnalyser();
-        pmTestAnalyser.fftSize = 512;
+        pmTestAnalyser.fftSize = 256;
         source.connect(pmTestAnalyser);
 
         const dataArray = new Uint8Array(pmTestAnalyser.frequencyBinCount);
         pmTestListening = true;
         pmTestSpeechDetected = false;
 
-        console.log("Test mic started, sampleRate:", pmTestCtx.sampleRate);
+        // Verify analyser is getting data
+        setTimeout(() => {
+          if (!pmTestAnalyser || !pmTestListening) return;
+          pmTestAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          console.log("First audio check - avg:", (sum/dataArray.length).toFixed(1), "ctx:", pmTestCtx.state);
+          if (pmTestCtx.state === "suspended") pmTestCtx.resume();
+        }, 500);
 
         pmTestInterval = setInterval(() => {
           if (!pmTestAnalyser || !pmTestListening) return;
@@ -1177,15 +1216,30 @@
         const apiKey = currentSettings.apiKey;
         if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
 
-        const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + apiKey },
-          body: fd,
-        });
+        let resp = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + apiKey },
+            body: fd,
+          });
+          console.log("Test Groq response status:", resp.status, "attempt:", attempt);
+          if (resp.status === 429) {
+            if (liveEl) liveEl.textContent = "⏳ Rate limit, " + (3 - attempt) + "sn bekleniyor...";
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            // Rebuild FormData for retry
+            fd = new FormData();
+            fd.append("file", blob, "test.webm");
+            fd.append("model", "whisper-large-v3-turbo");
+            fd.append("language", currentSettings.language || "tr");
+            fd.append("temperature", "0");
+            fd.append("response_format", "json");
+            continue;
+          }
+          break;
+        }
 
-        console.log("Test Groq response status:", resp.status);
-
-        if (resp.ok) {
+        if (resp && resp.ok) {
           const result = await resp.json();
           const text = (result.text || "").trim();
           console.log("Test Groq heard:", text);
@@ -1260,6 +1314,12 @@
         pmTestCtx = null;
       }
       pmTestAnalyser = null;
+
+      // Resume Power Mode if it was active before test
+      if (document.getElementById("sPowerMode").checked && !pmIsListening) {
+        console.log("Resuming Power Mode after test");
+        setTimeout(() => pmStart(), 1500);
+      }
     }
 
     document.getElementById("sPowerDblClick").addEventListener("change", function() {

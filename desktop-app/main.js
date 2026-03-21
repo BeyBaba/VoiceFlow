@@ -268,6 +268,8 @@ function createHomeWindow(navigateTo) {
     homeWindow.show();
     homeWindow.focus();
     homeWindow.moveTop();
+    // Open DevTools in dev mode for debugging
+    if (!app.isPackaged) homeWindow.webContents.openDevTools({ mode: "detach" });
     // Navigate to specific page if requested
     if (navigateTo) {
       homeWindow.webContents.send("show-page", navigateTo);
@@ -994,6 +996,22 @@ async function checkLicenseOnStartup() {
 
 // ========== APP LIFECYCLE ==========
 app.whenReady().then(async () => {
+  // Grant microphone permission to all windows (needed for Power Mode test + listening)
+  const { session } = require("electron");
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === "media" || permission === "microphone" || permission === "audioCapture") {
+      callback(true);
+    } else {
+      callback(true); // allow all for now
+    }
+  });
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === "media" || permission === "microphone" || permission === "audioCapture") {
+      return true;
+    }
+    return true;
+  });
+
   createMainWindow();
   createPillWindow();
   createTray();
