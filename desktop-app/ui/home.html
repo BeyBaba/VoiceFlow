@@ -797,7 +797,7 @@
     let pmSpeechStart = 0;
     let pmRecorder = null;
     let pmRecordChunks = [];
-    const PM_THRESHOLD = 12;
+    const PM_THRESHOLD = 20;  // Higher = less false triggers from background noise
     const PM_COOLDOWN = 4000;
 
     async function pmStart() {
@@ -855,7 +855,7 @@
             }
           } else if (pmSpeechDetected) {
             const duration = Date.now() - pmSpeechStart;
-            if (duration > 300 && duration < 5000) {
+            if (duration > 600 && duration < 5000) {
               pmSpeechDetected = false;
               // Stop recorder and send the captured clip
               if (pmRecorder && pmRecorder.state === "recording") {
@@ -895,8 +895,7 @@
         const blob = new Blob(chunks, { type: mimeType });
         if (blob.size < 500) { pmIsCapturing = false; return; }
 
-        // Build prompt hint with wake words for better Turkish recognition
-        const wakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
+        // No prompt hint for power mode — prevents Whisper hallucinating wake words from noise
         const buildFormData = () => {
           const f = new FormData();
           f.append("file", blob, "clip.webm");
@@ -904,7 +903,6 @@
           f.append("language", currentSettings.language || "tr");
           f.append("temperature", "0");
           f.append("response_format", "json");
-          if (wakeHint) f.append("prompt", wakeHint);
           return f;
         };
 
