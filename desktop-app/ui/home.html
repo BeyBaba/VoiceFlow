@@ -786,6 +786,34 @@
     setupSettingsListeners();
 
     // POWER MODE — runs directly in this window (no hidden window needed)
+
+    // Fuzzy Turkish matching helpers (global scope for both test + power mode)
+    function levenshtein(a, b) {
+      const m = a.length, n = b.length;
+      const d = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i === 0 ? j : j === 0 ? i : 0));
+      for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+          d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
+      return d[m][n];
+    }
+    function fuzzyMatch(heard, target) {
+      if (heard.includes(target)) return true;
+      const words = heard.split(/\s+/);
+      for (const w of words) {
+        if (w === target) return true;
+        const maxDist = target.length <= 4 ? 1 : 2;
+        if (levenshtein(w, target) <= maxDist) return true;
+      }
+      if (target.length >= 3) {
+        for (const w of words) {
+          if (w.length >= target.length - 1 && w.length <= target.length + 1) {
+            if (levenshtein(w, target) <= 2) return true;
+          }
+        }
+      }
+      return false;
+    }
+
     let pmStream = null;
     let pmAudioCtx = null;
     let pmAnalyser = null;
@@ -931,11 +959,11 @@
             if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
             const matchEl = document.getElementById("pmMatchIndicator");
 
-            // Check wake words (multi-command support)
+            // Check wake words (multi-command support) with fuzzy Turkish matching
             const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
-            const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
+            const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
             const nText = norm(text);
-            const matchedWord = wakeWords.find(w => w.length >= 2 && nText.includes(norm(w)));
+            const matchedWord = wakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
 
             if (matchedWord) {
               pmLastWakeTime = Date.now();
@@ -1046,7 +1074,7 @@
           setTimeout(() => pmStart(), 1000);
           return;
         }
-      }, 30000); // Check every 30 seconds
+      }, 10000); // Check every 10 seconds for faster recovery
     }
 
     function pmStopWatchdog() {
@@ -1327,7 +1355,7 @@
           console.log("Test Groq heard:", text);
 
           const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
-          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
+          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
 
           if (text.length === 0) {
             if (liveEl) { liveEl.textContent = "(sessizlik — tekrar deneyin)"; liveEl.style.color = "var(--text-3)"; }
@@ -1337,7 +1365,8 @@
           if (liveEl) { liveEl.textContent = '🗣️ Duyulan: "' + text + '"'; liveEl.style.color = "var(--text-1)"; }
 
           const nText = norm(text);
-          const matchedWord = wakeWords.find(w => w.length >= 2 && nText.includes(norm(w)));
+          // Use same fuzzy matching as power mode (levenshtein defined above)
+          const matchedWord = wakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
 
           if (matchedWord) {
             // SUCCESS
