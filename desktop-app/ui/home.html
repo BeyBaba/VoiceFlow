@@ -797,18 +797,17 @@
       return d[m][n];
     }
     function fuzzyMatch(heard, target) {
+      // Exact include check
       if (heard.includes(target)) return true;
       const words = heard.split(/\s+/);
       for (const w of words) {
         if (w === target) return true;
-        const maxDist = target.length <= 4 ? 1 : 2;
-        if (levenshtein(w, target) <= maxDist) return true;
-      }
-      if (target.length >= 3) {
-        for (const w of words) {
-          if (w.length >= target.length - 1 && w.length <= target.length + 1) {
-            if (levenshtein(w, target) <= 2) return true;
-          }
+        // Short words (≤4 chars): only allow distance 1 for words of similar length
+        if (target.length <= 4) {
+          if (Math.abs(w.length - target.length) <= 1 && levenshtein(w, target) <= 1) return true;
+        } else {
+          // Longer words: allow distance 2
+          if (levenshtein(w, target) <= 2) return true;
         }
       }
       return false;
@@ -825,7 +824,7 @@
     let pmSpeechStart = 0;
     let pmRecorder = null;
     let pmRecordChunks = [];
-    const PM_THRESHOLD = 20;  // Higher = less false triggers from background noise
+    const PM_THRESHOLD = 30;  // Higher = less false triggers from background noise
     const PM_COOLDOWN = 4000;
 
     async function pmStart() {
@@ -884,7 +883,7 @@
             }
           } else if (pmSpeechDetected) {
             const duration = Date.now() - pmSpeechStart;
-            if (duration > 600 && duration < 5000) {
+            if (duration > 800 && duration < 5000) {
               pmSpeechDetected = false;
               // Stop recorder and send the captured clip
               if (pmRecorder && pmRecorder.state === "recording") {
@@ -955,7 +954,12 @@
           const text = (result.text || "").trim();
           console.log("PowerMode heard:", text);
 
-          if (text.length > 0) {
+          // Filter out Whisper hallucinations: too short, repeated chars, common noise artifacts
+          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "alt yazı", "altyazı", "abone", "subscribe", "like"];
+          const cleanText = text.replace(/[.,!?;:'"·\-–—…\s]/g, "").toLowerCase();
+          const isHallucination = text.length <= 1 || cleanText.length <= 1 || hallucinations.includes(text.toLowerCase().trim()) || /^(.)\1{2,}$/.test(cleanText) || text.length > 100;
+
+          if (text.length > 0 && !isHallucination) {
             if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
             const matchEl = document.getElementById("pmMatchIndicator");
 
