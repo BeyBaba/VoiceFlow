@@ -895,29 +895,29 @@
         const blob = new Blob(chunks, { type: mimeType });
         if (blob.size < 500) { pmIsCapturing = false; return; }
 
-        const fd = new FormData();
-        fd.append("file", blob, "clip.webm");
-        fd.append("model", "whisper-large-v3-turbo");
-        fd.append("language", currentSettings.language || "tr");
-        fd.append("temperature", "0");
-        fd.append("response_format", "json");
+        // Build prompt hint with wake words for better Turkish recognition
+        const wakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
+        const buildFormData = () => {
+          const f = new FormData();
+          f.append("file", blob, "clip.webm");
+          f.append("model", "whisper-large-v3-turbo");
+          f.append("language", currentSettings.language || "tr");
+          f.append("temperature", "0");
+          f.append("response_format", "json");
+          if (wakeHint) f.append("prompt", wakeHint);
+          return f;
+        };
 
         let resp = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-            body: fd,
+            body: buildFormData(),
           });
           if (resp.status === 429) {
-            console.log("PowerMode 429 rate limit, retry in", (attempt+1)*2, "s");
+            console.log("PowerMode 429, retry", attempt+1);
             await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
-            fd = new FormData();
-            fd.append("file", blob, "clip.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
             continue;
           }
           break;
@@ -1221,34 +1221,33 @@
           return;
         }
 
-        const fd = new FormData();
-        fd.append("file", blob, "test.webm");
-        fd.append("model", "whisper-large-v3-turbo");
-        fd.append("language", currentSettings.language || "tr");
-        fd.append("temperature", "0");
-        fd.append("response_format", "json");
-
         const apiKey = currentSettings.apiKey;
         if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
+
+        // Build prompt hint with wake words for better Turkish recognition
+        const testWakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
+        const buildTestFD = () => {
+          const f = new FormData();
+          f.append("file", blob, "test.webm");
+          f.append("model", "whisper-large-v3-turbo");
+          f.append("language", currentSettings.language || "tr");
+          f.append("temperature", "0");
+          f.append("response_format", "json");
+          if (testWakeHint) f.append("prompt", testWakeHint);
+          return f;
+        };
 
         let resp = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + apiKey },
-            body: fd,
+            body: buildTestFD(),
           });
-          console.log("Test Groq response status:", resp.status, "attempt:", attempt);
+          console.log("Test Groq status:", resp.status, "attempt:", attempt);
           if (resp.status === 429) {
-            if (liveEl) liveEl.textContent = "⏳ Rate limit, " + (3 - attempt) + "sn bekleniyor...";
+            if (liveEl) liveEl.textContent = "⏳ Rate limit, bekleniyor...";
             await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
-            // Rebuild FormData for retry
-            fd = new FormData();
-            fd.append("file", blob, "test.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
             continue;
           }
           break;

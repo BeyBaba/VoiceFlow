@@ -257,6 +257,7 @@ function createHomeWindow(navigateTo) {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false, // Keep mic/AudioContext alive when minimized/hidden
     },
   });
 
