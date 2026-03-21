@@ -737,7 +737,7 @@
       document.getElementById("sWakeWord3").value = ww[2] || "";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
       document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
-      if(s.powerMode) { setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
+      if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -979,7 +979,20 @@
     }
 
     function pmResume() {
-      if (pmAudioCtx && pmAudioCtx.state === "suspended") { pmAudioCtx.resume(); pmIsListening = true; }
+      console.log("pmResume called, ctx:", pmAudioCtx?.state, "stream:", pmStream?.active, "listening:", pmIsListening);
+      // If AudioContext is still alive, just resume
+      if (pmAudioCtx && pmAudioCtx.state === "suspended" && pmStream && pmStream.active) {
+        pmAudioCtx.resume();
+        pmIsListening = true;
+        pmIsCapturing = false;
+        updatePowerModeUI("listening");
+        console.log("pmResume: resumed existing context");
+        return;
+      }
+      // Otherwise, full restart
+      console.log("pmResume: full restart needed");
+      pmStop();
+      setTimeout(() => pmStart(), 500);
     }
 
     // POWER MODE UI
@@ -1024,6 +1037,8 @@
       const enabled = this.checked;
       saveSetting("powerMode", enabled);
       document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
+      // CRITICAL: Notify main process so it knows to send resume signals
+      window.voiceflow.togglePowerMode(enabled);
       if (enabled) pmStart();
       else pmStop();
     });
