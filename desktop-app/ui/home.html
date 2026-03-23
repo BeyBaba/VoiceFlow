@@ -802,12 +802,14 @@
       const words = heard.split(/\s+/);
       for (const w of words) {
         if (w === target) return true;
-        // Short words (≤4 chars): only allow distance 1 for words of similar length
-        if (target.length <= 4) {
+        // Very short words (≤3 chars like "hey"): EXACT match only, no fuzzy
+        if (target.length <= 3) continue;
+        // Medium words (4-5 chars): allow distance 1, same length only
+        if (target.length <= 5) {
           if (Math.abs(w.length - target.length) <= 1 && levenshtein(w, target) <= 1) return true;
         } else {
-          // Longer words: allow distance 2
-          if (levenshtein(w, target) <= 2) return true;
+          // Longer words (6+ chars): allow distance 2
+          if (Math.abs(w.length - target.length) <= 2 && levenshtein(w, target) <= 2) return true;
         }
       }
       return false;
@@ -824,8 +826,10 @@
     let pmSpeechStart = 0;
     let pmRecorder = null;
     let pmRecordChunks = [];
-    const PM_THRESHOLD = 30;  // Higher = less false triggers from background noise
-    const PM_COOLDOWN = 4000;
+    const PM_THRESHOLD = 35;  // Higher = less false triggers from background noise
+    const PM_COOLDOWN = 5000;
+    const PM_MIN_SPEECH_MS = 800; // Minimum speech duration before sending to Groq
+    const PM_MIN_BLOB = 2000; // Minimum blob size (bytes) to avoid noise clips
 
     async function pmStart() {
       if (pmIsListening) return;
@@ -883,7 +887,7 @@
             }
           } else if (pmSpeechDetected) {
             const duration = Date.now() - pmSpeechStart;
-            if (duration > 800 && duration < 5000) {
+            if (duration > PM_MIN_SPEECH_MS && duration < 5000) {
               pmSpeechDetected = false;
               // Stop recorder and send the captured clip
               if (pmRecorder && pmRecorder.state === "recording") {
@@ -921,7 +925,7 @@
       try {
         if (!mimeType) mimeType = "audio/webm;codecs=opus";
         const blob = new Blob(chunks, { type: mimeType });
-        if (blob.size < 500) { pmIsCapturing = false; return; }
+        if (blob.size < PM_MIN_BLOB) { pmIsCapturing = false; console.log("PM clip too small:", blob.size); return; }
 
         // No prompt hint for power mode — prevents Whisper hallucinating wake words from noise
         const buildFormData = () => {
@@ -954,10 +958,11 @@
           const text = (result.text || "").trim();
           console.log("PowerMode heard:", text);
 
-          // Filter out Whisper hallucinations: too short, repeated chars, common noise artifacts
-          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "alt yazı", "altyazı", "abone", "subscribe", "like"];
+          // Filter out Whisper hallucinations
+          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah"];
           const cleanText = text.replace(/[.,!?;:'"·\-–—…\s]/g, "").toLowerCase();
           const isHallucination = text.length <= 1 || cleanText.length <= 1 || hallucinations.includes(text.toLowerCase().trim()) || /^(.)\1{2,}$/.test(cleanText) || text.length > 100;
+          console.log("PM filter: text='" + text + "' clean='" + cleanText + "' hall=" + isHallucination);
 
           if (text.length > 0 && !isHallucination) {
             if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
@@ -1067,9 +1072,9 @@
         }
 
         // Case 3: Should be listening but isn't (stuck state)
-        // Grace period: don't restart within 30s of a pause (dikte transition)
+        // Grace period: don't restart within 60s of a pause (dikte transition + user interaction)
         const timeSincePause = Date.now() - pmPauseTime;
-        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive() && timeSincePause > 30000) {
+        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive() && timeSincePause > 60000) {
           console.log("PM Watchdog: Power Mode stuck (paused " + Math.round(timeSincePause/1000) + "s ago), restarting...");
           pmStop();
           setTimeout(() => pmStart(), 1000);
