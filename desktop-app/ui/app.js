@@ -486,8 +486,29 @@ async function startRecording() {
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-    const mimeType = cachedSettings.audioFormat === "wav" ? "audio/wav" : "audio/webm;codecs=opus";
-    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    // Determine best supported audio format
+    let mimeType;
+    if (cachedSettings.audioFormat === "wav") {
+      mimeType = "audio/wav";
+    } else {
+      // Try formats in order of preference — webm/opus may not work on Windows
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+        "",  // empty = browser default
+      ];
+      mimeType = candidates.find(m => m === "" || MediaRecorder.isTypeSupported(m)) || "";
+      if (mimeType === "") {
+        console.warn("No preferred mimeType supported, using browser default");
+      } else {
+        console.log("Using audio format:", mimeType);
+      }
+    }
+
+    const recorderOptions = mimeType ? { mimeType } : {};
+    mediaRecorder = new MediaRecorder(stream, recorderOptions);
     audioChunks = [];
 
     mediaRecorder.ondataavailable = (e) => {
@@ -496,8 +517,30 @@ async function startRecording() {
 
     mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
-      const audioBlob = new Blob(audioChunks, { type: mimeType });
+      const blobType = mediaRecorder.mimeType || mimeType || "audio/webm";
+      const audioBlob = new Blob(audioChunks, { type: blobType });
+
+      // Check if we actually captured audio
+      if (audioBlob.size < 1000) {
+        console.warn("Audio blob too small:", audioBlob.size, "bytes");
+        showToast("Ses kaydedilemedi — mikrofonu kontrol edin");
+        isProcessing = false;
+        showView("idle");
+        window.voiceflow.resizeWindow(380, 100);
+        return;
+      }
+
+      console.log("Audio blob size:", audioBlob.size, "type:", blobType);
       await transcribe(audioBlob);
+    };
+
+    mediaRecorder.onerror = (e) => {
+      console.error("MediaRecorder error:", e.error);
+      showToast("Kayit hatasi: " + (e.error?.message || "bilinmeyen hata"));
+      isRecording = false;
+      isProcessing = false;
+      showView("idle");
+      window.voiceflow.resizeWindow(380, 100);
     };
 
     mediaRecorder.start(250);
@@ -539,9 +582,13 @@ async function transcribe(audioBlob) {
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
 
   try {
-    const ext = cachedSettings.audioFormat === "wav" ? "wav" : "webm";
-    const mime = cachedSettings.audioFormat === "wav" ? "audio/wav" : "audio/webm";
-    const file = new File([audioBlob], "recording." + ext, { type: mime });
+    // Determine file extension from actual blob type
+    const blobMime = audioBlob.type || "audio/webm";
+    let ext = "webm";
+    if (blobMime.includes("wav")) ext = "wav";
+    else if (blobMime.includes("ogg")) ext = "ogg";
+    else if (blobMime.includes("mp4") || blobMime.includes("m4a")) ext = "m4a";
+    const file = new File([audioBlob], "recording." + ext, { type: blobMime });
     const formData = new FormData();
     formData.append("file", file);
     formData.append("model", model);
@@ -582,6 +629,10 @@ async function transcribe(audioBlob) {
 
       if (response.status === 401) {
         showToast("API Key gecersiz! Ayarlardan kontrol edin.");
+      } else if (response.status === 400) {
+        showToast("Ses formati desteklenmiyor — Ayarlardan WAV formatini deneyin");
+      } else if (response.status === 413) {
+        showToast("Kayit cok uzun — daha kisa konusun");
       } else {
         showToast("Transkripsiyon hatasi: " + response.status);
       }
