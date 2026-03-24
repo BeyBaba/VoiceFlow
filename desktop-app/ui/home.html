@@ -725,7 +725,7 @@
       document.getElementById("sWakeWord").value=s.wakeWord||"";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
       document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
-      if(s.powerMode) { setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
+      if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -815,9 +815,11 @@
         updatePowerModeUI("listening");
 
         pmCheckInterval = setInterval(() => {
-          // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize)
+          // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize, or pmPause() suspends it)
           if (pmAudioCtx && pmAudioCtx.state === "suspended") {
             pmAudioCtx.resume();
+            pmIsListening = true;
+            updatePowerModeUI("listening");
             return;
           }
           if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
@@ -953,7 +955,14 @@
     }
 
     function pmResume() {
-      if (pmAudioCtx && pmAudioCtx.state === "suspended") { pmAudioCtx.resume(); pmIsListening = true; }
+      if (pmAudioCtx && pmAudioCtx.state === "suspended") {
+        pmAudioCtx.resume();
+        pmIsListening = true;
+        updatePowerModeUI("listening");
+      } else if (!pmIsListening && currentSettings.powerMode) {
+        // AudioContext was lost or closed — full restart
+        pmStart();
+      }
     }
 
     // POWER MODE UI
@@ -1011,6 +1020,7 @@
     document.getElementById("sPowerMode").addEventListener("change", function() {
       const enabled = this.checked;
       saveSetting("powerMode", enabled);
+      window.voiceflow.togglePowerMode(enabled); // Notify main process so it can resume after recording
       document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
       if (enabled) pmStart();
       else pmStop();
