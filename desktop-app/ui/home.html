@@ -658,6 +658,12 @@
       if (!isPro && trialActive && trialDays > 0) {
         planText = "Trial (" + trialDays + " gun)";
         userPlanText = "Deneme - " + trialDays + " gun";
+      } else if (!isPro && currentSettings.trialEndDate) {
+        const trialEnd = new Date(currentSettings.trialEndDate);
+        if (trialEnd <= new Date()) {
+          planText = "Suresi Doldu";
+          userPlanText = "Deneme suresi doldu";
+        }
       }
       document.getElementById("planBadge").textContent=planText;
       document.getElementById("planBadge").className="brand-badge"+(isPro?" pro":"");
@@ -688,6 +694,10 @@
         item.classList.add("active");
         document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
         document.getElementById("page-"+item.dataset.page).classList.add("active");
+        // Resume power mode audio if navigating back to guc modu page
+        if (item.dataset.page === "gucmodu" && pmIsListening && pmAudioCtx) {
+          pmAudioCtx.resume();
+        }
       });
     });
 
@@ -834,7 +844,13 @@
     async function pmStart() {
       if (pmIsListening) return;
       const apiKey = currentSettings.apiKey;
-      if (!apiKey) { showToast("API Key gerekli!"); return; }
+      if (!apiKey) {
+        showToast("Guc Modu icin API Key gerekli! Ayarlar > API Key'den girin.");
+        updatePowerModeUI("error");
+        const hint = document.getElementById("pmStatusHint");
+        if (hint) hint.textContent = "Ayarlar > API Key kismindan Groq API anahtarinizi girin.";
+        return;
+      }
 
       try {
         updatePowerModeUI("loading");
@@ -858,6 +874,13 @@
         pmStartWatchdog(); // Start watchdog to keep Power Mode alive
 
         pmCheckInterval = setInterval(() => {
+          // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize, or pmPause() suspends it)
+          if (pmAudioCtx && pmAudioCtx.state === "suspended") {
+            pmAudioCtx.resume();
+            pmIsListening = true;
+            updatePowerModeUI("listening");
+            return;
+          }
           if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
           pmAnalyser.getByteFrequencyData(dataArray);
           let sum = 0;
@@ -1142,10 +1165,25 @@
       });
     }
 
+    // Auto-resume power mode when window regains visibility or focus
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && pmIsListening && pmAudioCtx && pmAudioCtx.state === "suspended") {
+        console.log("Visibility restored — resuming power mode AudioContext");
+        pmAudioCtx.resume();
+      }
+    });
+    window.addEventListener("focus", () => {
+      if (pmIsListening && pmAudioCtx && pmAudioCtx.state === "suspended") {
+        console.log("Window focused — resuming power mode AudioContext");
+        pmAudioCtx.resume();
+      }
+    });
+
     // Power mode toggle
     document.getElementById("sPowerMode").addEventListener("change", function() {
       const enabled = this.checked;
       saveSetting("powerMode", enabled);
+      window.voiceflow.togglePowerMode(enabled); // Notify main process so it can resume after recording
       document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
       // CRITICAL: Notify main process so it knows to send resume signals
       window.voiceflow.togglePowerMode(enabled);

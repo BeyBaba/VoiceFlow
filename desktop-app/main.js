@@ -12,6 +12,7 @@ let homeWindow = null;
 let tray = null;
 let isRecording = false;
 let powerModeActive = false;
+let wakeWordTriggered = false; // Prevents blur from hiding window during wake word activation
 
 // ========== SETTINGS ==========
 function getSettingsPath() {
@@ -91,9 +92,9 @@ function createMainWindow() {
 
   mainWindow.on("blur", () => {
     const currentSettings = loadSettings();
-    if (!isRecording && currentSettings.setupComplete && currentSettings.isAuthenticated) {
+    if (!isRecording && !wakeWordTriggered && currentSettings.setupComplete && currentSettings.isAuthenticated) {
       setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed() && !isRecording) {
+        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered) {
           mainWindow.hide();
         }
       }, 200);
@@ -240,9 +241,11 @@ function createHomeWindow(navigateTo) {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = display.workAreaSize;
 
-  // Open at 63% of screen size (responsive)
-  const winWidth = Math.round(screenWidth * 0.63);
-  const winHeight = Math.round(screenHeight * 0.63);
+  // Open at 63% of screen size (responsive), cap for ultra-wide displays
+  const rawWidth = Math.round(screenWidth * 0.63);
+  const rawHeight = Math.round(screenHeight * 0.63);
+  const winWidth = Math.min(rawWidth, 1600);
+  const winHeight = Math.min(rawHeight, 1000);
 
   homeWindow = new BrowserWindow({
     width: winWidth,
@@ -274,6 +277,23 @@ function createHomeWindow(navigateTo) {
     // Navigate to specific page if requested
     if (navigateTo) {
       homeWindow.webContents.send("show-page", navigateTo);
+    }
+  });
+
+  // Resume power mode when homeWindow regains focus, is restored, or shown
+  homeWindow.on("focus", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
+    }
+  });
+  homeWindow.on("restore", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
+    }
+  });
+  homeWindow.on("show", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      homeWindow.webContents.send("power-mode-resume");
     }
   });
 
@@ -550,11 +570,20 @@ function toggleRecording() {
   const newX = Math.round((screenWidth - mainBounds.width) / 2);
   const newY = screenHeight - 52 - mainBounds.height - 12;
 
+  // Restore if minimized
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
   if (!mainWindow.isVisible()) {
     mainWindow.setPosition(newX, newY);
     mainWindow.show();
   }
+
+  // Force window to front — especially needed when called from wake word in background
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.focus();
+  mainWindow.moveTop();
 
   mainWindow.webContents.send("toggle-recording");
 }
@@ -862,8 +891,16 @@ ipcMain.on("power-mode-heard", (event, text, isPartial) => {
 ipcMain.on("wake-word-detected", () => {
   console.log("Wake word detected! isRecording:", isRecording);
 
+  // Set flag to prevent blur handler from hiding window during activation
+  wakeWordTriggered = true;
+
   // Toggle recording — wake word starts/stops dictation
   toggleRecording();
+
+  // Clear the flag after recording has had time to start
+  setTimeout(() => {
+    wakeWordTriggered = false;
+  }, 2000);
 });
 
 // Resume power mode when recording finishes
@@ -1026,8 +1063,14 @@ app.whenReady().then(async () => {
   // Always open home window on start
   createHomeWindow();
 
-  // Check license status from server (non-blocking)
-  checkLicenseOnStartup();
+  // Check license status from server (with timeout — don't block forever)
+  try {
+    const licensePromise = checkLicenseOnStartup();
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+    await Promise.race([licensePromise, timeoutPromise]);
+  } catch (err) {
+    console.log("License check skipped:", err.message);
+  }
 
   // Auto-start power mode if enabled
   const startSettings = loadSettings();
@@ -1035,12 +1078,24 @@ app.whenReady().then(async () => {
     powerModeActive = true;
   }
 
-  // Default: Windows başlatınca başlat (auto-start ON)
+  // Auto-start: enable on first run only, notify user via home window
   try {
-    const loginSettings = app.getLoginItemSettings();
-    if (!loginSettings.openAtLogin) {
+    const autoStartSettings = loadSettings();
+    if (autoStartSettings.autoStartInitialized === undefined) {
+      // First run — enable auto-start and mark as initialized
       app.setLoginItemSettings({ openAtLogin: true });
-      console.log("Auto-start enabled by default");
+      const s = loadSettings();
+      s.autoStartInitialized = true;
+      saveSettings(s);
+      console.log("Auto-start enabled on first run");
+      // Notify user after home window loads
+      if (homeWindow && !homeWindow.isDestroyed()) {
+        homeWindow.webContents.on("did-finish-load", () => {
+          homeWindow.webContents.executeJavaScript(`
+            if (typeof showToast === 'function') showToast('VoiceFlow Windows ile birlikte baslatilacak. Ayarlardan kapatabilirsiniz.');
+          `).catch(() => {});
+        });
+      }
     }
   } catch (err) {
     console.error("Auto-start setup error:", err);
