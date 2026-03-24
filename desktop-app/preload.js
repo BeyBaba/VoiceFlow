@@ -79,4 +79,7 @@ contextBridge.exposeInMainWorld("voiceflow", {
   onPowerModeResume: (callback) => {
     ipcRenderer.on("power-mode-resume", () => callback());
   },
+  onDictationState: (callback) => {
+    ipcRenderer.on("dictation-state", (event, state) => callback(state));
+  },
 });

@@ -260,6 +260,7 @@ function createHomeWindow(navigateTo) {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false, // Keep mic/AudioContext alive when minimized/hidden
     },
   });
 
@@ -271,6 +272,8 @@ function createHomeWindow(navigateTo) {
     homeWindow.show();
     homeWindow.focus();
     homeWindow.moveTop();
+    // Open DevTools in dev mode for debugging
+    if (!app.isPackaged) homeWindow.webContents.openDevTools({ mode: "detach" });
     // Navigate to specific page if requested
     if (navigateTo) {
       homeWindow.webContents.send("show-page", navigateTo);
@@ -294,8 +297,12 @@ function createHomeWindow(navigateTo) {
     }
   });
 
-  homeWindow.on("closed", () => {
-    homeWindow = null;
+  // Don't destroy on close — hide instead (keeps Power Mode mic alive)
+  homeWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      homeWindow.hide();
+    }
   });
 }
 
@@ -395,7 +402,7 @@ function createTray() {
       click: () => {
         app.isQuitting = true;
         if (pillWindow) pillWindow.destroy();
-        if (homeWindow) homeWindow.destroy();
+        if (homeWindow && !homeWindow.isDestroyed()) homeWindow.destroy();
         if (mainWindow) mainWindow.destroy();
         app.quit();
       },
@@ -489,7 +496,7 @@ function rebuildTrayMenu() {
         click: () => {
           app.isQuitting = true;
           if (pillWindow) pillWindow.destroy();
-          if (homeWindow) homeWindow.destroy();
+          if (homeWindow && !homeWindow.isDestroyed()) homeWindow.destroy();
           if (mainWindow) mainWindow.destroy();
           app.quit();
         },
@@ -901,6 +908,11 @@ ipcMain.on("recording-state", (event, state) => {
   isRecording = state;
   updatePillState(state ? "recording" : "idle");
 
+  // Notify home window about recording state (for watchdog)
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.webContents.send("dictation-state", state);
+  }
+
   // When recording stops, resume power mode listening in home window
   if (!state && powerModeActive) {
     setTimeout(() => {
@@ -971,8 +983,10 @@ ipcMain.on("reset-settings", () => {
 
   // Re-open home window → will show login page (no auth)
   if (homeWindow && !homeWindow.isDestroyed()) {
+    app.isQuitting = true; // allow real close
     homeWindow.close();
     homeWindow = null;
+    app.isQuitting = false;
   }
   createHomeWindow();
 });
@@ -1025,6 +1039,22 @@ async function checkLicenseOnStartup() {
 
 // ========== APP LIFECYCLE ==========
 app.whenReady().then(async () => {
+  // Grant microphone permission to all windows (needed for Power Mode test + listening)
+  const { session } = require("electron");
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === "media" || permission === "microphone" || permission === "audioCapture") {
+      callback(true);
+    } else {
+      callback(true); // allow all for now
+    }
+  });
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === "media" || permission === "microphone" || permission === "audioCapture") {
+      return true;
+    }
+    return true;
+  });
+
   createMainWindow();
   createPillWindow();
   createTray();

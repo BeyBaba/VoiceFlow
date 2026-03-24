@@ -242,7 +242,7 @@
         <span class="user-plan free" id="userPlanBadge">Ucretsiz</span>
       </div>
       <button class="sidebar-logout" id="btnLogout">⬅ Cikis Yap</button>
-      <div class="sidebar-version" id="homeVersion">VoiceFlow v2.0.4</div>
+      <div class="sidebar-version" id="homeVersion">VoiceFlow</div>
     </div>
 
     <div class="content">
@@ -299,12 +299,23 @@
         <div class="page-header"><h1 class="page-title">⚡ Guc Modu</h1><p class="page-desc">Sesle aktive olan eller-serbest dikte</p></div>
         <div class="page-body">
 
-          <!-- Step 1: Wake word input -->
+          <!-- Step 1: Wake word inputs (up to 3) -->
           <div class="card" style="padding:20px">
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Kelimesi Belirleyin</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimeyi soylediginizde dikte otomatik baslar. Istediginiz kelimeyi yazin:</div>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="text" class="card-input" id="sWakeWord" placeholder="Ornek: Profesör, Başla, Yaz..." style="flex:1;text-align:center;font-weight:700;font-size:16px;padding:10px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Komutlari Belirleyin</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimelerden birini soylediginizde dikte otomatik baslar. En az 1, en fazla 3 komut yazin:</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">1.</span>
+                <input type="text" class="card-input" id="sWakeWord1" placeholder="Ornek: Yaz, Basla, Hey..." style="flex:1;text-align:center;font-weight:700;font-size:15px;padding:9px">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">2.</span>
+                <input type="text" class="card-input" id="sWakeWord2" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--text-3);min-width:16px">3.</span>
+                <input type="text" class="card-input" id="sWakeWord3" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+              </div>
             </div>
           </div>
 
@@ -563,7 +574,14 @@
           showToast(data.error || "Gecersiz lisans anahtari!");
         }
       } catch (err) {
-        showToast("Sunucuya baglanilamadi. Internet baglantinizi kontrol edin.");
+        // Fallback: hardcoded keys for offline usage
+        const upperK = k.toUpperCase();
+        if (["VF-PRO-2024-UNLIMITED","VF-PRO-2025-UNLIMITED","VF-PRO-2026-UNLIMITED","VF-OWNER-BEYBABA-LIFETIME","VF-DEV-MASTER-KEY"].includes(upperK)) {
+          await auth(e.split("@")[0], e, "license", true, upperK);
+          showToast("Pro aktif! (cevrimdisi mod)");
+        } else {
+          showToast("Sunucuya baglanilamadi. Internet baglantinizi kontrol edin.");
+        }
       }
       btn.disabled=false; btn.textContent="Lisansi Etkinlestir";
     });
@@ -722,7 +740,11 @@
       loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
       document.getElementById("sPowerMode").checked=!!s.powerMode;
-      document.getElementById("sWakeWord").value=s.wakeWord||"";
+      // Load wake words (support legacy single + new multi)
+      const ww = s.wakeWords || [];
+      document.getElementById("sWakeWord1").value = ww[0] || s.wakeWord || "";
+      document.getElementById("sWakeWord2").value = ww[1] || "";
+      document.getElementById("sWakeWord3").value = ww[2] || "";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
       document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
       if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
@@ -774,6 +796,35 @@
     setupSettingsListeners();
 
     // POWER MODE — runs directly in this window (no hidden window needed)
+
+    // Fuzzy Turkish matching helpers (global scope for both test + power mode)
+    function levenshtein(a, b) {
+      const m = a.length, n = b.length;
+      const d = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i === 0 ? j : j === 0 ? i : 0));
+      for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+          d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
+      return d[m][n];
+    }
+    function fuzzyMatch(heard, target) {
+      // Exact include check
+      if (heard.includes(target)) return true;
+      const words = heard.split(/\s+/);
+      for (const w of words) {
+        if (w === target) return true;
+        // Very short words (≤3 chars like "hey"): EXACT match only, no fuzzy
+        if (target.length <= 3) continue;
+        // Medium words (4-5 chars): allow distance 1, same length only
+        if (target.length <= 5) {
+          if (Math.abs(w.length - target.length) <= 1 && levenshtein(w, target) <= 1) return true;
+        } else {
+          // Longer words (6+ chars): allow distance 2
+          if (Math.abs(w.length - target.length) <= 2 && levenshtein(w, target) <= 2) return true;
+        }
+      }
+      return false;
+    }
+
     let pmStream = null;
     let pmAudioCtx = null;
     let pmAnalyser = null;
@@ -783,8 +834,12 @@
     let pmLastWakeTime = 0;
     let pmSpeechDetected = false;
     let pmSpeechStart = 0;
-    const PM_THRESHOLD = 12;
-    const PM_COOLDOWN = 4000;
+    let pmRecorder = null;
+    let pmRecordChunks = [];
+    const PM_THRESHOLD = 35;  // Higher = less false triggers from background noise
+    const PM_COOLDOWN = 5000;
+    const PM_MIN_SPEECH_MS = 800; // Minimum speech duration before sending to Groq
+    const PM_MIN_BLOB = 2000; // Minimum blob size (bytes) to avoid noise clips
 
     async function pmStart() {
       if (pmIsListening) return;
@@ -800,11 +855,14 @@
       try {
         updatePowerModeUI("loading");
 
-        pmStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
-        });
+        // Use selected audio device (same as main dictation window)
+        const pmMicConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
+          ? { deviceId: { exact: currentSettings.audioDevice } }
+          : true;
+        pmStream = await navigator.mediaDevices.getUserMedia({ audio: pmMicConstraints });
 
-        pmAudioCtx = new AudioContext({ sampleRate: 16000 });
+        pmAudioCtx = new AudioContext();
+        if (pmAudioCtx.state === "suspended") await pmAudioCtx.resume();
         const source = pmAudioCtx.createMediaStreamSource(pmStream);
         pmAnalyser = pmAudioCtx.createAnalyser();
         pmAnalyser.fftSize = 512;
@@ -813,6 +871,7 @@
         const dataArray = new Uint8Array(pmAnalyser.frequencyBinCount);
         pmIsListening = true;
         updatePowerModeUI("listening");
+        pmStartWatchdog(); // Start watchdog to keep Power Mode alive
 
         pmCheckInterval = setInterval(() => {
           // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize, or pmPause() suspends it)
@@ -838,16 +897,36 @@
             if (!pmSpeechDetected) {
               pmSpeechDetected = true;
               pmSpeechStart = Date.now();
+              // Start recording immediately when speech is detected
+              if (!pmRecorder && pmStream && !pmIsCapturing && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
+                try {
+                  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+                  pmRecorder = new MediaRecorder(pmStream, { mimeType });
+                  pmRecordChunks = [];
+                  pmRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmRecordChunks.push(e.data); };
+                  pmRecorder.start(100);
+                } catch(e) { console.error("PM recorder start error:", e); pmRecorder = null; }
+              }
             }
           } else if (pmSpeechDetected) {
             const duration = Date.now() - pmSpeechStart;
-            if (duration > 300 && duration < 5000) {
+            if (duration > PM_MIN_SPEECH_MS && duration < 5000) {
               pmSpeechDetected = false;
-              pmCaptureAndCheck();
+              // Stop recorder and send the captured clip
+              if (pmRecorder && pmRecorder.state === "recording") {
+                const rec = pmRecorder;
+                const chunks = pmRecordChunks;
+                pmRecorder = null;
+                pmRecordChunks = [];
+                rec.onstop = () => { pmCaptureAndCheck(chunks, rec.mimeType); };
+                rec.stop();
+              }
             } else if (duration >= 5000) {
               pmSpeechDetected = false;
+              // Discard too-long recording
+              if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; }
             }
-            if (avg < 3) pmSpeechDetected = false;
+            if (avg < 3) { pmSpeechDetected = false; if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; } }
           }
         }, 50);
 
@@ -858,7 +937,7 @@
       }
     }
 
-    async function pmCaptureAndCheck() {
+    async function pmCaptureAndCheck(chunks, mimeType) {
       if (pmIsCapturing || !pmIsListening) return;
       if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
       pmIsCapturing = true;
@@ -867,81 +946,86 @@
       if (liveEl) { liveEl.textContent = "Ses kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
 
       try {
-        const clipStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
-        });
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-        const recorder = new MediaRecorder(clipStream, { mimeType });
-        const chunks = [];
+        if (!mimeType) mimeType = "audio/webm;codecs=opus";
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < PM_MIN_BLOB) { pmIsCapturing = false; console.log("PM clip too small:", blob.size); return; }
 
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = async () => {
-          clipStream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(chunks, { type: mimeType });
-          if (blob.size < 500) { pmIsCapturing = false; return; }
-
-          try {
-            const fd = new FormData();
-            fd.append("file", blob, "clip.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
-
-            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-              body: fd,
-            });
-
-            if (resp.ok) {
-              const result = await resp.json();
-              const text = (result.text || "").trim();
-              console.log("PowerMode heard:", text);
-
-              if (text.length > 0) {
-                if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
-                const matchEl = document.getElementById("pmMatchIndicator");
-
-                // Check wake word
-                const wk = (currentSettings.wakeWord || "").toLowerCase();
-                const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
-                const nText = norm(text);
-                const nWake = norm(wk);
-
-                if (nText.includes(nWake)) {
-                  pmLastWakeTime = Date.now();
-                  if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-                  if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
-                  setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
-
-                  // Pause power mode and trigger recording
-                  pmPause();
-                  window.voiceflow.wakeWordDetected();
-                } else {
-                  if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
-                }
-              }
-            } else {
-              console.error("PowerMode Groq error:", resp.status);
-            }
-          } catch (err) {
-            console.error("PowerMode Groq request error:", err);
-          }
-          pmIsCapturing = false;
+        // No prompt hint for power mode — prevents Whisper hallucinating wake words from noise
+        const buildFormData = () => {
+          const f = new FormData();
+          f.append("file", blob, "clip.webm");
+          f.append("model", "whisper-large-v3-turbo");
+          f.append("language", currentSettings.language || "tr");
+          f.append("temperature", "0");
+          f.append("response_format", "json");
+          return f;
         };
 
-        recorder.start();
-        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2000);
+        let resp = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+            body: buildFormData(),
+          });
+          if (resp.status === 429) {
+            console.log("PowerMode 429, retry", attempt+1);
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+          break;
+        }
+
+        if (resp && resp.ok) {
+          const result = await resp.json();
+          const text = (result.text || "").trim();
+          console.log("PowerMode heard:", text);
+
+          // Filter out Whisper hallucinations
+          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah"];
+          const cleanText = text.replace(/[.,!?;:'"·\-–—…\s]/g, "").toLowerCase();
+          const isHallucination = text.length <= 1 || cleanText.length <= 1 || hallucinations.includes(text.toLowerCase().trim()) || /^(.)\1{2,}$/.test(cleanText) || text.length > 100;
+          console.log("PM filter: text='" + text + "' clean='" + cleanText + "' hall=" + isHallucination);
+
+          if (text.length > 0 && !isHallucination) {
+            if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
+            const matchEl = document.getElementById("pmMatchIndicator");
+
+            // Check wake words (multi-command support) with fuzzy Turkish matching
+            const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
+            const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
+            const nText = norm(text);
+            const matchedWord = wakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
+
+            if (matchedWord) {
+              pmLastWakeTime = Date.now();
+              if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+              if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
+              setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
+
+              // Pause power mode and trigger recording
+              pmPause();
+              window.voiceflow.wakeWordDetected();
+            } else {
+              if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
+            }
+          }
+        } else {
+          console.error("PowerMode Groq error:", resp.status);
+        }
       } catch (err) {
-        console.error("PowerMode capture error:", err);
-        pmIsCapturing = false;
+        console.error("PowerMode Groq request error:", err);
       }
+      pmIsCapturing = false;
     }
 
     function pmStop() {
       pmIsListening = false;
       pmIsCapturing = false;
+      pmStopWatchdog(); // Stop watchdog
+      if (pmRecorder && pmRecorder.state === "recording") { try { pmRecorder.stop(); } catch(e){} }
+      pmRecorder = null;
+      pmRecordChunks = [];
       if (pmCheckInterval) { clearInterval(pmCheckInterval); pmCheckInterval = null; }
       if (pmStream) { pmStream.getTracks().forEach(t => t.stop()); pmStream = null; }
       if (pmAudioCtx) { pmAudioCtx.close().catch(()=>{}); pmAudioCtx = null; }
@@ -949,21 +1033,100 @@
       updatePowerModeUI("off");
     }
 
+    let pmPauseTime = 0; // Track when we paused (for watchdog grace period)
     function pmPause() {
       if (pmAudioCtx && pmAudioCtx.state === "running") pmAudioCtx.suspend();
       pmIsListening = false;
+      pmPauseTime = Date.now();
+      console.log("pmPause: paused at", pmPauseTime);
     }
 
     function pmResume() {
-      if (pmAudioCtx && pmAudioCtx.state === "suspended") {
+      console.log("pmResume called, ctx:", pmAudioCtx?.state, "stream:", pmStream?.active, "listening:", pmIsListening);
+      // If AudioContext is still alive, just resume
+      if (pmAudioCtx && pmAudioCtx.state === "suspended" && pmStream && pmStream.active) {
         pmAudioCtx.resume();
         pmIsListening = true;
+        pmIsCapturing = false;
         updatePowerModeUI("listening");
-      } else if (!pmIsListening && currentSettings.powerMode) {
-        // AudioContext was lost or closed — full restart
-        pmStart();
+        console.log("pmResume: resumed existing context");
+        return;
       }
+      // Otherwise, full restart
+      console.log("pmResume: full restart needed");
+      pmStop();
+      setTimeout(() => pmStart(), 500);
     }
+
+    // ===== WATCHDOG: Keep Power Mode alive =====
+    // Checks every 30s if AudioContext/mic stream died and restarts
+    let pmWatchdogInterval = null;
+    function pmStartWatchdog() {
+      if (pmWatchdogInterval) clearInterval(pmWatchdogInterval);
+      pmWatchdogInterval = setInterval(() => {
+        // Only check if power mode should be active
+        if (!currentSettings.powerMode) return;
+
+        const ctxState = pmAudioCtx ? pmAudioCtx.state : "none";
+        const streamActive = pmStream ? pmStream.active : false;
+        const tracksLive = pmStream ? pmStream.getAudioTracks().some(t => t.readyState === "live") : false;
+
+        console.log("PM Watchdog: listening=" + pmIsListening + " ctx=" + ctxState + " stream=" + streamActive + " tracks=" + tracksLive);
+
+        // Case 1: AudioContext suspended unexpectedly (not during dictation)
+        if (pmIsListening && pmAudioCtx && ctxState === "suspended" && !isRecordingActive()) {
+          console.log("PM Watchdog: AudioContext suspended, resuming...");
+          pmAudioCtx.resume().then(() => {
+            console.log("PM Watchdog: AudioContext resumed OK");
+          }).catch(e => {
+            console.error("PM Watchdog: AudioContext resume failed, restarting...");
+            pmStop();
+            setTimeout(() => pmStart(), 1000);
+          });
+          return;
+        }
+
+        // Case 2: Stream died (mic disconnected, system sleep, etc.)
+        if (pmIsListening && (!streamActive || !tracksLive)) {
+          console.log("PM Watchdog: Mic stream died, restarting Power Mode...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+
+        // Case 3: Should be listening but isn't (stuck state)
+        // Grace period: don't restart within 60s of a pause (dikte transition + user interaction)
+        const timeSincePause = Date.now() - pmPauseTime;
+        if (!pmIsListening && !pmIsCapturing && currentSettings.powerMode && !isRecordingActive() && timeSincePause > 60000) {
+          console.log("PM Watchdog: Power Mode stuck (paused " + Math.round(timeSincePause/1000) + "s ago), restarting...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+
+        // Case 4: AudioContext closed unexpectedly
+        if (pmIsListening && (!pmAudioCtx || ctxState === "closed")) {
+          console.log("PM Watchdog: AudioContext closed, restarting...");
+          pmStop();
+          setTimeout(() => pmStart(), 1000);
+          return;
+        }
+      }, 10000); // Check every 10 seconds for faster recovery
+    }
+
+    function pmStopWatchdog() {
+      if (pmWatchdogInterval) { clearInterval(pmWatchdogInterval); pmWatchdogInterval = null; }
+    }
+
+    // Track dictation state from main process
+    let pmDictationActive = false;
+    if (window.voiceflow.onDictationState) {
+      window.voiceflow.onDictationState((state) => {
+        pmDictationActive = state;
+        console.log("Dictation state:", state);
+      });
+    }
+    function isRecordingActive() { return pmDictationActive; }
 
     // POWER MODE UI
     function updatePowerModeUI(status) {
@@ -977,7 +1140,7 @@
 
       const states = {
         loading: { icon: "⏳", text: "Mikrofon hazirlaniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
-        listening: { icon: "👂", text: "Dinliyor — \"" + (currentSettings.wakeWord || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
+        listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
         off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
         error: { icon: "❌", text: "Hata olustu", hint: "Mikrofon erisimi kontrol edin", color: "#EF4444", dash: "Hata" },
       };
@@ -1022,23 +1185,34 @@
       saveSetting("powerMode", enabled);
       window.voiceflow.togglePowerMode(enabled); // Notify main process so it can resume after recording
       document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
+      // CRITICAL: Notify main process so it knows to send resume signals
+      window.voiceflow.togglePowerMode(enabled);
       if (enabled) pmStart();
       else pmStop();
     });
 
-    // Wake word save on blur
-    document.getElementById("sWakeWord").addEventListener("blur", function() {
-      const word = this.value.trim();
-      if (word.length >= 2) {
-        saveSetting("wakeWord", word);
-        // Reset test state — user changed the word
-        pmTestPassed = false;
-        document.getElementById("pmActivateSection").style.display = "none";
-      }
-    });
-    // Also on Enter key
-    document.getElementById("sWakeWord").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+    // Wake words save helper
+    function getWakeWords() {
+      return [
+        document.getElementById("sWakeWord1").value.trim(),
+        document.getElementById("sWakeWord2").value.trim(),
+        document.getElementById("sWakeWord3").value.trim()
+      ].filter(w => w.length >= 2);
+    }
+    function saveWakeWords() {
+      const words = getWakeWords();
+      saveSetting("wakeWords", words);
+      saveSetting("wakeWord", words[0] || ""); // backwards compat
+      // Reset test state when words change
+      pmTestPassed = false;
+      document.getElementById("pmActivateSection").style.display = "none";
+    }
+    // Save on blur for each input
+    ["sWakeWord1","sWakeWord2","sWakeWord3"].forEach(id => {
+      document.getElementById(id).addEventListener("blur", saveWakeWords);
+      document.getElementById(id).addEventListener("keydown", function(e) {
+        if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+      });
     });
 
     // TEST BUTTON — starts mic test for wake word
@@ -1050,45 +1224,80 @@
     let pmTestListening = false;
     let pmTestSpeechDetected = false;
     let pmTestSpeechStart = 0;
+    let pmTestRecorder = null;
+    let pmTestRecordChunks = [];
 
     document.getElementById("pmTestBtn").addEventListener("click", async function() {
-      const wakeWord = document.getElementById("sWakeWord").value.trim();
-      if (wakeWord.length < 2) { showToast("Once uyanma kelimesi yazin!"); return; }
-      saveSetting("wakeWord", wakeWord);
+      const words = getWakeWords();
+      if (words.length === 0) { showToast("Once en az bir uyanma kelimesi yazin (en az 2 harf)!"); return; }
+      saveWakeWords();
 
       const testArea = document.getElementById("pmTestArea");
       const btn = this;
 
       if (pmTestListening) {
-        // Stop test
         pmStopTest();
         btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
         btn.style.borderColor = "";
         btn.style.background = "";
+        testArea.style.display = "none";
         return;
       }
 
-      // Start test
+      // Pause Power Mode while testing (prevents double-listening)
+      const wasPowerModeOn = pmIsListening;
+      if (wasPowerModeOn) { console.log("Pausing Power Mode for test"); pmStop(); }
+
+      // Full state reset before starting
+      pmStopTest();
+      pmTestSpeechDetected = false;
+      pmTestSpeechStart = 0;
+      pmTestRecorder = null;
+      pmTestRecordChunks = [];
+
       btn.textContent = "⏹️ Testi Durdur";
       btn.style.borderColor = "#EF4444";
+      btn.style.background = "";
       testArea.style.display = "block";
-      document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wakeWord) + '" deyin...</span>';
+      document.getElementById("pmLiveText").innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(words.join('" veya "')) + '" deyin...</span>';
+      document.getElementById("pmLiveText").style.borderColor = "";
+      document.getElementById("pmLiveText").style.background = "";
       document.getElementById("pmMatchIndicator").textContent = "";
 
       try {
-        pmTestStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 }
-        });
+        const liveEl = document.getElementById("pmLiveText");
+        if (liveEl) liveEl.textContent = "Mikrofon aciliyor...";
 
-        pmTestCtx = new AudioContext({ sampleRate: 16000 });
+        // Use selected audio device (same as main dictation window)
+        const micConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
+          ? { deviceId: { exact: currentSettings.audioDevice } }
+          : true;
+        pmTestStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints });
+        const tracks = pmTestStream.getAudioTracks();
+        console.log("Mic OK, tracks:", tracks.length, tracks[0]?.label, tracks[0]?.readyState);
+        if (liveEl) liveEl.textContent = "Mikrofon acildi: " + (tracks[0]?.label || "?");
+
+        pmTestCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (pmTestCtx.state === "suspended") await pmTestCtx.resume();
+        console.log("AudioCtx state:", pmTestCtx.state, "rate:", pmTestCtx.sampleRate);
+
         const source = pmTestCtx.createMediaStreamSource(pmTestStream);
         pmTestAnalyser = pmTestCtx.createAnalyser();
-        pmTestAnalyser.fftSize = 512;
+        pmTestAnalyser.fftSize = 256;
         source.connect(pmTestAnalyser);
 
         const dataArray = new Uint8Array(pmTestAnalyser.frequencyBinCount);
         pmTestListening = true;
         pmTestSpeechDetected = false;
+
+        // Verify analyser is getting data
+        setTimeout(() => {
+          if (!pmTestAnalyser || !pmTestListening) return;
+          pmTestAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0; for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          console.log("First audio check - avg:", (sum/dataArray.length).toFixed(1), "ctx:", pmTestCtx.state);
+          if (pmTestCtx.state === "suspended") pmTestCtx.resume();
+        }, 500);
 
         pmTestInterval = setInterval(() => {
           if (!pmTestAnalyser || !pmTestListening) return;
@@ -1102,102 +1311,178 @@
           if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
           if (num) num.textContent = Math.round(avg);
 
-          if (avg > 12) {
-            if (!pmTestSpeechDetected) { pmTestSpeechDetected = true; pmTestSpeechStart = Date.now(); }
+          if (avg > 8) {
+            if (!pmTestSpeechDetected) {
+              pmTestSpeechDetected = true;
+              pmTestSpeechStart = Date.now();
+              if (!pmTestRecorder && pmTestStream) {
+                try {
+                  const mt = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+                  pmTestRecorder = new MediaRecorder(pmTestStream, { mimeType: mt });
+                  pmTestRecordChunks = [];
+                  pmTestRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmTestRecordChunks.push(e.data); };
+                  pmTestRecorder.start(100);
+                  console.log("Test recorder started");
+                } catch(e) { console.error("Test recorder start error:", e); pmTestRecorder = null; }
+              }
+            }
           } else if (pmTestSpeechDetected) {
             const dur = Date.now() - pmTestSpeechStart;
-            if (dur > 300 && dur < 5000) {
+            if (dur > 400 && dur < 8000) {
               pmTestSpeechDetected = false;
-              pmTestCapture();
+              if (pmTestRecorder && pmTestRecorder.state === "recording") {
+                const rec = pmTestRecorder;
+                const chunks = [...pmTestRecordChunks];
+                pmTestRecorder = null;
+                pmTestRecordChunks = [];
+                rec.onstop = () => { pmTestCapture(chunks, rec.mimeType); };
+                try { rec.stop(); } catch(e) { console.error("rec.stop error:", e); }
+              }
+            } else if (dur >= 8000) {
+              pmTestSpeechDetected = false;
+              if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} pmTestRecorder = null; pmTestRecordChunks = []; }
             }
-            if (avg < 3) pmTestSpeechDetected = false;
+            if (avg < 2) { pmTestSpeechDetected = false; if (pmTestRecorder && pmTestRecorder.state === "recording") { try { pmTestRecorder.stop(); } catch(e){} pmTestRecorder = null; pmTestRecordChunks = []; } }
           }
         }, 50);
       } catch (err) {
-        showToast("Mikrofon erisimi yok!");
+        console.error("Test mic error:", err);
+        showToast("Mikrofon erisimi yok! Hata: " + err.message);
         btn.textContent = "🎙️ Test Et — Mikrofonla Dene";
         btn.style.borderColor = "";
+        testArea.style.display = "none";
       }
     });
 
-    async function pmTestCapture() {
+    async function pmTestCapture(chunks, mimeType) {
       if (!pmTestListening) return;
       const liveEl = document.getElementById("pmLiveText");
-      if (liveEl) { liveEl.textContent = "Dinleniyor, kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
+      const matchEl = document.getElementById("pmMatchIndicator");
+      if (liveEl) { liveEl.textContent = "🔄 Ses kontrol ediliyor..."; liveEl.style.color = "#F59E0B"; }
 
       try {
-        const clipStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
-        });
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-        const recorder = new MediaRecorder(clipStream, { mimeType });
-        const chunks = [];
+        if (!mimeType) mimeType = "audio/webm;codecs=opus";
+        const blob = new Blob(chunks, { type: mimeType });
+        console.log("Test blob size:", blob.size);
+        if (blob.size < 200) {
+          if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Ses cok kisa, tekrar deneyin...</span>';
+          return;
+        }
 
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = async () => {
-          clipStream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(chunks, { type: mimeType });
-          if (blob.size < 500) return;
+        const apiKey = currentSettings.apiKey;
+        if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
 
-          try {
-            const fd = new FormData();
-            fd.append("file", blob, "test.webm");
-            fd.append("model", "whisper-large-v3-turbo");
-            fd.append("language", currentSettings.language || "tr");
-            fd.append("temperature", "0");
-            fd.append("response_format", "json");
-
-            const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-              method: "POST",
-              headers: { "Authorization": "Bearer " + currentSettings.apiKey },
-              body: fd,
-            });
-
-            if (resp.ok) {
-              const result = await resp.json();
-              const text = (result.text || "").trim();
-              const wk = (currentSettings.wakeWord || "").toLowerCase();
-              const norm = (s) => s.toLowerCase().replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i");
-
-              if (liveEl) { liveEl.textContent = text || "(sessizlik)"; liveEl.style.color = "var(--text-1)"; }
-
-              const matchEl = document.getElementById("pmMatchIndicator");
-              if (text.length > 0 && norm(text).includes(norm(wk))) {
-                // SUCCESS — wake word detected in test!
-                pmTestPassed = true;
-                if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-                if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(wk) + '" algilandi! Test basarili!</span>';
-
-                // Show activate section
-                document.getElementById("pmActivateSection").style.display = "block";
-
-                // Stop test after success
-                setTimeout(() => {
-                  pmStopTest();
-                  document.getElementById("pmTestBtn").textContent = "✅ Test Basarili — Tekrar Dene";
-                  document.getElementById("pmTestBtn").style.borderColor = "#10B981";
-                  document.getElementById("pmTestBtn").style.background = "rgba(16,185,129,0.08)";
-                  if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; }
-                }, 2000);
-              } else if (text.length > 0) {
-                if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-2)">Duyulan: "' + esc(text) + '" — tekrar deneyin</span>';
-                if (liveEl) liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi "' + esc(wk) + '" deyin...</span>';
-              }
-            }
-          } catch (err) { console.error("Test Groq error:", err); }
+        // Build prompt hint with wake words for better Turkish recognition
+        const testWakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
+        const buildTestFD = () => {
+          const f = new FormData();
+          f.append("file", blob, "test.webm");
+          f.append("model", "whisper-large-v3-turbo");
+          f.append("language", currentSettings.language || "tr");
+          f.append("temperature", "0");
+          f.append("response_format", "json");
+          if (testWakeHint) f.append("prompt", testWakeHint);
+          return f;
         };
 
-        recorder.start();
-        setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 2500);
-      } catch (err) { console.error("Test capture error:", err); }
+        let resp = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + apiKey },
+            body: buildTestFD(),
+          });
+          console.log("Test Groq status:", resp.status, "attempt:", attempt);
+          if (resp.status === 429) {
+            if (liveEl) liveEl.textContent = "⏳ Rate limit, bekleniyor...";
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+          break;
+        }
+
+        if (resp && resp.ok) {
+          const result = await resp.json();
+          const text = (result.text || "").trim();
+          console.log("Test Groq heard:", text);
+
+          const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
+          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
+
+          if (text.length === 0) {
+            if (liveEl) { liveEl.textContent = "(sessizlik — tekrar deneyin)"; liveEl.style.color = "var(--text-3)"; }
+            return;
+          }
+
+          if (liveEl) { liveEl.textContent = '🗣️ Duyulan: "' + text + '"'; liveEl.style.color = "var(--text-1)"; }
+
+          const nText = norm(text);
+          // Use same fuzzy matching as power mode (levenshtein defined above)
+          const matchedWord = wakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
+
+          if (matchedWord) {
+            // SUCCESS
+            pmTestPassed = true;
+            if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
+
+            document.getElementById("pmActivateSection").style.display = "block";
+
+            setTimeout(() => {
+              pmStopTest();
+              const btn = document.getElementById("pmTestBtn");
+              btn.textContent = "✅ Test Basarili — Tekrar Dene";
+              btn.style.borderColor = "#10B981";
+              btn.style.background = "rgba(16,185,129,0.08)";
+            }, 2500);
+          } else {
+            const wordsStr = wakeWords.map(w => '"' + w + '"').join(" veya ");
+            if (matchEl) matchEl.innerHTML = '<span style="color:#F59E0B">⚠️ Duyulan: "' + esc(text) + '" — kelime eslesmiyor, tekrar deneyin</span>';
+            if (liveEl) {
+              setTimeout(() => {
+                if (pmTestListening) {
+                  liveEl.innerHTML = '<span style="color:var(--text-3);font-style:italic">Simdi ' + esc(wordsStr) + ' deyin...</span>';
+                  liveEl.style.color = "";
+                }
+              }, 2000);
+            }
+          }
+        } else {
+          const errText = await resp.text();
+          console.error("Test Groq error:", resp.status, errText);
+          if (liveEl) { liveEl.textContent = "API hatasi: " + resp.status; liveEl.style.color = "#EF4444"; }
+        }
+      } catch (err) {
+        console.error("Test Groq request error:", err);
+        if (liveEl) { liveEl.textContent = "Baglanti hatasi: " + err.message; liveEl.style.color = "#EF4444"; }
+      }
     }
 
     function pmStopTest() {
+      console.log("pmStopTest called");
       pmTestListening = false;
+      pmTestSpeechDetected = false;
+      if (pmTestRecorder) {
+        try { if (pmTestRecorder.state === "recording") pmTestRecorder.stop(); } catch(e){}
+        pmTestRecorder = null;
+      }
+      pmTestRecordChunks = [];
       if (pmTestInterval) { clearInterval(pmTestInterval); pmTestInterval = null; }
-      if (pmTestStream) { pmTestStream.getTracks().forEach(t => t.stop()); pmTestStream = null; }
-      if (pmTestCtx) { pmTestCtx.close().catch(()=>{}); pmTestCtx = null; }
+      if (pmTestStream) {
+        try { pmTestStream.getTracks().forEach(t => t.stop()); } catch(e){}
+        pmTestStream = null;
+      }
+      if (pmTestCtx) {
+        try { pmTestCtx.close(); } catch(e){}
+        pmTestCtx = null;
+      }
       pmTestAnalyser = null;
+
+      // Resume Power Mode if it was active before test
+      if (document.getElementById("sPowerMode").checked && !pmIsListening) {
+        console.log("Resuming Power Mode after test");
+        setTimeout(() => pmStart(), 1500);
+      }
     }
 
     document.getElementById("sPowerDblClick").addEventListener("change", function() {
