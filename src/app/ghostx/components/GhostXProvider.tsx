@@ -24,6 +24,10 @@ import type {
 import { MemoryStore } from '@/lib/ghostx/memory-store';
 import { PeerManager } from '@/lib/ghostx/peer-manager';
 import {
+  enableScreenProtection,
+  setScreenshotAlertCallback,
+} from '@/lib/ghostx/screen-protection';
+import {
   initCrypto,
   generateKeyPair,
   generatePeerId,
@@ -146,6 +150,7 @@ interface GhostXContextType {
   joinRoom: (inviteCode: string) => Promise<void>;
   leaveRoom: () => void;
   sendMessage: (text: string, disappearAfter?: number) => void;
+  sendMediaMessage: (data: Uint8Array, mimeType: string, fileName?: string, disappearAfter?: number) => void;
   sendScreenshotAlert: () => void;
   panic: () => void;
   selectRoom: (roomId: string) => void;
@@ -343,6 +348,54 @@ export function GhostXProvider({ children }: { children: ReactNode }) {
     }
   }, [state.currentRoom, state.myPeerId, state.myPeerName]);
 
+  // Medya mesaji gonder (fotograf, video, ses)
+  const sendMediaMessage = useCallback((
+    data: Uint8Array,
+    mimeType: string,
+    fileName?: string,
+    disappearAfter?: number
+  ) => {
+    if (!state.currentRoom) return;
+
+    const isImage = mimeType.startsWith('image/');
+    const isVideo = mimeType.startsWith('video/');
+    const isAudio = mimeType.startsWith('audio/');
+
+    const msgType = isImage ? 'image' as const
+      : isVideo ? 'video' as const
+      : isAudio ? 'voice' as const
+      : 'text' as const;
+
+    const msg: DecryptedMessage = {
+      id: generateMessageId(),
+      roomId: state.currentRoom.id,
+      senderId: state.myPeerId,
+      senderName: state.myPeerName,
+      type: msgType,
+      content: fileName || (isImage ? 'Fotograf' : isVideo ? 'Video' : 'Ses mesaji'),
+      timestamp: Date.now(),
+      status: 'sent',
+      disappearAfter,
+      mediaData: data,
+      mediaMimeType: mimeType,
+    };
+
+    storeRef.current.addMessage(state.currentRoom.id, msg);
+    dispatch({ type: 'ADD_MESSAGE', roomId: state.currentRoom.id, message: msg });
+
+    // TODO: Peer'lere sifreli medya parcalari gonder (media-chunker ile)
+    // Bu Faz 2'nin tam implementasyonunda peer-manager'a eklenecek
+
+    if (disappearAfter && disappearAfter > 0) {
+      setTimeout(() => {
+        if (state.currentRoom) {
+          storeRef.current.removeMessage(state.currentRoom.id, msg.id);
+          dispatch({ type: 'REMOVE_MESSAGE', roomId: state.currentRoom.id, messageId: msg.id });
+        }
+      }, disappearAfter);
+    }
+  }, [state.currentRoom, state.myPeerId, state.myPeerName]);
+
   // Screenshot uyarisi gonder
   const sendScreenshotAlert = useCallback(() => {
     if (peerManagerRef.current) {
@@ -415,6 +468,16 @@ export function GhostXProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, [panic]);
 
+  // Ekran korumasini baslat (screenshot -> siyah ekran + uyari)
+  useEffect(() => {
+    if (state.isInitialized) {
+      enableScreenProtection();
+      setScreenshotAlertCallback(() => {
+        sendScreenshotAlert();
+      });
+    }
+  }, [state.isInitialized, sendScreenshotAlert]);
+
   const contextValue: GhostXContextType = {
     state,
     initialize,
@@ -422,6 +485,7 @@ export function GhostXProvider({ children }: { children: ReactNode }) {
     joinRoom,
     leaveRoom,
     sendMessage,
+    sendMediaMessage,
     sendScreenshotAlert,
     panic,
     selectRoom,

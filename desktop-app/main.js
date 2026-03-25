@@ -769,6 +769,7 @@ function autoPasteToApp() {
 
 // ========== GHOSTX IPC HANDLERS ==========
 const { setupLocalNetworkIPC } = require("./ghostx/local-network");
+const { setupScreenGuardIPC } = require("./ghostx/screen-guard");
 
 // Panik butonu: Tum GhostX verilerini sil
 ipcMain.on("ghostx-panic", (event) => {
@@ -806,6 +807,9 @@ app.whenReady().then(() => {
 
 // Yerel ag (Wi-Fi Direct) IPC handler'larini kur
 setupLocalNetworkIPC();
+
+// Ekran koruma (screenshot engelleme) IPC handler'larini kur
+setupScreenGuardIPC();
 
 // ========== IPC HANDLERS ==========
 ipcMain.on("show-result", (event, text) => {
