@@ -1,0 +1,31 @@
+[package]
+name = "ghostx-crypto"
+version = "0.1.0"
+edition = "2021"
+description = "GhostX E2EE crypto core - X25519 + XChaCha20-Poly1305 + Double Ratchet"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand = { version = "0.8", features = ["getrandom"] }
+getrandom = { version = "0.2", features = ["js"] }
+zeroize = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["console"] }
+serde-wasm-bindgen = "0.6"
+hex = "0.4"
+
+[profile.release]
+opt-level = "s"    # Kucuk WASM boyutu
+lto = true

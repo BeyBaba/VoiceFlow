@@ -767,6 +767,46 @@ function autoPasteToApp() {
   }, 300);
 }
 
+// ========== GHOSTX IPC HANDLERS ==========
+const { setupLocalNetworkIPC } = require("./ghostx/local-network");
+
+// Panik butonu: Tum GhostX verilerini sil
+ipcMain.on("ghostx-panic", (event) => {
+  // Tum GhostX ile ilgili pencereleri temizle
+  if (homeWindow) {
+    homeWindow.webContents.send("ghostx-panic-trigger");
+  }
+  event.sender.send("ghostx-panic-ack");
+});
+
+// Ekran koruma: Screenshot engelleme (OS seviyesinde)
+ipcMain.on("ghostx-screen-protect", (event, enabled) => {
+  const windows = [mainWindow, homeWindow, settingsWindow].filter(Boolean);
+  for (const win of windows) {
+    try {
+      win.setContentProtection(enabled);
+    } catch (e) {
+      // Bazi platformlarda desteklenmiyor olabilir
+    }
+  }
+});
+
+// Global panik kisayolu: Ctrl+Shift+Delete
+app.whenReady().then(() => {
+  globalShortcut.register("CommandOrControl+Shift+Delete", () => {
+    // Tum pencerelere panik sinyali gonder
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      try {
+        win.webContents.send("ghostx-panic-trigger");
+      } catch {}
+    }
+  });
+});
+
+// Yerel ag (Wi-Fi Direct) IPC handler'larini kur
+setupLocalNetworkIPC();
+
 // ========== IPC HANDLERS ==========
 ipcMain.on("show-result", (event, text) => {
   isRecording = false;

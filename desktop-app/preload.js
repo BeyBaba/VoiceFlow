@@ -83,3 +83,45 @@ contextBridge.exposeInMainWorld("voiceflow", {
     ipcRenderer.on("dictation-state", (event, state) => callback(state));
   },
 });
+
+// === GhostX IPC Kanallari ===
+contextBridge.exposeInMainWorld("ghostx", {
+  // Panik: Tum verileri aninda sil
+  panic: () => ipcRenderer.send("ghostx-panic"),
+  onPanicAck: (callback) => {
+    ipcRenderer.on("ghostx-panic-ack", () => callback());
+  },
+
+  // Ekran koruma: Screenshot engellemePanik
+  enableScreenProtection: () => ipcRenderer.send("ghostx-screen-protect", true),
+  disableScreenProtection: () => ipcRenderer.send("ghostx-screen-protect", false),
+
+  // Yerel ag (Bluetooth/Wi-Fi Direct)
+  localStart: async (opts) => {
+    return await ipcRenderer.invoke("ghostx-local-start", opts);
+  },
+  localStop: async () => {
+    return await ipcRenderer.invoke("ghostx-local-stop");
+  },
+  localConnect: async (opts) => {
+    return await ipcRenderer.invoke("ghostx-local-connect", opts);
+  },
+  localSend: async (opts) => {
+    return await ipcRenderer.invoke("ghostx-local-send", opts);
+  },
+  localBroadcast: async (opts) => {
+    return await ipcRenderer.invoke("ghostx-local-broadcast", opts);
+  },
+  localGetPeers: async () => {
+    return await ipcRenderer.invoke("ghostx-local-peers");
+  },
+  onLocalPeerDiscovered: (callback) => {
+    ipcRenderer.on("ghostx-local-peer-discovered", (event, peer) => callback(peer));
+  },
+  onLocalPeerLost: (callback) => {
+    ipcRenderer.on("ghostx-local-peer-lost", (event, peer) => callback(peer));
+  },
+  onLocalMessage: (callback) => {
+    ipcRenderer.on("ghostx-local-message", (event, msg) => callback(msg));
+  },
+});

@@ -23,6 +23,10 @@ Thumbs.db
 prisma/dev.db
 prisma/dev.db-journal
 
+# Rust/WASM build artifacts
+src/lib/ghostx/crypto-core/target/
+src/lib/ghostx/crypto-core/pkg/
+
 # Misc
 *.blockmap
 *.log
