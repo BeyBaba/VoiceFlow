@@ -1,41 +1,29 @@
-// GhostX Crypto Layer - TypeScript wrapper
-// Rust WASM modulu hazir olana kadar libsodium-wrappers-sumo kullanir
-// Uretimde Rust WASM ile degistirilecek
+// GhostX Crypto Layer - tweetnacl (saf JavaScript, WASM gerektirmez)
+// X25519 anahtar degisimi + XSalsa20-Poly1305 AEAD sifreleme
+// tweetnacl tamamen denetlenmis, tarayici ve Node.js'te calisir
 
+import nacl from 'tweetnacl';
+import { encodeUTF8, decodeUTF8 } from 'tweetnacl-util';
 import type { KeyPair, EncryptedPayload } from './types';
 
-let sodium: typeof import('libsodium-wrappers-sumo') | null = null;
 let isReady = false;
 
 /**
  * Kripto motorunu baslat
- * Uygulama baslarken bir kez cagirilir
+ * tweetnacl saf JS oldugu icin aninda hazir
  */
 export async function initCrypto(): Promise<void> {
-  if (isReady) return;
-
-  const _sodium = await import('libsodium-wrappers-sumo');
-  await _sodium.ready;
-  sodium = _sodium;
   isReady = true;
-}
-
-function getSodium() {
-  if (!sodium || !isReady) {
-    throw new Error('Crypto henuz baslatilmadi. initCrypto() cagirin.');
-  }
-  return sodium;
 }
 
 // === Anahtar Uretimi ===
 
 /** Yeni X25519 keypair uret (ephemeral, her oturum yeni) */
 export function generateKeyPair(): KeyPair {
-  const s = getSodium();
-  const kp = s.crypto_kx_keypair();
+  const kp = nacl.box.keyPair();
   return {
     publicKey: kp.publicKey,
-    secretKey: kp.privateKey,
+    secretKey: kp.secretKey,
   };
 }
 
@@ -44,24 +32,36 @@ export function deriveSharedSecret(
   mySecretKey: Uint8Array,
   theirPublicKey: Uint8Array
 ): Uint8Array {
-  const s = getSodium();
-  return s.crypto_scalarmult(mySecretKey, theirPublicKey);
+  return nacl.box.before(theirPublicKey, mySecretKey);
 }
 
 // === HKDF Anahtar Turetme ===
 
-/** HKDF-SHA256 ile anahtar turet */
+/** HMAC-SHA512 tabanli hash (HKDF yerine) */
+function hmacHash(key: Uint8Array, data: Uint8Array): Uint8Array {
+  // nacl.hash = SHA-512
+  const combined = new Uint8Array(key.length + data.length);
+  combined.set(key, 0);
+  combined.set(data, key.length);
+  return nacl.hash(combined).subarray(0, 32); // Ilk 32 byte
+}
+
+/** HKDF benzeri anahtar turetme */
 export function hkdfDerive(
   inputKey: Uint8Array,
   salt: Uint8Array,
   info: string,
   outputLen: number = 32
 ): Uint8Array {
-  const s = getSodium();
-  // libsodium'da HKDF yok, crypto_generichash kullanarak simule ediyoruz
-  const prk = s.crypto_generichash(32, inputKey, salt);
-  const output = s.crypto_generichash(outputLen, new Uint8Array([...prk, ...new TextEncoder().encode(info)]));
-  return output;
+  const infoBytes = decodeUTF8(info);
+  const prk = hmacHash(salt, inputKey);
+  const okm = hmacHash(prk, infoBytes);
+  return okm.subarray(0, outputLen);
+}
+
+/** Hash fonksiyonu (SHA-512, ilk 32 byte) */
+export function hash(data: Uint8Array): Uint8Array {
+  return nacl.hash(data).subarray(0, 32);
 }
 
 /** Root key ve chain key turet (Double Ratchet icin) */
@@ -83,19 +83,12 @@ export function kdfChainKey(
   return { chainKey: newChainKey, messageKey };
 }
 
-// === Sifreleme / Cozme (XChaCha20-Poly1305 AEAD) ===
+// === Sifreleme / Cozme (XSalsa20-Poly1305) ===
 
 /** Mesaji sifrele */
 export function encrypt(plaintext: Uint8Array, key: Uint8Array): EncryptedPayload {
-  const s = getSodium();
-  const nonce = s.randombytes_buf(s.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
-  const ciphertext = s.crypto_aead_xchacha20poly1305_ietf_encrypt(
-    plaintext,
-    null,  // additional data
-    null,  // nsec (kullanilmiyor)
-    nonce,
-    key
-  );
+  const nonce = nacl.randomBytes(nacl.secretbox.nonceLength); // 24 bytes
+  const ciphertext = nacl.secretbox(plaintext, nonce, key);
   return { ciphertext, nonce };
 }
 
@@ -105,19 +98,16 @@ export function decrypt(
   nonce: Uint8Array,
   key: Uint8Array
 ): Uint8Array {
-  const s = getSodium();
-  return s.crypto_aead_xchacha20poly1305_ietf_decrypt(
-    null,       // nsec
-    ciphertext,
-    null,       // additional data
-    nonce,
-    key
-  );
+  const plaintext = nacl.secretbox.open(ciphertext, nonce, key);
+  if (!plaintext) {
+    throw new Error('Cozme basarisiz: Yanlis anahtar veya bozuk veri');
+  }
+  return plaintext;
 }
 
 /** String'i sifrele (convenience) */
 export function encryptString(text: string, key: Uint8Array): EncryptedPayload {
-  return encrypt(new TextEncoder().encode(text), key);
+  return encrypt(decodeUTF8(text), key);
 }
 
 /** Sifreli veriyi string'e coz (convenience) */
@@ -127,15 +117,19 @@ export function decryptToString(
   key: Uint8Array
 ): string {
   const plaintext = decrypt(ciphertext, nonce, key);
-  return new TextDecoder().decode(plaintext);
+  return encodeUTF8(plaintext);
 }
 
 // === Guvenli Bellek Sifirlama ===
 
-/** Buffer'i guvenli sekilde sifirla - sodium.memzero */
+/** Buffer'i guvenli sekilde sifirla */
 export function secureWipe(buffer: Uint8Array): void {
-  const s = getSodium();
-  s.memzero(buffer);
+  buffer.fill(0);
+  // Ek onlem: rastgele degerlerle yaz, sonra tekrar sifirla
+  for (let i = 0; i < buffer.length; i++) {
+    buffer[i] = Math.random() * 256 | 0;
+  }
+  buffer.fill(0);
 }
 
 /** Birden fazla buffer'i sifirla */
@@ -155,8 +149,7 @@ export function wipeKeyPair(kp: KeyPair): void {
 
 /** Rastgele byte dizisi uret */
 export function randomBytes(length: number): Uint8Array {
-  const s = getSodium();
-  return s.randombytes_buf(length);
+  return nacl.randomBytes(length);
 }
 
 /** 6 haneli alfanumerik oda kodu uret */

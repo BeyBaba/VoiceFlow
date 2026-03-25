@@ -123,8 +123,8 @@ export function formatRemainingTime(identity: ShadowIdentity): string {
  */
 export function destroyShadowIdentity(identity: ShadowIdentity): void {
   // Anahtarlari sifirla
-  if (identity.keyPair.privateKey) {
-    identity.keyPair.privateKey.fill(0);
+  if (identity.keyPair.secretKey) {
+    identity.keyPair.secretKey.fill(0);
   }
   if (identity.keyPair.publicKey) {
     identity.keyPair.publicKey.fill(0);

@@ -210,7 +210,7 @@ export async function fileToUint8Array(file: File): Promise<Uint8Array> {
  * ONEMLI: Component unmount olunca URL.revokeObjectURL() cagrilmali!
  */
 export function createBlobUrl(data: Uint8Array, mimeType: string): string {
-  const blob = new Blob([data], { type: mimeType });
+  const blob = new Blob([data.buffer as ArrayBuffer], { type: mimeType });
   return URL.createObjectURL(blob);
 }
 

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -16,20 +16,21 @@
     "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "prisma": "^6.19.2",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "libsodium-wrappers-sumo": "^0.7.15",
     "simple-peer": "^9.11.1",
-    "qrcode.react": "^4.2.0"
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^25.3.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/simple-peer": "^9.11.8",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
-    "@types/simple-peer": "^9.11.8"
+    "typescript": "^5.9.3"
   }
 }
