@@ -770,6 +770,7 @@ function autoPasteToApp() {
 // ========== GHOSTX IPC HANDLERS ==========
 const { setupLocalNetworkIPC } = require("./ghostx/local-network");
 const { setupScreenGuardIPC } = require("./ghostx/screen-guard");
+const { setupTorIPC } = require("./ghostx/tor-proxy");
 
 // Panik butonu: Tum GhostX verilerini sil
 ipcMain.on("ghostx-panic", (event) => {
@@ -810,6 +811,9 @@ setupLocalNetworkIPC();
 
 // Ekran koruma (screenshot engelleme) IPC handler'larini kur
 setupScreenGuardIPC();
+
+// Tor proxy IPC handler'larini kur
+setupTorIPC();
 
 // ========== IPC HANDLERS ==========
 ipcMain.on("show-result", (event, text) => {

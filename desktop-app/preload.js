@@ -124,4 +124,23 @@ contextBridge.exposeInMainWorld("ghostx", {
   onLocalMessage: (callback) => {
     ipcRenderer.on("ghostx-local-message", (event, msg) => callback(msg));
   },
+
+  // Tor proxy kontrol
+  enableTor: async () => {
+    return await ipcRenderer.invoke("ghostx-tor-enable");
+  },
+  disableTor: async () => {
+    return await ipcRenderer.invoke("ghostx-tor-disable");
+  },
+  newTorCircuit: async () => {
+    return await ipcRenderer.invoke("ghostx-tor-new-circuit");
+  },
+  getTorStatus: async () => {
+    return await ipcRenderer.invoke("ghostx-tor-status");
+  },
+
+  // Ekran kayit programi tespiti
+  onRecorderDetected: (callback) => {
+    ipcRenderer.on("ghostx-recorder-detected", (event, recorders) => callback(recorders));
+  },
 });
