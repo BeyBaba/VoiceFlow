@@ -609,7 +609,7 @@ async function transcribe(audioBlob) {
     if (!response.ok && response.status !== 401) {
       console.warn("Turbo model failed, trying whisper-large-v3...");
       const fallbackForm = new FormData();
-      fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: mime }));
+      fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: blobMime }));
       fallbackForm.append("model", "whisper-large-v3");
       fallbackForm.append("language", language);
       fallbackForm.append("response_format", "verbose_json");
