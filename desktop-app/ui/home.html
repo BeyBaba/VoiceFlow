@@ -432,7 +432,24 @@
       <div class="page" id="page-s-api">
         <div class="page-header"><h1 class="page-title">API Yapilandirmasi</h1><p class="page-desc">Groq AI baglanti ayarlari</p></div>
         <div class="page-body">
-          <div class="card"><div class="card-label">Groq API Key</div><div class="card-hint" style="margin-bottom:8px"><a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin</div><div class="input-wrap"><input type="password" class="card-input" id="sApiKey" placeholder="gsk_..."><button class="toggle-pass" id="sTogglePass">👁️</button></div></div>
+          <div class="card" id="apiKeyCard" style="border-color:rgba(239,68,68,0.3)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div class="card-label" style="margin:0">Groq API Key</div>
+              <div id="apiStatusBadge" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:rgba(239,68,68,0.1);color:#EF4444">
+                <span id="apiStatusDot" style="width:7px;height:7px;border-radius:50%;background:#EF4444;display:inline-block"></span>
+                <span id="apiStatusText">Bagli degil</span>
+              </div>
+            </div>
+            <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:#EF4444;font-weight:900;cursor:pointer;user-select:none" title="Tiklayarak degistir">● ● ● ● ● ● ● ●</div>
+            <div class="input-wrap" id="apiKeyInputWrap" style="margin-top:6px;display:none">
+              <input type="password" class="card-input" id="sApiKey" placeholder="gsk_..." style="font-size:13px;padding:10px 40px 10px 12px">
+              <button class="toggle-pass" id="sTogglePass">👁️</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+              <div class="card-hint"><a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin</div>
+              <button id="apiKeyEditBtn" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-1);cursor:pointer">Degistir</button>
+            </div>
+          </div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Sicaklik (Temperature)</div><div class="card-hint">Dusuk = tutarli, yuksek = yaratici</div></div><select class="card-select" id="sTemperature" style="min-width:70px"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.2">0.2</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="0.8">0.8</option><option value="1.0">1.0</option></select></div></div>
         </div>
@@ -723,6 +740,7 @@
       document.getElementById("sMinToTray").checked=s.minimizeToTray!==false;
       document.getElementById("sNotifications").checked=s.notifications!==false;
       if(s.apiKey)document.getElementById("sApiKey").value=s.apiKey;
+      updateApiKeyUI(s.apiKey);
       if(s.aiModel)document.getElementById("sModel").value=s.aiModel;
       if(s.temperature!==undefined)document.getElementById("sTemperature").value=String(s.temperature);
       if(s.audioFormat)document.getElementById("sAudioFormat").value=s.audioFormat;
@@ -764,6 +782,55 @@
 
     // SETTINGS SAVE
     function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
+    function updateApiKeyUI(key){
+      const card=document.getElementById("apiKeyCard");
+      const badge=document.getElementById("apiStatusBadge");
+      const dot=document.getElementById("apiStatusDot");
+      const text=document.getElementById("apiStatusText");
+      const masked=document.getElementById("apiKeyMasked");
+      const editBtn=document.getElementById("apiKeyEditBtn");
+      if(key && key.startsWith("gsk_")){
+        card.style.borderColor="rgba(16,185,129,0.3)";
+        badge.style.background="rgba(16,185,129,0.1)";badge.style.color="#10B981";
+        dot.style.background="#10B981";
+        text.textContent="Aktif";
+        masked.style.color="#10B981";
+        masked.textContent="● ● ● ● ● ● ● ●";
+        masked.title="API Key aktif — degistirmek icin tikla";
+        editBtn.textContent="Degistir";
+      } else if(key){
+        card.style.borderColor="rgba(245,158,11,0.3)";
+        badge.style.background="rgba(245,158,11,0.1)";badge.style.color="#F59E0B";
+        dot.style.background="#F59E0B";
+        text.textContent="Kontrol edin";
+        masked.style.color="#F59E0B";
+        masked.textContent="● ● ● ● ● ● ● ●";
+        editBtn.textContent="Degistir";
+      } else {
+        card.style.borderColor="rgba(239,68,68,0.3)";
+        badge.style.background="rgba(239,68,68,0.1)";badge.style.color="#EF4444";
+        dot.style.background="#EF4444";
+        text.textContent="Bagli degil";
+        masked.style.color="#EF4444";
+        masked.textContent="● ● ● ● ● ● ● ●";
+        masked.title="API Key gerekli — tikla ve gir";
+        editBtn.textContent="Key Gir";
+      }
+    }
+
+    function toggleApiKeyInput(show){
+      const wrap=document.getElementById("apiKeyInputWrap");
+      const masked=document.getElementById("apiKeyMasked");
+      if(show){
+        wrap.style.display="block";
+        masked.style.display="none";
+        document.getElementById("sApiKey").focus();
+      } else {
+        wrap.style.display="none";
+        masked.style.display="block";
+      }
+    }
+
     function on(id,ev,fn){ const e=document.getElementById(id); if(!e)return; e.addEventListener(ev,()=>fn(e.type==="checkbox"?e.checked:e.value)); }
 
     function setupSettingsListeners(){
@@ -771,9 +838,21 @@
       on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
-      document.getElementById("sApiKey").addEventListener("blur",()=>{saveSetting("apiKey",document.getElementById("sApiKey").value.trim());showToast("API Key kaydedildi");});
+      document.getElementById("sApiKey").addEventListener("blur",()=>{
+        const key=document.getElementById("sApiKey").value.trim();
+        saveSetting("apiKey",key);
+        updateApiKeyUI(key);
+        toggleApiKeyInput(false);
+        if(key)showToast("API Key kaydedildi");
+        else showToast("API Key silindi");
+      });
+      document.getElementById("sApiKey").addEventListener("keydown",(e)=>{
+        if(e.key==="Enter"){e.target.blur();}
+      });
       document.getElementById("sTogglePass").addEventListener("click",()=>{const i=document.getElementById("sApiKey");i.type=i.type==="password"?"text":"password";});
       document.getElementById("sGroqLink").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com/keys");});
+      document.getElementById("apiKeyMasked").addEventListener("click",()=>{toggleApiKeyInput(true);});
+      document.getElementById("apiKeyEditBtn").addEventListener("click",()=>{toggleApiKeyInput(true);});
       on("sModel","change",v=>saveSetting("aiModel",v));
       on("sTemperature","change",v=>saveSetting("temperature",parseFloat(v)));
       on("sAudioDevice","change",v=>saveSetting("audioDevice",v));
