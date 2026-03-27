@@ -77,6 +77,7 @@ function createMainWindow() {
     resizable: false,
     skipTaskbar: false,
     show: false,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -211,6 +212,7 @@ function createSettingsWindow() {
     height: 560,
     frame: true,
     resizable: false,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -256,6 +258,7 @@ function createHomeWindow(navigateTo) {
     resizable: true,
     minWidth: 700,
     minHeight: 500,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -1039,6 +1042,18 @@ async function checkLicenseOnStartup() {
 
 // ========== APP LIFECYCLE ==========
 app.whenReady().then(async () => {
+  // Set app identity for Windows taskbar — prevents Electron default icon
+  app.setAppUserModelId("com.voiceflow.desktop");
+
+  // Set app icon for all windows
+  const appIconPath = path.join(__dirname, "assets", "icon.ico");
+  if (fs.existsSync(appIconPath)) {
+    const appIcon = nativeImage.createFromPath(appIconPath);
+    if (!appIcon.isEmpty()) {
+      app.dock && app.dock.setIcon(appIcon); // macOS
+    }
+  }
+
   // Grant microphone permission to all windows (needed for Power Mode test + listening)
   const { session } = require("electron");
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
