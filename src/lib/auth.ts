@@ -24,9 +24,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       });
 
       if (!existing) {
-        // İlk kez giriş: 7 günlük trial başlat
+        // İlk kez giriş: 40 günlük trial başlat
         const now = new Date();
-        const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(now.getTime() + 40 * 24 * 60 * 60 * 1000);
         await prisma.customer.create({
           data: {
             email: user.email,
@@ -51,7 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               ? {
                   trialStartDate: new Date(),
                   trialEndDate: new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000
+                    Date.now() + 40 * 24 * 60 * 60 * 1000
                   ),
                 }
               : {}),
