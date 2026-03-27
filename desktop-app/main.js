@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
 const http = require("http");
+const { autoUpdater } = require("electron-updater");
 
 let mainWindow = null;
 let pillWindow = null;
@@ -1041,6 +1042,81 @@ async function checkLicenseOnStartup() {
 }
 
 // ========== APP LIFECYCLE ==========
+// ========== AUTO-UPDATE ==========
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    console.log("Update available:", info.version);
+    // Notify all windows
+    const msg = `Yeni versiyon bulundu: v${info.version}. İndiriliyor...`;
+    notifyAllWindows("update-status", { status: "downloading", version: info.version, message: msg });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    console.log("No updates available.");
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    const pct = Math.round(progress.percent);
+    notifyAllWindows("update-status", { status: "progress", percent: pct });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("Update downloaded:", info.version);
+    notifyAllWindows("update-status", { status: "ready", version: info.version });
+    // Show dialog to user
+    dialog.showMessageBox({
+      type: "info",
+      title: "VoiceFlow Güncelleme",
+      message: `VoiceFlow v${info.version} indirildi.`,
+      detail: "Uygulamayi yeniden başlatarak güncellemek ister misiniz?",
+      buttons: ["Şimdi Güncelle", "Daha Sonra"],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-update error:", err.message);
+  });
+
+  // Check for updates after 5 seconds, then every 2 hours
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log("Update check failed:", err.message);
+    });
+  }, 5000);
+
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log("Update check failed:", err.message);
+    });
+  }, 2 * 60 * 60 * 1000);
+}
+
+function notifyAllWindows(channel, data) {
+  [mainWindow, homeWindow, pillWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(channel, data);
+    }
+  });
+}
+
+// IPC: manual update check from UI
+ipcMain.handle("check-for-updates", async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { available: !!result?.updateInfo, version: result?.updateInfo?.version };
+  } catch (err) {
+    return { available: false, error: err.message };
+  }
+});
+
 app.whenReady().then(async () => {
   // Set app identity for Windows taskbar — prevents Electron default icon
   app.setAppUserModelId("com.voiceflow.desktop");
@@ -1115,6 +1191,9 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error("Auto-start setup error:", err);
   }
+
+  // ===== AUTO-UPDATE =====
+  setupAutoUpdater();
 
   console.log("VoiceFlow started successfully!");
   console.log("Settings path:", getSettingsPath());

@@ -82,4 +82,12 @@ contextBridge.exposeInMainWorld("voiceflow", {
   onDictationState: (callback) => {
     ipcRenderer.on("dictation-state", (event, state) => callback(state));
   },
+
+  // Auto-update API
+  checkForUpdates: async () => {
+    return await ipcRenderer.invoke("check-for-updates");
+  },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on("update-status", (event, data) => callback(data));
+  },
 });

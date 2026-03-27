@@ -243,6 +243,9 @@
       </div>
       <button class="sidebar-logout" id="btnLogout">⬅ Cikis Yap</button>
       <div class="sidebar-version" id="homeVersion">VoiceFlow</div>
+      <div id="updateBanner" style="display:none;padding:6px 14px;margin:4px 10px 8px;background:linear-gradient(135deg,#22c55e22,#16a34a22);border:1px solid #22c55e44;border-radius:8px;font-size:11px;color:#22c55e;cursor:pointer;text-align:center" onclick="installUpdate()">
+        <span id="updateBannerText">Guncelleme mevcut</span>
+      </div>
     </div>
 
     <div class="content">
@@ -1806,6 +1809,32 @@
     }
 
     function showToast(m){document.getElementById("toastText").textContent=m;document.getElementById("toast").classList.remove("hidden");setTimeout(()=>document.getElementById("toast").classList.add("hidden"),2500);}
+
+    // ===== AUTO-UPDATE UI =====
+    let updateReady = false;
+    if (window.voiceflow && window.voiceflow.onUpdateStatus) {
+      window.voiceflow.onUpdateStatus(function(data) {
+        const banner = document.getElementById("updateBanner");
+        const text = document.getElementById("updateBannerText");
+        if (!banner) return;
+        if (data.status === "downloading") {
+          banner.style.display = "block";
+          text.textContent = "v" + data.version + " indiriliyor...";
+        } else if (data.status === "progress") {
+          text.textContent = "İndiriliyor... %" + data.percent;
+        } else if (data.status === "ready") {
+          updateReady = true;
+          banner.style.display = "block";
+          banner.style.background = "linear-gradient(135deg,#22c55e33,#16a34a33)";
+          text.textContent = "v" + data.version + " hazir — tikla ve guncelle";
+        }
+      });
+    }
+    function installUpdate() {
+      if (updateReady) {
+        showToast("Guncelleme yukleniyor, uygulama yeniden baslatilacak...");
+      }
+    }
 
     init();
   </script>

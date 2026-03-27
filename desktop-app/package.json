@@ -49,7 +49,17 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "menuCategory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "BeyBaba",
+        "repo": "VoiceFlow",
+        "releaseType": "release"
+      }
+    ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  }
 }
