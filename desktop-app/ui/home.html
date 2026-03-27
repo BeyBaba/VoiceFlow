@@ -1078,7 +1078,7 @@
           });
           if (resp.status === 429) {
             console.log("PowerMode 429, retry", attempt+1);
-            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
             continue;
           }
           break;
@@ -1505,8 +1505,8 @@
           });
           console.log("Test Groq status:", resp.status, "attempt:", attempt);
           if (resp.status === 429) {
-            if (liveEl) liveEl.textContent = "⏳ Rate limit, bekleniyor...";
-            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            if (liveEl) liveEl.textContent = "Rate limit, bekleniyor...";
+            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
             continue;
           }
           break;
