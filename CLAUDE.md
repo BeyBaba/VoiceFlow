@@ -8,12 +8,22 @@
 ## Release Kurali
 Her yeni degisiklik veya versiyon guncellemesinde:
 1. `desktop-app/package.json` versiyonunu guncelle
-2. `npm run build` ile Windows exe olustur
-3. GitHub Release olustur ve setup exe dosyasini yukle
-4. Kullaniciya indirilebilir link ver
-5. Bu kural her session'da gecerlidir
+2. Degisiklikleri commit + push yap
+3. Kullaniciya Build + Release komutlarini ver (asagidaki sablonlari kullan)
+4. Bu kural her session'da gecerlidir
 
-## GitHub Release Komutu
+## Build Komutu (Her Versiyon Degisikliginde Otomatik Ver)
+Kod degisikligi yapildiginda kullaniciya bu PowerShell komutunu ver:
+```powershell
+cd "D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow"
+git pull origin claude/review-project-status-fgFJ9
+cd desktop-app
+npm install
+npm run build
+```
+Not: Branch ismi aktif branch'e gore degistirilmeli.
+
+## GitHub Release Komutu (Build Sonrasi Otomatik Ver)
 Build tamamlandiktan sonra kullaniciya bu PowerShell komutunu ver:
 ```powershell
 cd "D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow\desktop-app"
