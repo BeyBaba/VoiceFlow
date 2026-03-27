@@ -35,7 +35,7 @@
       "publisherName": "VoiceFlow"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "allowToChangeInstallationDirectory": false,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
@@ -45,7 +45,7 @@
       "shortcutName": "VoiceFlow",
       "runAfterFinish": true,
       "installerSidebar": null,
-      "license": null,
+      "license": "assets/install-notice.txt",
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "menuCategory": true

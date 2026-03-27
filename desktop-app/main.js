@@ -1044,14 +1044,53 @@ async function checkLicenseOnStartup() {
 // ========== APP LIFECYCLE ==========
 // ========== AUTO-UPDATE ==========
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
+  const settings = loadSettings();
+
+  // If user hasn't been asked about auto-update yet, ask now
+  if (settings.autoUpdateAsked === undefined) {
+    dialog.showMessageBox({
+      type: "question",
+      title: "VoiceFlow - Otomatik Guncelleme",
+      message: "Otomatik guncelleme acilsin mi?",
+      detail: "VoiceFlow yeni versiyon ciktiginda otomatik kontrol edip size bildirim gosterebilir. Ayarlardan istediginiz zaman degistirebilirsiniz.",
+      buttons: ["Evet, Otomatik Guncelle", "Hayir, Ben Kendim Yaparim"],
+      defaultId: 0,
+      cancelId: 1,
+    }).then((result) => {
+      const s = loadSettings();
+      s.autoUpdateAsked = true;
+      s.autoUpdateEnabled = result.response === 0;
+      saveSettings(s);
+      if (s.autoUpdateEnabled) {
+        startAutoUpdateChecks();
+      }
+    });
+  } else if (settings.autoUpdateEnabled) {
+    startAutoUpdateChecks();
+  }
+
+  // Set up event handlers regardless (for manual checks)
+  autoUpdater.autoDownload = false; // Don't auto-download, ask first
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-available", (info) => {
     console.log("Update available:", info.version);
-    // Notify all windows
-    const msg = `Yeni versiyon bulundu: v${info.version}. İndiriliyor...`;
-    notifyAllWindows("update-status", { status: "downloading", version: info.version, message: msg });
+    notifyAllWindows("update-status", { status: "available", version: info.version });
+
+    // Ask user if they want to download
+    dialog.showMessageBox({
+      type: "info",
+      title: "VoiceFlow Guncelleme",
+      message: `Yeni versiyon mevcut: v${info.version}`,
+      detail: "Simdi indirmek ister misiniz?",
+      buttons: ["Indir", "Daha Sonra"],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate();
+        notifyAllWindows("update-status", { status: "downloading", version: info.version });
+      }
+    });
   });
 
   autoUpdater.on("update-not-available", () => {
@@ -1066,13 +1105,13 @@ function setupAutoUpdater() {
   autoUpdater.on("update-downloaded", (info) => {
     console.log("Update downloaded:", info.version);
     notifyAllWindows("update-status", { status: "ready", version: info.version });
-    // Show dialog to user
+    // Ask user to install
     dialog.showMessageBox({
       type: "info",
-      title: "VoiceFlow Güncelleme",
+      title: "VoiceFlow Guncelleme Hazir",
       message: `VoiceFlow v${info.version} indirildi.`,
-      detail: "Uygulamayi yeniden başlatarak güncellemek ister misiniz?",
-      buttons: ["Şimdi Güncelle", "Daha Sonra"],
+      detail: "Uygulamayi yeniden baslatarak guncellemek ister misiniz?",
+      buttons: ["Simdi Guncelle", "Daha Sonra"],
       defaultId: 0,
     }).then((result) => {
       if (result.response === 0) {
@@ -1084,8 +1123,10 @@ function setupAutoUpdater() {
   autoUpdater.on("error", (err) => {
     console.error("Auto-update error:", err.message);
   });
+}
 
-  // Check for updates after 5 seconds, then every 2 hours
+function startAutoUpdateChecks() {
+  // Check after 5 seconds, then every 2 hours
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch((err) => {
       console.log("Update check failed:", err.message);

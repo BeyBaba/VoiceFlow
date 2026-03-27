@@ -426,6 +426,7 @@
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Konusma Dili</div><div class="card-hint">Varsayilan konusma tanima dili</div></div>
             <select class="card-select" id="sLang"><option value="tr">TR Turkce</option><option value="en">EN English</option><option value="de">DE Deutsch</option><option value="fr">FR Francais</option><option value="es">ES Espanol</option><option value="ja">JP Japanese</option><option value="ko">KR Korean</option><option value="zh">CN Chinese</option><option value="pt">PT Portugues</option><option value="it">IT Italiano</option><option value="ru">RU Russian</option><option value="ar">AR Arabic</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Windows ile baslat</div><div class="card-hint">Bilgisayar acildiginda otomatik baslat</div></div><label class="toggle"><input type="checkbox" id="sAutoStart"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik Guncelleme</div><div class="card-hint">Yeni versiyon ciktiginda otomatik kontrol et ve bildir</div></div><label class="toggle"><input type="checkbox" id="sAutoUpdate" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Kapatinca gizle</div><div class="card-hint">Pencere kapatildiginda sistem tepsisine kucult</div></div><label class="toggle"><input type="checkbox" id="sMinToTray" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Bildirimler</div><div class="card-hint">Transkripsiyon tamamlandiginda bildirim goster</div></div><label class="toggle"><input type="checkbox" id="sNotifications" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
         </div>
@@ -761,7 +762,7 @@
       if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
       document.getElementById("sSendStats").checked=!!s.sendStats;
       document.getElementById("sKeepHistory").checked=!!s.keepHistory;
-      loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
+      loadAutoStart(); loadAutoUpdate(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
       document.getElementById("sPowerMode").checked=!!s.powerMode;
       // Disable premium features if trial expired
@@ -783,6 +784,7 @@
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
+    function loadAutoUpdate(){ document.getElementById("sAutoUpdate").checked = currentSettings.autoUpdateEnabled !== false; }
     async function loadAudioDevices(){
       try{
         const d=await navigator.mediaDevices.enumerateDevices(), sel=document.getElementById("sAudioDevice");
@@ -875,6 +877,7 @@
     function setupSettingsListeners(){
       on("sLang","change",v=>saveSetting("language",v));
       on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
+      on("sAutoUpdate","change",v=>{saveSetting("autoUpdateEnabled",v);saveSetting("autoUpdateAsked",true);showToast(v?"Otomatik guncelleme acik":"Otomatik guncelleme kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
       // API Key is embedded — no user input needed

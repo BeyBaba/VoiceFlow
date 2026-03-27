@@ -1,0 +1,16 @@
+VoiceFlow - Kurulum Bilgilendirmesi
+
+VoiceFlow, yapay zeka destekli sesli dikte uygulamasidir.
+
+ONEMLI: Windows SmartScreen Uyarisi
+Bu uygulama henuz dijital imza sertifikasina sahip degildir.
+Windows Defender SmartScreen "Bilinmeyen uygulama" uyarisi gosterebilir.
+
+Bu uyariyi gecmek icin:
+1. "Daha fazla bilgi" (More info) linkine tiklayin
+2. "Yine de calistir" (Run anyway) butonuna tiklayin
+
+Bu uygulama acik kaynaklidir ve guvenlidir.
+Kaynak kodu: https://github.com/BeyBaba/VoiceFlow
+
+Devam ederek bu kurulum sartlarini kabul etmis olursunuz.
