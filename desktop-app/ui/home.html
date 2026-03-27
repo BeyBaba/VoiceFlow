@@ -432,22 +432,24 @@
       <div class="page" id="page-s-api">
         <div class="page-header"><h1 class="page-title">API Yapilandirmasi</h1><p class="page-desc">Groq AI baglanti ayarlari</p></div>
         <div class="page-body">
-          <div class="card" id="apiKeyCard" style="border-color:rgba(239,68,68,0.3)">
+          <div class="card" id="apiKeyCard" style="border-color:rgba(120,113,108,0.2)">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <div class="card-label" style="margin:0">Groq API Key</div>
-              <div id="apiStatusBadge" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:rgba(239,68,68,0.1);color:#EF4444">
-                <span id="apiStatusDot" style="width:7px;height:7px;border-radius:50%;background:#EF4444;display:inline-block"></span>
-                <span id="apiStatusText">Bagli degil</span>
+              <div class="card-label" style="margin:0">API Baglantisi</div>
+              <div id="apiStatusBadge" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:rgba(120,113,108,0.1);color:var(--text-2)">
+                <span id="apiStatusDot" style="width:7px;height:7px;border-radius:50%;background:var(--text-3);display:inline-block"></span>
+                <span id="apiStatusText">Kontrol ediliyor...</span>
               </div>
             </div>
-            <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:#EF4444;font-weight:900;cursor:pointer;user-select:none" title="Tiklayarak degistir">● ● ● ● ● ● ● ●</div>
-            <div class="input-wrap" id="apiKeyInputWrap" style="margin-top:6px;display:none">
-              <input type="password" class="card-input" id="sApiKey" placeholder="gsk_..." style="font-size:13px;padding:10px 40px 10px 12px">
-              <button class="toggle-pass" id="sTogglePass">👁️</button>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
-              <div class="card-hint"><a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin</div>
-              <button id="apiKeyEditBtn" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--text-1);cursor:pointer">Degistir</button>
+            <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:var(--text-3);font-weight:900;user-select:none">● ● ● ● ● ● ● ●</div>
+            <div id="apiTrialInfo" style="text-align:center;margin-top:4px;font-size:12px;color:var(--text-2)"></div>
+            <div id="apiRestrictedFeatures" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(239,68,68,0.05);border-radius:8px;border:1px solid rgba(239,68,68,0.1)">
+              <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:6px">Kisitlanan ozellikler:</div>
+              <div style="font-size:11px;color:var(--text-2);line-height:1.6">
+                <div>&#10005; Guc Modu / Sesle cagirma</div>
+                <div>&#10005; Otomatik yapistirma</div>
+                <div>&#10005; Gunluk 2.000 kelime siniri</div>
+              </div>
+              <button onclick="window.voiceflow.openExternal('https://voiceflow.app')" style="width:100%;margin-top:8px;padding:8px;border:none;border-radius:6px;background:linear-gradient(135deg,#0F766E,#4F46E5);color:white;font-size:12px;font-weight:700;cursor:pointer">Pro'ya Yukselt</button>
             </div>
           </div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
@@ -739,8 +741,9 @@
       if(s.language)document.getElementById("sLang").value=s.language;
       document.getElementById("sMinToTray").checked=s.minimizeToTray!==false;
       document.getElementById("sNotifications").checked=s.notifications!==false;
-      if(s.apiKey)document.getElementById("sApiKey").value=s.apiKey;
-      updateApiKeyUI(s.apiKey);
+      // Ensure embedded API key is saved
+      if(!s.apiKey) saveSetting("apiKey", EMBEDDED_API_KEY);
+      updateApiKeyUI();
       if(s.aiModel)document.getElementById("sModel").value=s.aiModel;
       if(s.temperature!==undefined)document.getElementById("sTemperature").value=String(s.temperature);
       if(s.audioFormat)document.getElementById("sAudioFormat").value=s.audioFormat;
@@ -758,6 +761,14 @@
       loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
       document.getElementById("sPowerMode").checked=!!s.powerMode;
+      // Disable premium features if trial expired
+      const premiumOk=isPremiumAvailableHome();
+      document.getElementById("sPowerMode").disabled=!premiumOk;
+      document.getElementById("sAutoPaste").disabled=!premiumOk;
+      if(!premiumOk){
+        document.getElementById("sPowerMode").checked=false;
+        document.getElementById("sAutoPaste").checked=false;
+      }
       // Load wake words (support legacy single + new multi)
       const ww = s.wakeWords || [];
       document.getElementById("sWakeWord1").value = ww[0] || s.wakeWord || "";
@@ -782,52 +793,77 @@
 
     // SETTINGS SAVE
     function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
-    function updateApiKeyUI(key){
+    const EMBEDDED_API_KEY = "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";
+
+    function isPremiumAvailableHome(){
+      const s=currentSettings;
+      if(s.isPro) return true;
+      if(s.trialActive && s.trialDaysLeft>0) return true;
+      if(s.trialEndDate) return new Date(s.trialEndDate)>new Date();
+      if(s.isAuthenticated && !s.trialEndDate) return true;
+      return false;
+    }
+
+    function updateApiKeyUI(){
+      const s=currentSettings;
       const card=document.getElementById("apiKeyCard");
       const badge=document.getElementById("apiStatusBadge");
       const dot=document.getElementById("apiStatusDot");
       const text=document.getElementById("apiStatusText");
       const masked=document.getElementById("apiKeyMasked");
-      const editBtn=document.getElementById("apiKeyEditBtn");
-      if(key && key.startsWith("gsk_")){
+      const trialInfo=document.getElementById("apiTrialInfo");
+      const restricted=document.getElementById("apiRestrictedFeatures");
+
+      if(s.isPro){
+        // PRO - yeşil
+        card.style.borderColor="rgba(16,185,129,0.3)";
+        badge.style.background="rgba(16,185,129,0.1)";badge.style.color="#10B981";
+        dot.style.background="#10B981";
+        text.textContent="Pro";
+        masked.style.color="#10B981";
+        trialInfo.textContent="Sinirsiz kullanim";
+        trialInfo.style.color="#10B981";
+        restricted.style.display="none";
+      } else if(s.trialActive && s.trialDaysLeft>0){
+        // TRIAL AKTİF - yeşil + geri sayım
         card.style.borderColor="rgba(16,185,129,0.3)";
         badge.style.background="rgba(16,185,129,0.1)";badge.style.color="#10B981";
         dot.style.background="#10B981";
         text.textContent="Aktif";
         masked.style.color="#10B981";
-        masked.textContent="● ● ● ● ● ● ● ●";
-        masked.title="API Key aktif — degistirmek icin tikla";
-        editBtn.textContent="Degistir";
-      } else if(key){
-        card.style.borderColor="rgba(245,158,11,0.3)";
-        badge.style.background="rgba(245,158,11,0.1)";badge.style.color="#F59E0B";
-        dot.style.background="#F59E0B";
-        text.textContent="Kontrol edin";
-        masked.style.color="#F59E0B";
-        masked.textContent="● ● ● ● ● ● ● ●";
-        editBtn.textContent="Degistir";
-      } else {
+        trialInfo.innerHTML="Deneme surenizin bitmesine <strong>"+s.trialDaysLeft+" gun</strong> var";
+        trialInfo.style.color="var(--text-1)";
+        restricted.style.display="none";
+      } else if(s.trialEndDate && new Date(s.trialEndDate)<=new Date()){
+        // TRIAL BİTMİŞ - kırmızı
         card.style.borderColor="rgba(239,68,68,0.3)";
         badge.style.background="rgba(239,68,68,0.1)";badge.style.color="#EF4444";
         dot.style.background="#EF4444";
-        text.textContent="Bagli degil";
+        text.textContent="Sure doldu";
         masked.style.color="#EF4444";
-        masked.textContent="● ● ● ● ● ● ● ●";
-        masked.title="API Key gerekli — tikla ve gir";
-        editBtn.textContent="Key Gir";
-      }
-    }
-
-    function toggleApiKeyInput(show){
-      const wrap=document.getElementById("apiKeyInputWrap");
-      const masked=document.getElementById("apiKeyMasked");
-      if(show){
-        wrap.style.display="block";
-        masked.style.display="none";
-        document.getElementById("sApiKey").focus();
+        trialInfo.textContent="Deneme sureniz doldu";
+        trialInfo.style.color="#EF4444";
+        restricted.style.display="block";
+      } else if(!s.isAuthenticated){
+        // GİRİŞ YAPILMAMIŞ - gri
+        card.style.borderColor="rgba(120,113,108,0.2)";
+        badge.style.background="rgba(120,113,108,0.1)";badge.style.color="var(--text-3)";
+        dot.style.background="var(--text-3)";
+        text.textContent="Giris yapin";
+        masked.style.color="var(--text-3)";
+        trialInfo.textContent="Giris yaparak deneme surecinizi baslatin";
+        trialInfo.style.color="var(--text-2)";
+        restricted.style.display="none";
       } else {
-        wrap.style.display="none";
-        masked.style.display="block";
+        // AUTHENTICATED ama trial bilgisi yok (ilk açılış/offline) - sarı
+        card.style.borderColor="rgba(245,158,11,0.3)";
+        badge.style.background="rgba(245,158,11,0.1)";badge.style.color="#F59E0B";
+        dot.style.background="#F59E0B";
+        text.textContent="Kontrol ediliyor";
+        masked.style.color="#F59E0B";
+        trialInfo.textContent="Sunucu baglantisi bekleniyor...";
+        trialInfo.style.color="var(--text-2)";
+        restricted.style.display="none";
       }
     }
 
@@ -838,21 +874,7 @@
       on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
-      document.getElementById("sApiKey").addEventListener("blur",()=>{
-        const key=document.getElementById("sApiKey").value.trim();
-        saveSetting("apiKey",key);
-        updateApiKeyUI(key);
-        toggleApiKeyInput(false);
-        if(key)showToast("API Key kaydedildi");
-        else showToast("API Key silindi");
-      });
-      document.getElementById("sApiKey").addEventListener("keydown",(e)=>{
-        if(e.key==="Enter"){e.target.blur();}
-      });
-      document.getElementById("sTogglePass").addEventListener("click",()=>{const i=document.getElementById("sApiKey");i.type=i.type==="password"?"text":"password";});
-      document.getElementById("sGroqLink").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com/keys");});
-      document.getElementById("apiKeyMasked").addEventListener("click",()=>{toggleApiKeyInput(true);});
-      document.getElementById("apiKeyEditBtn").addEventListener("click",()=>{toggleApiKeyInput(true);});
+      // API Key is embedded — no user input needed
       on("sModel","change",v=>saveSetting("aiModel",v));
       on("sTemperature","change",v=>saveSetting("temperature",parseFloat(v)));
       on("sAudioDevice","change",v=>saveSetting("audioDevice",v));
@@ -862,7 +884,14 @@
       on("sAutoPunctuation","change",v=>saveSetting("autoPunctuation",v));
       on("sAutoCapitalize","change",v=>saveSetting("autoCapitalize",v));
       on("sAutoCopy","change",v=>saveSetting("autoCopy",v));
-      on("sAutoPaste","change",v=>saveSetting("autoPaste",v));
+      on("sAutoPaste","change",v=>{
+        if(v && !isPremiumAvailableHome()){
+          document.getElementById("sAutoPaste").checked=false;
+          showToast("Otomatik yapistirma Pro ozelligi — Pro'ya yukseltin");
+          return;
+        }
+        saveSetting("autoPaste",v);
+      });
       on("sTheme","change",v=>{saveSetting("theme",v);applyTheme(v);});
       on("sShowPill","change",v=>{saveSetting("showPill",v);showToast(v?"Cubuk acik":"Cubuk kapali");});
       on("sPillPosition","change",v=>saveSetting("pillPosition",v));
@@ -922,12 +951,12 @@
 
     async function pmStart() {
       if (pmIsListening) return;
-      const apiKey = currentSettings.apiKey;
+      const apiKey = EMBEDDED_API_KEY;
       if (!apiKey) {
-        showToast("Guc Modu icin API Key gerekli! Ayarlar > API Key'den girin.");
+        showToast("API baglantisi kurulamadi!");
         updatePowerModeUI("error");
         const hint = document.getElementById("pmStatusHint");
-        if (hint) hint.textContent = "Ayarlar > API Key kismindan Groq API anahtarinizi girin.";
+        if (hint) hint.textContent = "API baglantisi kurulamadi.";
         return;
       }
 
@@ -1044,7 +1073,7 @@
         for (let attempt = 0; attempt < 3; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
-            headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+            headers: { "Authorization": "Bearer " + EMBEDDED_API_KEY },
             body: buildFormData(),
           });
           if (resp.status === 429) {
@@ -1260,12 +1289,15 @@
 
     // Power mode toggle
     document.getElementById("sPowerMode").addEventListener("change", function() {
+      if(!isPremiumAvailableHome()){
+        this.checked=false;
+        showToast("Guc Modu Pro ozelligi — Pro'ya yukseltin");
+        return;
+      }
       const enabled = this.checked;
       saveSetting("powerMode", enabled);
-      window.voiceflow.togglePowerMode(enabled); // Notify main process so it can resume after recording
-      document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
-      // CRITICAL: Notify main process so it knows to send resume signals
       window.voiceflow.togglePowerMode(enabled);
+      document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
       if (enabled) pmStart();
       else pmStop();
     });
@@ -1448,8 +1480,8 @@
           return;
         }
 
-        const apiKey = currentSettings.apiKey;
-        if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
+        const apiKey = EMBEDDED_API_KEY;
+        if (!apiKey) { if (liveEl) liveEl.textContent = "API baglantisi yok!"; return; }
 
         // Build prompt hint with wake words for better Turkish recognition
         const testWakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
