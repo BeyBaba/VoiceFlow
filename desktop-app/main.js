@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
 const http = require("http");
+const { autoUpdater } = require("electron-updater");
 
 let mainWindow = null;
 let pillWindow = null;
@@ -77,6 +78,7 @@ function createMainWindow() {
     resizable: false,
     skipTaskbar: false,
     show: false,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -211,6 +213,7 @@ function createSettingsWindow() {
     height: 560,
     frame: true,
     resizable: false,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -256,6 +259,7 @@ function createHomeWindow(navigateTo) {
     resizable: true,
     minWidth: 700,
     minHeight: 500,
+    icon: path.join(__dirname, "assets", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -1038,7 +1042,135 @@ async function checkLicenseOnStartup() {
 }
 
 // ========== APP LIFECYCLE ==========
+// ========== AUTO-UPDATE ==========
+function setupAutoUpdater() {
+  const settings = loadSettings();
+
+  // If user hasn't been asked about auto-update yet, ask now
+  if (settings.autoUpdateAsked === undefined) {
+    dialog.showMessageBox({
+      type: "question",
+      title: "VoiceFlow - Otomatik Guncelleme",
+      message: "Otomatik guncelleme acilsin mi?",
+      detail: "VoiceFlow yeni versiyon ciktiginda otomatik kontrol edip size bildirim gosterebilir. Ayarlardan istediginiz zaman degistirebilirsiniz.",
+      buttons: ["Evet, Otomatik Guncelle", "Hayir, Ben Kendim Yaparim"],
+      defaultId: 0,
+      cancelId: 1,
+    }).then((result) => {
+      const s = loadSettings();
+      s.autoUpdateAsked = true;
+      s.autoUpdateEnabled = result.response === 0;
+      saveSettings(s);
+      if (s.autoUpdateEnabled) {
+        startAutoUpdateChecks();
+      }
+    });
+  } else if (settings.autoUpdateEnabled) {
+    startAutoUpdateChecks();
+  }
+
+  // Set up event handlers regardless (for manual checks)
+  autoUpdater.autoDownload = false; // Don't auto-download, ask first
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    console.log("Update available:", info.version);
+    notifyAllWindows("update-status", { status: "available", version: info.version });
+
+    // Ask user if they want to download
+    dialog.showMessageBox({
+      type: "info",
+      title: "VoiceFlow Guncelleme",
+      message: `Yeni versiyon mevcut: v${info.version}`,
+      detail: "Simdi indirmek ister misiniz?",
+      buttons: ["Indir", "Daha Sonra"],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate();
+        notifyAllWindows("update-status", { status: "downloading", version: info.version });
+      }
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    console.log("No updates available.");
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    const pct = Math.round(progress.percent);
+    notifyAllWindows("update-status", { status: "progress", percent: pct });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("Update downloaded:", info.version);
+    notifyAllWindows("update-status", { status: "ready", version: info.version });
+    // Ask user to install
+    dialog.showMessageBox({
+      type: "info",
+      title: "VoiceFlow Guncelleme Hazir",
+      message: `VoiceFlow v${info.version} indirildi.`,
+      detail: "Uygulamayi yeniden baslatarak guncellemek ister misiniz?",
+      buttons: ["Simdi Guncelle", "Daha Sonra"],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-update error:", err.message);
+  });
+}
+
+function startAutoUpdateChecks() {
+  // Check after 5 seconds, then every 2 hours
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log("Update check failed:", err.message);
+    });
+  }, 5000);
+
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log("Update check failed:", err.message);
+    });
+  }, 2 * 60 * 60 * 1000);
+}
+
+function notifyAllWindows(channel, data) {
+  [mainWindow, homeWindow, pillWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(channel, data);
+    }
+  });
+}
+
+// IPC: manual update check from UI
+ipcMain.handle("check-for-updates", async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { available: !!result?.updateInfo, version: result?.updateInfo?.version };
+  } catch (err) {
+    return { available: false, error: err.message };
+  }
+});
+
 app.whenReady().then(async () => {
+  // Set app identity for Windows taskbar — prevents Electron default icon
+  app.setAppUserModelId("com.voiceflow.desktop");
+
+  // Set app icon for all windows
+  const appIconPath = path.join(__dirname, "assets", "icon.ico");
+  if (fs.existsSync(appIconPath)) {
+    const appIcon = nativeImage.createFromPath(appIconPath);
+    if (!appIcon.isEmpty()) {
+      app.dock && app.dock.setIcon(appIcon); // macOS
+    }
+  }
+
   // Grant microphone permission to all windows (needed for Power Mode test + listening)
   const { session } = require("electron");
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -1100,6 +1232,9 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error("Auto-start setup error:", err);
   }
+
+  // ===== AUTO-UPDATE =====
+  setupAutoUpdater();
 
   console.log("VoiceFlow started successfully!");
   console.log("Settings path:", getSettingsPath());

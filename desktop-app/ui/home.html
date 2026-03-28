@@ -224,7 +224,7 @@
         <div class="nav-divider"></div>
         <div class="nav-label">AYARLAR</div>
         <div class="nav-item" data-page="s-general"><span class="nav-icon">⚙️</span> Genel</div>
-        <div class="nav-item" data-page="s-api" style="display:none"><span class="nav-icon">🔑</span> API</div>
+        <div class="nav-item" data-page="s-api"><span class="nav-icon">🔑</span> API Durumu</div>
         <div class="nav-item" data-page="s-audio"><span class="nav-icon">🎙️</span> Ses</div>
         <div class="nav-item" data-page="s-transcription"><span class="nav-icon">✏️</span> Transkripsiyon</div>
         <div class="nav-item" data-page="s-appearance"><span class="nav-icon">🎨</span> Gorunum</div>
@@ -243,6 +243,9 @@
       </div>
       <button class="sidebar-logout" id="btnLogout">⬅ Cikis Yap</button>
       <div class="sidebar-version" id="homeVersion">VoiceFlow</div>
+      <div id="updateBanner" style="display:none;padding:6px 14px;margin:4px 10px 8px;background:linear-gradient(135deg,#22c55e22,#16a34a22);border:1px solid #22c55e44;border-radius:8px;font-size:11px;color:#22c55e;cursor:pointer;text-align:center" onclick="installUpdate()">
+        <span id="updateBannerText">Guncelleme mevcut</span>
+      </div>
     </div>
 
     <div class="content">
@@ -423,6 +426,7 @@
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Konusma Dili</div><div class="card-hint">Varsayilan konusma tanima dili</div></div>
             <select class="card-select" id="sLang"><option value="tr">TR Turkce</option><option value="en">EN English</option><option value="de">DE Deutsch</option><option value="fr">FR Francais</option><option value="es">ES Espanol</option><option value="ja">JP Japanese</option><option value="ko">KR Korean</option><option value="zh">CN Chinese</option><option value="pt">PT Portugues</option><option value="it">IT Italiano</option><option value="ru">RU Russian</option><option value="ar">AR Arabic</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Windows ile baslat</div><div class="card-hint">Bilgisayar acildiginda otomatik baslat</div></div><label class="toggle"><input type="checkbox" id="sAutoStart"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik Guncelleme</div><div class="card-hint">Yeni versiyon ciktiginda otomatik kontrol et ve bildir</div></div><label class="toggle"><input type="checkbox" id="sAutoUpdate" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Kapatinca gizle</div><div class="card-hint">Pencere kapatildiginda sistem tepsisine kucult</div></div><label class="toggle"><input type="checkbox" id="sMinToTray" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Bildirimler</div><div class="card-hint">Transkripsiyon tamamlandiginda bildirim goster</div></div><label class="toggle"><input type="checkbox" id="sNotifications" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
         </div>
@@ -432,7 +436,26 @@
       <div class="page" id="page-s-api">
         <div class="page-header"><h1 class="page-title">API Yapilandirmasi</h1><p class="page-desc">Groq AI baglanti ayarlari</p></div>
         <div class="page-body">
-          <div class="card"><div class="card-label">Groq API Key</div><div class="card-hint" style="margin-bottom:8px"><a href="#" id="sGroqLink">console.groq.com</a> adresinden ucretsiz alin</div><div class="input-wrap"><input type="password" class="card-input" id="sApiKey" placeholder="gsk_..."><button class="toggle-pass" id="sTogglePass">👁️</button></div></div>
+          <div class="card" id="apiKeyCard" style="border-color:rgba(120,113,108,0.2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div class="card-label" style="margin:0">API Baglantisi</div>
+              <div id="apiStatusBadge" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:rgba(120,113,108,0.1);color:var(--text-2)">
+                <span id="apiStatusDot" style="width:7px;height:7px;border-radius:50%;background:var(--text-3);display:inline-block"></span>
+                <span id="apiStatusText">Kontrol ediliyor...</span>
+              </div>
+            </div>
+            <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:var(--text-3);font-weight:900;user-select:none">● ● ● ● ● ● ● ●</div>
+            <div id="apiTrialInfo" style="text-align:center;margin-top:4px;font-size:12px;color:var(--text-2)"></div>
+            <div id="apiRestrictedFeatures" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(239,68,68,0.05);border-radius:8px;border:1px solid rgba(239,68,68,0.1)">
+              <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:6px">Kisitlanan ozellikler:</div>
+              <div style="font-size:11px;color:var(--text-2);line-height:1.6">
+                <div>&#10005; Guc Modu / Sesle cagirma</div>
+                <div>&#10005; Otomatik yapistirma</div>
+                <div>&#10005; Gunluk 2.000 kelime siniri</div>
+              </div>
+              <button onclick="window.voiceflow.openExternal('https://voiceflow.app')" style="width:100%;margin-top:8px;padding:8px;border:none;border-radius:6px;background:linear-gradient(135deg,#0F766E,#4F46E5);color:white;font-size:12px;font-weight:700;cursor:pointer">Pro'ya Yukselt</button>
+            </div>
+          </div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Sicaklik (Temperature)</div><div class="card-hint">Dusuk = tutarli, yuksek = yaratici</div></div><select class="card-select" id="sTemperature" style="min-width:70px"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.2">0.2</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="0.8">0.8</option><option value="1.0">1.0</option></select></div></div>
         </div>
@@ -722,7 +745,9 @@
       if(s.language)document.getElementById("sLang").value=s.language;
       document.getElementById("sMinToTray").checked=s.minimizeToTray!==false;
       document.getElementById("sNotifications").checked=s.notifications!==false;
-      if(s.apiKey)document.getElementById("sApiKey").value=s.apiKey;
+      // Ensure embedded API key is saved
+      if(!s.apiKey) saveSetting("apiKey", EMBEDDED_API_KEY);
+      updateApiKeyUI();
       if(s.aiModel)document.getElementById("sModel").value=s.aiModel;
       if(s.temperature!==undefined)document.getElementById("sTemperature").value=String(s.temperature);
       if(s.audioFormat)document.getElementById("sAudioFormat").value=s.audioFormat;
@@ -737,9 +762,17 @@
       if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
       document.getElementById("sSendStats").checked=!!s.sendStats;
       document.getElementById("sKeepHistory").checked=!!s.keepHistory;
-      loadAutoStart(); loadAudioDevices(); loadShortcutDisplays();
+      loadAutoStart(); loadAutoUpdate(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
       document.getElementById("sPowerMode").checked=!!s.powerMode;
+      // Disable premium features if trial expired
+      const premiumOk=isPremiumAvailableHome();
+      document.getElementById("sPowerMode").disabled=!premiumOk;
+      document.getElementById("sAutoPaste").disabled=!premiumOk;
+      if(!premiumOk){
+        document.getElementById("sPowerMode").checked=false;
+        document.getElementById("sAutoPaste").checked=false;
+      }
       // Load wake words (support legacy single + new multi)
       const ww = s.wakeWords || [];
       document.getElementById("sWakeWord1").value = ww[0] || s.wakeWord || "";
@@ -751,6 +784,7 @@
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
+    function loadAutoUpdate(){ document.getElementById("sAutoUpdate").checked = currentSettings.autoUpdateEnabled !== false; }
     async function loadAudioDevices(){
       try{
         const d=await navigator.mediaDevices.enumerateDevices(), sel=document.getElementById("sAudioDevice");
@@ -764,16 +798,89 @@
 
     // SETTINGS SAVE
     function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
+    const EMBEDDED_API_KEY = "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";
+
+    function isPremiumAvailableHome(){
+      const s=currentSettings;
+      if(s.isPro) return true;
+      if(s.trialActive && s.trialDaysLeft>0) return true;
+      if(s.trialEndDate) return new Date(s.trialEndDate)>new Date();
+      if(s.isAuthenticated && !s.trialEndDate) return true;
+      return false;
+    }
+
+    function updateApiKeyUI(){
+      const s=currentSettings;
+      const card=document.getElementById("apiKeyCard");
+      const badge=document.getElementById("apiStatusBadge");
+      const dot=document.getElementById("apiStatusDot");
+      const text=document.getElementById("apiStatusText");
+      const masked=document.getElementById("apiKeyMasked");
+      const trialInfo=document.getElementById("apiTrialInfo");
+      const restricted=document.getElementById("apiRestrictedFeatures");
+
+      if(s.isPro){
+        // PRO - yeşil
+        card.style.borderColor="rgba(16,185,129,0.3)";
+        badge.style.background="rgba(16,185,129,0.1)";badge.style.color="#10B981";
+        dot.style.background="#10B981";
+        text.textContent="Pro";
+        masked.style.color="#10B981";
+        trialInfo.textContent="Sinirsiz kullanim";
+        trialInfo.style.color="#10B981";
+        restricted.style.display="none";
+      } else if(s.trialActive && s.trialDaysLeft>0){
+        // TRIAL AKTİF - yeşil + geri sayım
+        card.style.borderColor="rgba(16,185,129,0.3)";
+        badge.style.background="rgba(16,185,129,0.1)";badge.style.color="#10B981";
+        dot.style.background="#10B981";
+        text.textContent="Aktif";
+        masked.style.color="#10B981";
+        trialInfo.innerHTML="Deneme surenizin bitmesine <strong>"+s.trialDaysLeft+" gun</strong> var";
+        trialInfo.style.color="var(--text-1)";
+        restricted.style.display="none";
+      } else if(s.trialEndDate && new Date(s.trialEndDate)<=new Date()){
+        // TRIAL BİTMİŞ - kırmızı
+        card.style.borderColor="rgba(239,68,68,0.3)";
+        badge.style.background="rgba(239,68,68,0.1)";badge.style.color="#EF4444";
+        dot.style.background="#EF4444";
+        text.textContent="Sure doldu";
+        masked.style.color="#EF4444";
+        trialInfo.textContent="Deneme sureniz doldu";
+        trialInfo.style.color="#EF4444";
+        restricted.style.display="block";
+      } else if(!s.isAuthenticated){
+        // GİRİŞ YAPILMAMIŞ - gri
+        card.style.borderColor="rgba(120,113,108,0.2)";
+        badge.style.background="rgba(120,113,108,0.1)";badge.style.color="var(--text-3)";
+        dot.style.background="var(--text-3)";
+        text.textContent="Giris yapin";
+        masked.style.color="var(--text-3)";
+        trialInfo.textContent="Giris yaparak deneme surecinizi baslatin";
+        trialInfo.style.color="var(--text-2)";
+        restricted.style.display="none";
+      } else {
+        // AUTHENTICATED ama trial bilgisi yok (ilk açılış/offline) - sarı
+        card.style.borderColor="rgba(245,158,11,0.3)";
+        badge.style.background="rgba(245,158,11,0.1)";badge.style.color="#F59E0B";
+        dot.style.background="#F59E0B";
+        text.textContent="Kontrol ediliyor";
+        masked.style.color="#F59E0B";
+        trialInfo.textContent="Sunucu baglantisi bekleniyor...";
+        trialInfo.style.color="var(--text-2)";
+        restricted.style.display="none";
+      }
+    }
+
     function on(id,ev,fn){ const e=document.getElementById(id); if(!e)return; e.addEventListener(ev,()=>fn(e.type==="checkbox"?e.checked:e.value)); }
 
     function setupSettingsListeners(){
       on("sLang","change",v=>saveSetting("language",v));
       on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
+      on("sAutoUpdate","change",v=>{saveSetting("autoUpdateEnabled",v);saveSetting("autoUpdateAsked",true);showToast(v?"Otomatik guncelleme acik":"Otomatik guncelleme kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
-      document.getElementById("sApiKey").addEventListener("blur",()=>{saveSetting("apiKey",document.getElementById("sApiKey").value.trim());showToast("API Key kaydedildi");});
-      document.getElementById("sTogglePass").addEventListener("click",()=>{const i=document.getElementById("sApiKey");i.type=i.type==="password"?"text":"password";});
-      document.getElementById("sGroqLink").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com/keys");});
+      // API Key is embedded — no user input needed
       on("sModel","change",v=>saveSetting("aiModel",v));
       on("sTemperature","change",v=>saveSetting("temperature",parseFloat(v)));
       on("sAudioDevice","change",v=>saveSetting("audioDevice",v));
@@ -783,7 +890,14 @@
       on("sAutoPunctuation","change",v=>saveSetting("autoPunctuation",v));
       on("sAutoCapitalize","change",v=>saveSetting("autoCapitalize",v));
       on("sAutoCopy","change",v=>saveSetting("autoCopy",v));
-      on("sAutoPaste","change",v=>saveSetting("autoPaste",v));
+      on("sAutoPaste","change",v=>{
+        if(v && !isPremiumAvailableHome()){
+          document.getElementById("sAutoPaste").checked=false;
+          showToast("Otomatik yapistirma Pro ozelligi — Pro'ya yukseltin");
+          return;
+        }
+        saveSetting("autoPaste",v);
+      });
       on("sTheme","change",v=>{saveSetting("theme",v);applyTheme(v);});
       on("sShowPill","change",v=>{saveSetting("showPill",v);showToast(v?"Cubuk acik":"Cubuk kapali");});
       on("sPillPosition","change",v=>saveSetting("pillPosition",v));
@@ -843,12 +957,12 @@
 
     async function pmStart() {
       if (pmIsListening) return;
-      const apiKey = currentSettings.apiKey;
+      const apiKey = EMBEDDED_API_KEY;
       if (!apiKey) {
-        showToast("Guc Modu icin API Key gerekli! Ayarlar > API Key'den girin.");
+        showToast("API baglantisi kurulamadi!");
         updatePowerModeUI("error");
         const hint = document.getElementById("pmStatusHint");
-        if (hint) hint.textContent = "Ayarlar > API Key kismindan Groq API anahtarinizi girin.";
+        if (hint) hint.textContent = "API baglantisi kurulamadi.";
         return;
       }
 
@@ -965,12 +1079,12 @@
         for (let attempt = 0; attempt < 3; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
-            headers: { "Authorization": "Bearer " + currentSettings.apiKey },
+            headers: { "Authorization": "Bearer " + EMBEDDED_API_KEY },
             body: buildFormData(),
           });
           if (resp.status === 429) {
             console.log("PowerMode 429, retry", attempt+1);
-            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
             continue;
           }
           break;
@@ -1181,12 +1295,15 @@
 
     // Power mode toggle
     document.getElementById("sPowerMode").addEventListener("change", function() {
+      if(!isPremiumAvailableHome()){
+        this.checked=false;
+        showToast("Guc Modu Pro ozelligi — Pro'ya yukseltin");
+        return;
+      }
       const enabled = this.checked;
       saveSetting("powerMode", enabled);
-      window.voiceflow.togglePowerMode(enabled); // Notify main process so it can resume after recording
-      document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
-      // CRITICAL: Notify main process so it knows to send resume signals
       window.voiceflow.togglePowerMode(enabled);
+      document.getElementById("pmActivateHint").textContent = enabled ? "Aktif — dinliyor" : "Kapali";
       if (enabled) pmStart();
       else pmStop();
     });
@@ -1369,8 +1486,8 @@
           return;
         }
 
-        const apiKey = currentSettings.apiKey;
-        if (!apiKey) { if (liveEl) liveEl.textContent = "API Key yok!"; return; }
+        const apiKey = EMBEDDED_API_KEY;
+        if (!apiKey) { if (liveEl) liveEl.textContent = "API baglantisi yok!"; return; }
 
         // Build prompt hint with wake words for better Turkish recognition
         const testWakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
@@ -1394,8 +1511,8 @@
           });
           console.log("Test Groq status:", resp.status, "attempt:", attempt);
           if (resp.status === 429) {
-            if (liveEl) liveEl.textContent = "⏳ Rate limit, bekleniyor...";
-            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            if (liveEl) liveEl.textContent = "Rate limit, bekleniyor...";
+            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
             continue;
           }
           break;
@@ -1695,6 +1812,32 @@
     }
 
     function showToast(m){document.getElementById("toastText").textContent=m;document.getElementById("toast").classList.remove("hidden");setTimeout(()=>document.getElementById("toast").classList.add("hidden"),2500);}
+
+    // ===== AUTO-UPDATE UI =====
+    let updateReady = false;
+    if (window.voiceflow && window.voiceflow.onUpdateStatus) {
+      window.voiceflow.onUpdateStatus(function(data) {
+        const banner = document.getElementById("updateBanner");
+        const text = document.getElementById("updateBannerText");
+        if (!banner) return;
+        if (data.status === "downloading") {
+          banner.style.display = "block";
+          text.textContent = "v" + data.version + " indiriliyor...";
+        } else if (data.status === "progress") {
+          text.textContent = "İndiriliyor... %" + data.percent;
+        } else if (data.status === "ready") {
+          updateReady = true;
+          banner.style.display = "block";
+          banner.style.background = "linear-gradient(135deg,#22c55e33,#16a34a33)";
+          text.textContent = "v" + data.version + " hazir — tikla ve guncelle";
+        }
+      });
+    }
+    function installUpdate() {
+      if (updateReady) {
+        showToast("Guncelleme yukleniyor, uygulama yeniden baslatilacak...");
+      }
+    }
 
     init();
   </script>

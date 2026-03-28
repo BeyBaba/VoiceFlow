@@ -1,3 +1,17 @@
+// ==================== EMBEDDED API KEY ====================
+const EMBEDDED_API_KEY = "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";
+
+function isPremiumAvailable(settings) {
+  if (settings.isPro) return true;
+  if (settings.trialActive && settings.trialDaysLeft > 0) return true;
+  if (settings.trialEndDate) {
+    return new Date(settings.trialEndDate) > new Date();
+  }
+  // Grace: if authenticated but no trial info yet (offline first launch), allow
+  if (settings.isAuthenticated && !settings.trialEndDate) return true;
+  return false;
+}
+
 // ==================== LANGUAGE CONFIG ====================
 const LANGUAGE_PROMPTS = {
   tr: "Bu bir Turkce konusma kaydidir. Lutfen Turkce olarak yaziya dokun.",
@@ -171,7 +185,12 @@ async function init() {
     cachedSettings = await window.voiceflow.getSettings();
     console.log("Settings loaded:", cachedSettings);
 
-    if (cachedSettings.setupComplete && cachedSettings.apiKey) {
+    // Auto-set embedded API key if not already set
+    if (!cachedSettings.apiKey) {
+      cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
+    }
+
+    if (cachedSettings.setupComplete) {
       showView("idle");
       window.voiceflow.resizeWindow(380, 100);
 
@@ -210,6 +229,9 @@ function showView(name) {
 
 // ==================== ONBOARDING ====================
 function goToStep(stepNum) {
+  // Skip Step 1 (API Key) — key is embedded
+  if (stepNum === 1) stepNum = 2;
+
   const steps = document.querySelectorAll(".ob-step");
   const goingBack = stepNum < currentOnboardingStep;
 
@@ -399,11 +421,9 @@ function createConfetti() {
 
 // Finish onboarding
 async function finishOnboarding() {
-  const apiKey = obApiKeyInput.value.trim();
-
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
-    apiKey: apiKey,
+    apiKey: EMBEDDED_API_KEY,
     autoPaste: false,
     autoCopy: true,
     removeFiller: true,
@@ -446,20 +466,10 @@ async function startRecording() {
     cachedSettings = await window.voiceflow.getSettings();
   }
 
-  if (!cachedSettings.apiKey) {
+  if (!cachedSettings.setupComplete) {
     showView("onboarding");
     window.voiceflow.resizeWindow(420, 560);
-    showToast("Once API Key girin!");
     return;
-  }
-
-  // Check trial expiration for free users
-  if (!cachedSettings.isPro && cachedSettings.trialEndDate) {
-    const trialEnd = new Date(cachedSettings.trialEndDate);
-    if (trialEnd <= new Date()) {
-      showUpgradeModal(0, true);
-      return;
-    }
   }
 
   // Check word limit for free users
@@ -576,7 +586,7 @@ async function transcribe(audioBlob) {
   if (!cachedSettings) {
     cachedSettings = await window.voiceflow.getSettings();
   }
-  const apiKey = cachedSettings.apiKey;
+  const apiKey = EMBEDDED_API_KEY;
   const language = cachedSettings.language || "tr";
   const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
@@ -609,7 +619,7 @@ async function transcribe(audioBlob) {
     if (!response.ok && response.status !== 401) {
       console.warn("Turbo model failed, trying whisper-large-v3...");
       const fallbackForm = new FormData();
-      fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: mime }));
+      fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: blobMime }));
       fallbackForm.append("model", "whisper-large-v3");
       fallbackForm.append("language", language);
       fallbackForm.append("response_format", "verbose_json");
@@ -677,8 +687,8 @@ async function transcribe(audioBlob) {
     // Update word count
     await updateDailyWordCount(cleaned);
 
-    // Auto-paste: hide window and simulate Ctrl+V
-    if (cachedSettings.autoPaste) {
+    // Auto-paste: hide window and simulate Ctrl+V (premium only)
+    if (cachedSettings.autoPaste && isPremiumAvailable(cachedSettings)) {
       setTimeout(() => {
         showToast("Kopyalandi!");
         setTimeout(() => {

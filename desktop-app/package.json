@@ -1,6 +1,6 @@
 {
   "name": "voiceflow-desktop",
-  "version": "4.0.3",
+  "version": "4.1.0",
   "description": "VoiceFlow - AI Sesli Dikte Uygulamasi",
   "main": "main.js",
   "scripts": {
@@ -35,7 +35,7 @@
       "publisherName": "VoiceFlow"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "allowToChangeInstallationDirectory": false,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
@@ -45,11 +45,21 @@
       "shortcutName": "VoiceFlow",
       "runAfterFinish": true,
       "installerSidebar": null,
-      "license": null,
+      "license": "assets/install-notice.txt",
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "menuCategory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "BeyBaba",
+        "repo": "VoiceFlow",
+        "releaseType": "release"
+      }
+    ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  }
 }
