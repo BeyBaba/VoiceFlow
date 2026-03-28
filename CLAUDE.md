@@ -31,6 +31,12 @@ gh release create v{VERSION} "dist\VoiceFlow Setup {VERSION}.exe" --title "Voice
 ```
 Not: {VERSION} ve {DEGISIKLIK_OZETI} her seferinde guncelle.
 
+## KRITIK: Komut Verme Kurali
+- ASLA placeholder birakma ({VERSION}, {OZET} gibi)
+- Her seferinde versiyonu ve degisiklik ozetini DOLDURULMUS olarak ver
+- Kullanici kopyala-yapistir yapacak, ekstra duzenleme yapmasina gerek kalmamali
+- Ornek dogru format: `gh release create v4.1.0 "dist\VoiceFlow Setup 4.1.0.exe" --title "VoiceFlow v4.1.0" --notes "aciklama buraya"`
+
 ## Onemli Kurallar
 - Master'a ASLA sormadan merge yapma
 - 3.1.3 exe backup'i her zaman koru (dist klasorunde)
