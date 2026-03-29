@@ -4,6 +4,9 @@
 - Varsayilan proje yolu: `D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow`
 - Terminal: PowerShell (WSL degil)
 - Build ve komutlar icin her zaman bu yolu kullan
+- ASLA Ubuntu/Linux/bash komutu verme — her zaman Windows PowerShell formati kullan
+- Ornek: `rm -rf` degil `Remove-Item -Recurse`, `ls` degil `Get-ChildItem` vb.
+- Kullaniciya verilen tum komutlar PowerShell uyumlu olmali
 
 ## Release Kurali
 Her yeni degisiklik veya versiyon guncellemesinde:
