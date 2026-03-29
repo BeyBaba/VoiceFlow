@@ -1,12 +1,20 @@
 name: Build Windows Setup
 
 on:
+  # Otomatik: package.json degistiginde (versiyon guncelleme)
+  push:
+    paths:
+      - 'desktop-app/package.json'
+    branches:
+      - main
+      - master
+      - 'claude/**'
+  # Manuel: GitHub Actions sayfasindan tetikle
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versiyon numarasi (ornek: 4.0.1)'
-        required: true
-        default: '4.0.1'
+        description: 'Versiyon numarasi (ornek: 4.1.0)'
+        required: false
 
 jobs:
   build:
@@ -20,39 +28,62 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Update version
+      - name: Get version from package.json
+        id: version
         shell: bash
         run: |
-          cd desktop-app
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version --allow-same-version
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(node -p "require('./desktop-app/package.json').version")
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+          echo "Version: $VERSION"
+
+      - name: Check if release already exists
+        id: check
+        shell: bash
+        run: |
+          if gh release view "v${{ steps.version.outputs.VERSION }}" > /dev/null 2>&1; then
+            echo "EXISTS=true" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.version.outputs.VERSION }} already exists, skipping."
+          else
+            echo "EXISTS=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
+        if: steps.check.outputs.EXISTS == 'false'
         run: |
           cd desktop-app
           npm install
 
       - name: Build Windows Setup
+        if: steps.check.outputs.EXISTS == 'false'
         run: |
           cd desktop-app
           npm run build
 
       - name: Upload Setup EXE
+        if: steps.check.outputs.EXISTS == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: VoiceFlow-Setup-${{ github.event.inputs.version }}
+          name: VoiceFlow-Setup-${{ steps.version.outputs.VERSION }}
           path: desktop-app/dist/*.exe
           retention-days: 90
 
       - name: Create Release
+        if: steps.check.outputs.EXISTS == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: VoiceFlow v${{ github.event.inputs.version }}
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: VoiceFlow v${{ steps.version.outputs.VERSION }}
           body: |
-            ## VoiceFlow v${{ github.event.inputs.version }}
+            ## VoiceFlow v${{ steps.version.outputs.VERSION }}
 
             ### Kurulum
-            1. Asagidaki **VoiceFlow.Setup.${{ github.event.inputs.version }}.exe** dosyasini indirin
+            1. Asagidaki **VoiceFlow.Setup.${{ steps.version.outputs.VERSION }}.exe** dosyasini indirin
             2. Cift tiklayin
             3. Otomatik kurulacak ve calisacak
 

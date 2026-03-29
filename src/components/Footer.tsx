@@ -6,7 +6,7 @@ const footerLinks = {
     { label: "Fiyatlandırma", href: "#pricing" },
     { label: "Karşılaştırma", href: "#comparison" },
     { label: "Web Demo", href: "/demo" },
-    { label: "Windows İndir", href: "/downloads/VoiceFlow-Setup.exe" },
+    { label: "Windows İndir", href: "/api/download" },
   ],
   "Platform": [
     { label: "Windows Uygulaması", href: "#download" },

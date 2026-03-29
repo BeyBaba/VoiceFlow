@@ -149,7 +149,7 @@ function SuccessContent() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="/downloads/VoiceFlow-Setup.exe"
+                href="/api/download"
                 download
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold hover:from-teal-500 hover:to-teal-400 transition-all shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2"
               >
