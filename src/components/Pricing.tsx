@@ -109,7 +109,7 @@ export default function Pricing() {
       }
 
       // Trial aktif → indirmeye izin ver
-      window.location.href = "/downloads/VoiceFlow-Setup.exe";
+      window.location.href = "/api/download";
       return;
     }
 

@@ -50,7 +50,7 @@ export default function CTA() {
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
               <a
-                href="/downloads/VoiceFlow-Setup.exe"
+                href="/api/download"
                 download
                 className="group px-8 py-4 rounded-2xl bg-white text-teal-700 font-semibold text-lg hover:bg-stone-100 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 flex items-center gap-2"
               >
