@@ -30,10 +30,12 @@
 18. **GitHub Releases** - Her versiyon gecisinde changelog
 19. **Commit dili** - Turkce, conventional commits (feat:, fix:, chore:)
 20. **Duplicate kontrolu** - Ayni repodan birden fazla deploy yok
+21. **Otomatik indirme linki** - /api/download endpoint'i GitHub Releases'tan en son exe'yi bulup kullaniciya stream eder. Private repo icin GITHUB_TOKEN kullanir. Hardcoded dosya linki KULLANMA.
+22. **CI/CD Build** - GitHub Actions workflow var (.github/workflows/build-windows-setup.yml). package.json versiyonu degistiginde otomatik build + release yapar. Kullaniciya manuel komut verme.
 
 ## META
-21. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
-22. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
+23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
+24. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
 
 ## Release Kurali
 Her yeni degisiklik veya versiyon guncellemesinde:
