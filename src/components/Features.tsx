@@ -216,7 +216,7 @@ function FeatureCard({
                         <span className="text-2xl">{item.icon}</span>
                         <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{item.step}</span>
                       </motion.div>
-                      {i < feature.flow.length - 1 && (
+                      {i < (feature.flow?.length ?? 0) - 1 && (
                         <motion.svg
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}

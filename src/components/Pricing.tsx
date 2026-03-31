@@ -194,11 +194,11 @@ export default function Pricing() {
             <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${isYearly ? "translate-x-7" : "translate-x-0"}`} />
           </button>
           <span className={`text-sm font-medium transition-colors ${isYearly ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-stone-500"}`}>
-            Yıllık
+            {t.pricing.yearly}
           </span>
           {isYearly && (
             <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40 px-2 py-0.5 rounded-full">
-              %38 Tasarruf
+              {t.pricing.yearlySave}
             </span>
           )}
         </motion.div>
@@ -239,14 +239,14 @@ export default function Pricing() {
                 {plan.priceLifetime !== null ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-extrabold">${plan.priceLifetime}</span>
-                    <span className="text-stone-500 dark:text-stone-400 text-sm">/tek sefer</span>
+                    <span className="text-stone-500 dark:text-stone-400 text-sm">{t.pricing.perOneTime}</span>
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-extrabold">
                       ${isYearly ? Math.round((plan.priceYearly || 0) / 12) : plan.priceMonthly}
                     </span>
-                    <span className="text-stone-500 dark:text-stone-400 text-sm">/ay</span>
+                    <span className="text-stone-500 dark:text-stone-400 text-sm">{t.pricing.perMonth}</span>
                     {isYearly && plan.priceYearly && plan.priceYearly > 0 && (
                       <span className="ml-2 text-xs text-stone-400 dark:text-stone-500 line-through">
                         ${plan.priceMonthly}/ay
@@ -256,7 +256,7 @@ export default function Pricing() {
                 )}
                 {isYearly && plan.priceYearly && plan.priceYearly > 0 && (
                   <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
-                    Yıllık ${plan.priceYearly} olarak faturalandırılır
+                    {t.pricing.billedYearly.replace("{amount}", String(plan.priceYearly))}
                   </p>
                 )}
               </div>
@@ -284,7 +284,7 @@ export default function Pricing() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Yönlendiriliyor...
+                    {t.pricing.redirecting}
                   </span>
                 ) : plan.planType === "free" ? (
                   <span className="flex items-center justify-center gap-2">
@@ -306,12 +306,12 @@ export default function Pricing() {
                       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
-                    Giriş Yap ve {plan.planType === "lifetime" ? "Lifetime Al" : "Pro Al"}
+                    {t.pricing.signInAndGet.replace("{plan}", plan.planType === "lifetime" ? t.pricing.lifetime.name : t.pricing.pro.name)}
                   </span>
                 ) : plan.planType === "lifetime" ? (
-                  "Lifetime Al"
+                  t.pricing.getLifetime
                 ) : (
-                  "Pro Al"
+                  t.pricing.getPro
                 )}
               </button>
 
@@ -346,7 +346,7 @@ export default function Pricing() {
           transition={{ duration: 0.5, delay: 0.6 }}
           className="text-center text-sm text-stone-400 dark:text-stone-500 mt-10"
         >
-          🔒 Google ile giriş yap · 7 gün ücretsiz dene · İstediğin zaman iptal et
+          {t.pricing.bottomNote}
         </motion.p>
       </div>
     </section>
