@@ -954,6 +954,8 @@
     const PM_COOLDOWN = 5000;
     const PM_MIN_SPEECH_MS = 800; // Minimum speech duration before sending to Groq
     const PM_MIN_BLOB = 2000; // Minimum blob size (bytes) to avoid noise clips
+    const PM_MAX_REQUESTS_PER_MIN = 8; // Self-throttle: max API calls per minute
+    let pmRequestTimestamps = []; // Track API call timestamps for rate limiting
 
     async function pmStart() {
       if (pmIsListening) return;
@@ -1054,6 +1056,16 @@
     async function pmCaptureAndCheck(chunks, mimeType) {
       if (pmIsCapturing || !pmIsListening) return;
       if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
+
+      // Self-throttle: check requests per minute
+      const now = Date.now();
+      pmRequestTimestamps = pmRequestTimestamps.filter(t => now - t < 60000);
+      if (pmRequestTimestamps.length >= PM_MAX_REQUESTS_PER_MIN) {
+        console.log("PM self-throttle: " + pmRequestTimestamps.length + " requests in last minute, skipping");
+        return;
+      }
+      pmRequestTimestamps.push(now);
+
       pmIsCapturing = true;
 
       const liveEl = document.getElementById("pmLiveText");
@@ -1083,8 +1095,9 @@
             body: buildFormData(),
           });
           if (resp.status === 429) {
-            console.log("PowerMode 429, retry", attempt+1);
-            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+            const waitMs = Math.pow(2, attempt + 1) * 2000; // 4s, 8s, 16s
+            console.log("PowerMode 429, retry", attempt+1, "wait", waitMs + "ms");
+            await new Promise(r => setTimeout(r, waitMs));
             continue;
           }
           break;
@@ -1124,8 +1137,16 @@
               if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
             }
           }
-        } else {
+        } else if (resp) {
           console.error("PowerMode Groq error:", resp.status);
+          const liveEl2 = document.getElementById("pmLiveText");
+          if (resp.status === 429 && liveEl2) {
+            liveEl2.textContent = "API rate limit — biraz bekleyin";
+            liveEl2.style.color = "#F59E0B";
+          } else if (liveEl2) {
+            liveEl2.textContent = "API hatasi: " + resp.status;
+            liveEl2.style.color = "#EF4444";
+          }
         }
       } catch (err) {
         console.error("PowerMode Groq request error:", err);
@@ -1343,6 +1364,8 @@
     let pmTestSpeechStart = 0;
     let pmTestRecorder = null;
     let pmTestRecordChunks = [];
+    let pmTestLastApiCall = 0;
+    const PM_TEST_API_COOLDOWN = 2000; // Min 2s between API calls in test
 
     document.getElementById("pmTestBtn").addEventListener("click", async function() {
       const words = getWakeWords();
@@ -1428,7 +1451,7 @@
           if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
           if (num) num.textContent = Math.round(avg);
 
-          if (avg > 8) {
+          if (avg > 25) {
             if (!pmTestSpeechDetected) {
               pmTestSpeechDetected = true;
               pmTestSpeechStart = Date.now();
@@ -1445,7 +1468,7 @@
             }
           } else if (pmTestSpeechDetected) {
             const dur = Date.now() - pmTestSpeechStart;
-            if (dur > 400 && dur < 8000) {
+            if (dur > 700 && dur < 8000) {
               pmTestSpeechDetected = false;
               if (pmTestRecorder && pmTestRecorder.state === "recording") {
                 const rec = pmTestRecorder;
@@ -1473,6 +1496,12 @@
 
     async function pmTestCapture(chunks, mimeType) {
       if (!pmTestListening) return;
+      // Cooldown: prevent rapid-fire API calls
+      if (Date.now() - pmTestLastApiCall < PM_TEST_API_COOLDOWN) {
+        console.log("Test API cooldown active, skipping");
+        return;
+      }
+      pmTestLastApiCall = Date.now();
       const liveEl = document.getElementById("pmLiveText");
       const matchEl = document.getElementById("pmMatchIndicator");
       if (liveEl) { liveEl.textContent = "🔄 Ses kontrol ediliyor..."; liveEl.style.color = "#F59E0B"; }
@@ -1503,7 +1532,7 @@
         };
 
         let resp = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 4; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + apiKey },
@@ -1511,8 +1540,9 @@
           });
           console.log("Test Groq status:", resp.status, "attempt:", attempt);
           if (resp.status === 429) {
-            if (liveEl) liveEl.textContent = "Rate limit, bekleniyor...";
-            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+            const waitMs = Math.pow(2, attempt + 1) * 2000; // 4s, 8s, 16s, 32s
+            if (liveEl) liveEl.textContent = "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
+            await new Promise(r => setTimeout(r, waitMs));
             continue;
           }
           break;
