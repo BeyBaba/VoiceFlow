@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useI18n } from "@/i18n/context";
+import { useTheme } from "@/components/ThemeProvider";
 
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -45,11 +46,11 @@ function getPlanBadge(plan: string | undefined, trialEndDate: string | null | un
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
   const { t, locale, setLocale } = useI18n();
+  const { theme, setTheme, isDark } = useTheme();
 
   const navLinks = [
     { label: t.nav.features, href: "#features" },
@@ -65,10 +66,6 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
@@ -79,13 +76,12 @@ export default function Navbar() {
   }, []);
 
   const toggleTheme = () => {
-    const html = document.documentElement;
-    if (isDark) {
-      html.classList.remove("dark");
-      setIsDark(false);
+    if (theme === "system") {
+      setTheme(isDark ? "light" : "dark");
+    } else if (isDark) {
+      setTheme("light");
     } else {
-      html.classList.add("dark");
-      setIsDark(true);
+      setTheme("dark");
     }
   };
 
