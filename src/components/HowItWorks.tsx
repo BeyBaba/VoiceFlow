@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useI18n } from "@/i18n/context";
 
 const steps = [
   {
