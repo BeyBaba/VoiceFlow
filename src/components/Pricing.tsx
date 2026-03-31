@@ -163,16 +163,16 @@ export default function Pricing() {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 mb-4">
-            Fiyatlandırma
+            {t.pricing.badge}
           </span>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
-            Rakiplerden{" "}
+            {t.pricing.title1}{" "}
             <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">
-              %47 daha uygun
+              {t.pricing.title2}
             </span>
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-2xl mx-auto">
-            Aynı kalite, yarı fiyat. Üstelik Lifetime seçeneğiyle bir kere öde, sonsuza dek kullan.
+            {t.pricing.subtitle}
           </p>
         </motion.div>
 
@@ -185,7 +185,7 @@ export default function Pricing() {
           className="flex items-center justify-center gap-4 mb-12"
         >
           <span className={`text-sm font-medium transition-colors ${!isYearly ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-stone-500"}`}>
-            Aylık
+            {t.pricing.monthly}
           </span>
           <button
             onClick={() => setIsYearly(!isYearly)}
