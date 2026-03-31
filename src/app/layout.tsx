@@ -3,6 +3,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import OfflineBanner from "@/components/OfflineBanner";
+import NotificationPrompt from "@/components/NotificationPrompt";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,6 +38,7 @@ export default function RootLayout({
         <Providers>
           <OfflineBanner />
           {children}
+          <NotificationPrompt />
         </Providers>
         <ServiceWorkerRegister />
       </body>
