@@ -58,12 +58,17 @@ jobs:
         run: |
           cd desktop-app
           npm install
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
       - name: Build Windows Setup
         if: steps.check.outputs.EXISTS == 'false'
         run: |
           cd desktop-app
-          npm run build
+          npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
 
       - name: Upload Setup EXE
         if: steps.check.outputs.EXISTS == 'false'
