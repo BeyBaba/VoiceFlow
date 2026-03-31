@@ -3,13 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signIn, signOut } from "next-auth/react";
-
-const navLinks = [
-  { label: "Özellikler", href: "#features" },
-  { label: "Kullanım", href: "#usecases" },
-  { label: "Fiyatlandırma", href: "#pricing" },
-  { label: "Yorumlar", href: "#testimonials" },
-];
+import { useI18n } from "@/i18n/context";
 
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -40,12 +34,12 @@ function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-function getPlanBadge(plan: string | undefined, trialEndDate: string | null | undefined) {
-  if (plan === "lifetime") return { text: "Lifetime", color: "bg-amber-500/20 text-amber-400" };
-  if (plan === "pro") return { text: "Pro", color: "bg-primary/20 text-primary" };
+function getPlanBadge(plan: string | undefined, trialEndDate: string | null | undefined, t: ReturnType<typeof useI18n>["t"]) {
+  if (plan === "lifetime") return { text: t.nav.lifetime, color: "bg-amber-500/20 text-amber-400" };
+  if (plan === "pro") return { text: t.nav.pro, color: "bg-primary/20 text-primary" };
   const days = getTrialDaysLeft(trialEndDate);
-  if (days > 0) return { text: `Free · ${days} gün kaldı`, color: "bg-emerald-500/20 text-emerald-400" };
-  return { text: "Süre doldu", color: "bg-red-500/20 text-red-400" };
+  if (days > 0) return { text: t.nav.trialDaysLeft.replace("{days}", String(days)), color: "bg-emerald-500/20 text-emerald-400" };
+  return { text: t.nav.expired, color: "bg-red-500/20 text-red-400" };
 }
 
 export default function Navbar() {
@@ -55,6 +49,14 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
+  const { t, locale, setLocale } = useI18n();
+
+  const navLinks = [
+    { label: t.nav.features, href: "#features" },
+    { label: t.nav.useCases, href: "#usecases" },
+    { label: t.nav.pricing, href: "#pricing" },
+    { label: t.nav.testimonials, href: "#testimonials" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -66,7 +68,6 @@ export default function Navbar() {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -88,7 +89,7 @@ export default function Navbar() {
     }
   };
 
-  const badge = session?.user ? getPlanBadge(session.user.plan, session.user.trialEndDate) : null;
+  const badge = session?.user ? getPlanBadge(session.user.plan, session.user.trialEndDate, t) : null;
 
   return (
     <motion.nav
@@ -140,10 +141,19 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLocale(locale === "tr" ? "en" : "tr")}
+              className="px-2 py-1 rounded-lg text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-text-muted"
+              title={locale === "tr" ? "Switch to English" : "Türkçe'ye geç"}
+            >
+              {locale === "tr" ? "EN" : "TR"}
+            </button>
+
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-              title={isDark ? "Aydınlık mod" : "Karanlık mod"}
+              title={isDark ? t.nav.lightMode : t.nav.darkMode}
             >
               {isDark ? (
                 <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -159,14 +169,13 @@ export default function Navbar() {
               href="/demo"
               className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
             >
-              Web Demo
+              {t.nav.webDemo}
             </a>
 
             {/* Auth Button */}
             {status === "loading" ? (
               <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 animate-pulse" />
             ) : session?.user ? (
-              /* Logged in: Avatar + Dropdown */
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -195,7 +204,6 @@ export default function Navbar() {
                       transition={{ duration: 0.15 }}
                       className="absolute right-0 mt-2 w-64 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 shadow-xl overflow-hidden"
                     >
-                      {/* User Info */}
                       <div className="p-4 border-b border-stone-100 dark:border-stone-700">
                         <div className="flex items-center gap-3">
                           {session.user.image ? (
@@ -228,7 +236,6 @@ export default function Navbar() {
                         )}
                       </div>
 
-                      {/* Actions */}
                       <div className="p-2">
                         <button
                           onClick={() => {
@@ -240,7 +247,7 @@ export default function Navbar() {
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                           </svg>
-                          Çıkış Yap
+                          {t.nav.signOut}
                         </button>
                       </div>
                     </motion.div>
@@ -248,13 +255,12 @@ export default function Navbar() {
                 </AnimatePresence>
               </div>
             ) : (
-              /* Not logged in: Google Sign In button */
               <button
                 onClick={() => signIn("google")}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm"
               >
                 <GoogleIcon className="w-4 h-4" />
-                Giriş Yap
+                {t.nav.signIn}
               </button>
             )}
           </div>
@@ -308,6 +314,14 @@ export default function Navbar() {
                 </a>
               ))}
 
+              {/* Language switcher mobile */}
+              <button
+                onClick={() => setLocale(locale === "tr" ? "en" : "tr")}
+                className="text-left text-base font-medium text-text-muted hover:text-primary transition-colors"
+              >
+                {locale === "tr" ? "English" : "Türkçe"}
+              </button>
+
               {/* Mobile Auth */}
               {session?.user ? (
                 <div className="mt-2 flex items-center gap-3 p-3 rounded-xl bg-stone-100 dark:bg-stone-800">
@@ -354,7 +368,7 @@ export default function Navbar() {
                   className="mt-2 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-600 text-sm font-semibold text-stone-700 dark:text-stone-200"
                 >
                   <GoogleIcon className="w-4 h-4" />
-                  Google ile Giriş Yap
+                  {t.nav.signInGoogle}
                 </button>
               )}
             </div>

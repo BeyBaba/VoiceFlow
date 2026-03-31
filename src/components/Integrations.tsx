@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useI18n } from "@/i18n/context";
 
 const integrations = [
   "Slack",
@@ -53,6 +54,7 @@ function IntegrationChip({ name }: { name: string }) {
 }
 
 export default function Integrations() {
+  const { t } = useI18n();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
@@ -66,15 +68,14 @@ export default function Integrations() {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 mb-4">
-            Entegrasyonlar
+            {t.integrations.badge}
           </span>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
-            Her yerde{" "}
-            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">çalışır</span>
+            {t.integrations.title1}{" "}
+            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">{t.integrations.title2}</span>
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
-            VoiceFlow, 30+ favori uygulamanızda her metin alanında çalışır.
-            Eklenti yok, kurulum yok — sadece konuş.
+            {t.integrations.subtitle}
           </p>
         </motion.div>
       </div>
@@ -122,7 +123,7 @@ export default function Integrations() {
                 d="M12 4.5v15m7.5-7.5h-15"
               />
             </svg>
-            Ve metin alanı olan her uygulama
+            {t.integrations.andMore}
           </span>
         </motion.div>
       </div>

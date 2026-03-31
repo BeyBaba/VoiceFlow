@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useI18n } from "@/i18n/context";
 
 function AnimatedCounter({
   target,
@@ -35,6 +36,7 @@ function AnimatedCounter({
 }
 
 export default function SpeedComparison() {
+  const { t } = useI18n();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
@@ -43,9 +45,9 @@ export default function SpeedComparison() {
       {/* Marquee background text */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.03] select-none">
         <div className="animate-marquee whitespace-nowrap text-[200px] font-black leading-none text-stone-900 dark:text-white">
-          4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI
-          &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X HIZLI &middot; 4X
-          HIZLI &middot;
+          {t.speedComparison.marquee} &middot; {t.speedComparison.marquee} &middot; {t.speedComparison.marquee} &middot; {t.speedComparison.marquee}
+          &middot; {t.speedComparison.marquee} &middot; {t.speedComparison.marquee} &middot; {t.speedComparison.marquee} &middot; {t.speedComparison.marquee}
+          &middot;
         </div>
       </div>
 
@@ -57,11 +59,11 @@ export default function SpeedComparison() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4">
-            Konuşma hızında{" "}
-            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">düşün</span>
+            {t.speedComparison.title1}{" "}
+            <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">{t.speedComparison.title2}</span>
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
-            Ses, yazmaktan 4 kat hızlı. Fikirlerini yavaşlatma.
+            {t.speedComparison.subtitle}
           </p>
         </motion.div>
 
@@ -74,12 +76,12 @@ export default function SpeedComparison() {
             className="bg-white dark:bg-stone-900/60 rounded-3xl p-8 border border-stone-200 dark:border-stone-700/50 relative"
           >
             <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-4 uppercase tracking-wider">
-              Klavye ile yazma
+              {t.speedComparison.typing}
             </div>
             <div className="text-6xl sm:text-7xl font-black text-stone-300 dark:text-stone-600 mb-2">
               <AnimatedCounter target={45} suffix="" delay={0.3} />
             </div>
-            <div className="text-lg text-stone-500 dark:text-stone-400">kelime / dakika</div>
+            <div className="text-lg text-stone-500 dark:text-stone-400">{t.speedComparison.wpm}</div>
             {/* Progress bar */}
             <div className="mt-8 h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
               <motion.div
@@ -123,12 +125,12 @@ export default function SpeedComparison() {
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
             <div className="relative">
               <div className="text-sm font-medium text-white/70 mb-4 uppercase tracking-wider">
-                VoiceFlow
+                {t.speedComparison.voiceflow}
               </div>
               <div className="text-6xl sm:text-7xl font-black mb-2">
                 <AnimatedCounter target={220} suffix="" delay={0.5} />
               </div>
-              <div className="text-lg text-white/70">kelime / dakika</div>
+              <div className="text-lg text-white/70">{t.speedComparison.wpm}</div>
               {/* Progress bar */}
               <div className="mt-8 h-3 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
@@ -179,7 +181,7 @@ export default function SpeedComparison() {
                 d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
               />
             </svg>
-            Yazmaktan 4 kat hızlı
+            {t.speedComparison.faster}
           </div>
         </motion.div>
       </div>

@@ -2,85 +2,87 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-
-const testimonials = [
-  {
-    quote: "Parkinson hastasıyım ve artık yazmak benim için çok zor. VoiceFlow sayesinde tekrar üretken oldum. Bu uygulama hayatımı değiştirdi.",
-    name: "Hasan Çelik",
-    role: "Emekli Öğretmen",
-    avatar: "HC",
-    color: "bg-rose-500",
-    highlight: true,
-  },
-  {
-    quote: "VoiceFlow ile 3 kat daha fazla içerik üretiyorum. Ellerim artık ağrımıyor!",
-    name: "Zeynep Yıldız",
-    role: "İçerik Üretici",
-    avatar: "ZY",
-    color: "bg-violet-500",
-    highlight: false,
-  },
-  {
-    quote: "RSI sorunu yaşayan bir geliştirici olarak VoiceFlow kariyerimi kurtardı. Ağrısız kod yazabiliyorum.",
-    name: "Burak Kaya",
-    role: "Kıdemli Geliştirici",
-    avatar: "BK",
-    color: "bg-blue-500",
-    highlight: false,
-  },
-  {
-    quote: "E-posta yanıt sürem %60 düştü. Satış ekibinin tamamı kullanıyor artık.",
-    name: "Elif Demir",
-    role: "Satış Direktörü",
-    avatar: "ED",
-    color: "bg-emerald-500",
-    highlight: false,
-  },
-  {
-    quote: "Tezimi VoiceFlow ile yazdım, yüzlerce saat tasarruf ettim. AI düzenleme inanılmaz doğru.",
-    name: "Mert Arslan",
-    role: "Doktora Öğrencisi",
-    avatar: "MA",
-    color: "bg-orange-500",
-    highlight: false,
-  },
-  {
-    quote: "Tüm hukuk ekibimiz VoiceFlow kullanıyor. Belge taslağı hazırlama süresi yarıya indi.",
-    name: "Selin Öztürk",
-    role: "Avukat, Öztürk Hukuk",
-    avatar: "SÖ",
-    color: "bg-pink-500",
-    highlight: false,
-  },
-  {
-    quote: "İngilizce ve Türkçe arasında sorunsuz geçiş yapıyorum. Çoklu dil desteği kusursuz.",
-    name: "Ahmet Yılmaz",
-    role: "Ürün Yöneticisi",
-    avatar: "AY",
-    color: "bg-teal-500",
-    highlight: false,
-  },
-  {
-    quote: "Sabah yürüyüşümde bir kitap bölümünün tamamını dikte ettim. Artık her yerde yazabiliyorum.",
-    name: "Ayşe Korkmaz",
-    role: "Yazar",
-    avatar: "AK",
-    color: "bg-red-500",
-    highlight: false,
-  },
-  {
-    quote: "Yıllardır kullandığım en iyi AI ürünü. Söylediklerimi değil, kastettiğimi anlıyor.",
-    name: "Deniz Şahin",
-    role: "CEO, TechStart",
-    avatar: "DŞ",
-    color: "bg-cyan-500",
-    highlight: false,
-  },
-];
+import { useI18n } from "@/i18n/context";
 
 export default function Testimonials() {
+  const { t } = useI18n();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const testimonials = [
+    {
+      quote: t.testimonials.t1.quote,
+      name: t.testimonials.t1.name,
+      role: t.testimonials.t1.role,
+      avatar: "HC",
+      color: "bg-rose-500",
+      highlight: true,
+    },
+    {
+      quote: t.testimonials.t2.quote,
+      name: t.testimonials.t2.name,
+      role: t.testimonials.t2.role,
+      avatar: "ZY",
+      color: "bg-violet-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t3.quote,
+      name: t.testimonials.t3.name,
+      role: t.testimonials.t3.role,
+      avatar: "BK",
+      color: "bg-blue-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t4.quote,
+      name: t.testimonials.t4.name,
+      role: t.testimonials.t4.role,
+      avatar: "ED",
+      color: "bg-emerald-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t5.quote,
+      name: t.testimonials.t5.name,
+      role: t.testimonials.t5.role,
+      avatar: "MA",
+      color: "bg-orange-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t6.quote,
+      name: t.testimonials.t6.name,
+      role: t.testimonials.t6.role,
+      avatar: "S\u00D6",
+      color: "bg-pink-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t7.quote,
+      name: t.testimonials.t7.name,
+      role: t.testimonials.t7.role,
+      avatar: "AY",
+      color: "bg-teal-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t8.quote,
+      name: t.testimonials.t8.name,
+      role: t.testimonials.t8.role,
+      avatar: "AK",
+      color: "bg-red-500",
+      highlight: false,
+    },
+    {
+      quote: t.testimonials.t9.quote,
+      name: t.testimonials.t9.name,
+      role: t.testimonials.t9.role,
+      avatar: "D\u015E",
+      color: "bg-cyan-500",
+      highlight: false,
+    },
+  ];
 
   return (
     <section id="testimonials" className="py-24 sm:py-32">
@@ -92,30 +94,29 @@ export default function Testimonials() {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 mb-4">
-            Kullanıcı Yorumları
+            {t.testimonials.badge}
           </span>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
-            Binlerce kullanıcı{" "}
+            {t.testimonials.title1}{" "}
             <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-              seviyor
+              {t.testimonials.title2}
             </span>
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
-            Profesyoneller, öğrenciler ve içerik üreticileri her gün
-            VoiceFlow&apos;a güveniyor.
+            {t.testimonials.subtitle}
           </p>
         </motion.div>
 
         {/* Testimonial grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
+          {testimonials.map((item, i) => (
             <motion.div
-              key={t.name}
+              key={item.name}
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
               className={`rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-                t.highlight
+                item.highlight
                   ? "border-teal-500/50 bg-gradient-to-br from-teal-50 to-white dark:from-teal-950/30 dark:to-stone-900/50 shadow-md shadow-teal-200/30 dark:shadow-teal-900/20 sm:col-span-2 lg:col-span-1"
                   : "border-stone-200 dark:border-stone-700/50 bg-white dark:bg-stone-900/30 hover:shadow-stone-100 dark:hover:shadow-stone-900/50"
               }`}
@@ -131,24 +132,24 @@ export default function Testimonials() {
 
               {/* Quote */}
               <p className="text-stone-600 dark:text-stone-300 leading-relaxed mb-6">
-                &ldquo;{t.quote}&rdquo;
+                &ldquo;{item.quote}&rdquo;
               </p>
 
               {/* Accessibility badge for highlighted */}
-              {t.highlight && (
+              {item.highlight && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 text-xs font-semibold mb-4">
-                  ♿ Erişilebilirlik Hikayesi
+                  {t.testimonials.accessibilityBadge}
                 </div>
               )}
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center text-white text-sm font-bold shadow-sm`}>
-                  {t.avatar}
+                <div className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold shadow-sm`}>
+                  {item.avatar}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold">{t.name}</div>
-                  <div className="text-xs text-stone-500 dark:text-stone-400">{t.role}</div>
+                  <div className="text-sm font-semibold">{item.name}</div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400">{item.role}</div>
                 </div>
               </div>
             </motion.div>

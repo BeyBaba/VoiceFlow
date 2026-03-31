@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSession, signIn } from "next-auth/react";
+import { useI18n } from "@/i18n/context";
 
 function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
   if (!trialEndDate) return 0;
@@ -9,73 +10,74 @@ function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-const plans = [
-  {
-    name: "Free",
-    description: "7 günlük ücretsiz deneme",
-    priceMonthly: 0,
-    priceYearly: 0,
-    priceLifetime: null,
-    badge: null,
-    ctaStyle: "secondary" as const,
-    planType: "free",
-    features: [
-      { text: "Günlük 2.000 kelime", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Temel transkripsiyon", included: true },
-      { text: "Komut modu", included: false },
-      { text: "Snippet kütüphanesi", included: false },
-      { text: "Öncelikli destek", included: false },
-    ],
-  },
-  {
-    name: "Pro",
-    description: "Profesyoneller için",
-    priceMonthly: 8,
-    priceYearly: 60,
-    priceLifetime: null,
-    badge: null,
-    ctaStyle: "primary" as const,
-    planType: "pro",
-    features: [
-      { text: "Sınırsız kelime", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Gelişmiş transkripsiyon", included: true },
-      { text: "Komut modu", included: true },
-      { text: "Snippet kütüphanesi", included: true },
-      { text: "Öncelikli destek", included: true },
-    ],
-  },
-  {
-    name: "Lifetime",
-    description: "Bir kere öde, sonsuza dek kullan",
-    priceMonthly: null,
-    priceYearly: null,
-    priceLifetime: 149,
-    badge: "En Popüler",
-    ctaStyle: "lifetime" as const,
-    planType: "lifetime",
-    features: [
-      { text: "Sınırsız kelime — sonsuza dek", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Gelişmiş transkripsiyon", included: true },
-      { text: "Komut modu", included: true },
-      { text: "Snippet kütüphanesi", included: true },
-      { text: "Öncelikli destek + erken erişim", included: true },
-    ],
-  },
-];
-
 export default function Pricing() {
+  const { t } = useI18n();
   const [isYearly, setIsYearly] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
   const { data: session } = useSession();
+
+  const plans = [
+    {
+      name: t.pricing.free.name,
+      description: t.pricing.free.description,
+      priceMonthly: 0,
+      priceYearly: 0,
+      priceLifetime: null as number | null,
+      badge: null as string | null,
+      ctaStyle: "secondary" as const,
+      planType: "free",
+      features: [
+        { text: t.pricing.free.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.free.f5, included: true },
+        { text: t.pricing.free.f6, included: false },
+        { text: t.pricing.free.f7, included: false },
+        { text: t.pricing.free.f8, included: false },
+      ],
+    },
+    {
+      name: t.pricing.pro.name,
+      description: t.pricing.pro.description,
+      priceMonthly: 8,
+      priceYearly: 60,
+      priceLifetime: null as number | null,
+      badge: null as string | null,
+      ctaStyle: "primary" as const,
+      planType: "pro",
+      features: [
+        { text: t.pricing.pro.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.pro.f5, included: true },
+        { text: t.pricing.free.f6, included: true },
+        { text: t.pricing.free.f7, included: true },
+        { text: t.pricing.pro.f8, included: true },
+      ],
+    },
+    {
+      name: t.pricing.lifetime.name,
+      description: t.pricing.lifetime.description,
+      priceMonthly: null as number | null,
+      priceYearly: null as number | null,
+      priceLifetime: 149,
+      badge: t.pricing.mostPopular,
+      ctaStyle: "lifetime" as const,
+      planType: "lifetime",
+      features: [
+        { text: t.pricing.lifetime.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.pro.f5, included: true },
+        { text: t.pricing.free.f6, included: true },
+        { text: t.pricing.free.f7, included: true },
+        { text: t.pricing.lifetime.f8, included: true },
+      ],
+    },
+  ];
 
   const trialDaysLeft = session?.user
     ? getTrialDaysLeft(session.user.trialEndDate)
@@ -83,11 +85,11 @@ export default function Pricing() {
   const trialExpired = session?.user?.plan === "free" && trialDaysLeft === 0 && !!session.user.trialEndDate;
 
   const getFreeCta = () => {
-    if (!session) return "Giriş Yap ve Başla";
-    if (session.user?.plan === "pro" || session.user?.plan === "lifetime") return "Zaten Aktif ✓";
-    if (trialExpired) return "Deneme Süresi Doldu";
-    if (trialDaysLeft > 0) return `Ücretsiz İndir (${trialDaysLeft} gün kaldı)`;
-    return "Giriş Yap ve Başla";
+    if (!session) return t.pricing.signInAndStart;
+    if (session.user?.plan === "pro" || session.user?.plan === "lifetime") return t.pricing.alreadyActive;
+    if (trialExpired) return t.pricing.trialExpired;
+    if (trialDaysLeft > 0) return t.pricing.freeDownload.replace("{days}", String(trialDaysLeft));
+    return t.pricing.signInAndStart;
   };
 
   const handleCheckout = async (planType: string) => {
@@ -136,11 +138,11 @@ export default function Pricing() {
         window.location.href = data.url;
       } else {
         console.error("Checkout error:", data.error);
-        alert("Ödeme sayfası açılamadı. Lütfen tekrar deneyin.");
+        alert(t.pricing.checkoutError);
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+      alert(t.pricing.genericError);
     } finally {
       setLoading(null);
     }
@@ -161,16 +163,16 @@ export default function Pricing() {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 mb-4">
-            Fiyatlandırma
+            {t.pricing.badge}
           </span>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
-            Rakiplerden{" "}
+            {t.pricing.title1}{" "}
             <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">
-              %47 daha uygun
+              {t.pricing.title2}
             </span>
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-2xl mx-auto">
-            Aynı kalite, yarı fiyat. Üstelik Lifetime seçeneğiyle bir kere öde, sonsuza dek kullan.
+            {t.pricing.subtitle}
           </p>
         </motion.div>
 
@@ -183,7 +185,7 @@ export default function Pricing() {
           className="flex items-center justify-center gap-4 mb-12"
         >
           <span className={`text-sm font-medium transition-colors ${!isYearly ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-stone-500"}`}>
-            Aylık
+            {t.pricing.monthly}
           </span>
           <button
             onClick={() => setIsYearly(!isYearly)}
@@ -192,11 +194,11 @@ export default function Pricing() {
             <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${isYearly ? "translate-x-7" : "translate-x-0"}`} />
           </button>
           <span className={`text-sm font-medium transition-colors ${isYearly ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-stone-500"}`}>
-            Yıllık
+            {t.pricing.yearly}
           </span>
           {isYearly && (
             <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40 px-2 py-0.5 rounded-full">
-              %38 Tasarruf
+              {t.pricing.yearlySave}
             </span>
           )}
         </motion.div>
@@ -237,14 +239,14 @@ export default function Pricing() {
                 {plan.priceLifetime !== null ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-extrabold">${plan.priceLifetime}</span>
-                    <span className="text-stone-500 dark:text-stone-400 text-sm">/tek sefer</span>
+                    <span className="text-stone-500 dark:text-stone-400 text-sm">{t.pricing.perOneTime}</span>
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-extrabold">
                       ${isYearly ? Math.round((plan.priceYearly || 0) / 12) : plan.priceMonthly}
                     </span>
-                    <span className="text-stone-500 dark:text-stone-400 text-sm">/ay</span>
+                    <span className="text-stone-500 dark:text-stone-400 text-sm">{t.pricing.perMonth}</span>
                     {isYearly && plan.priceYearly && plan.priceYearly > 0 && (
                       <span className="ml-2 text-xs text-stone-400 dark:text-stone-500 line-through">
                         ${plan.priceMonthly}/ay
@@ -254,7 +256,7 @@ export default function Pricing() {
                 )}
                 {isYearly && plan.priceYearly && plan.priceYearly > 0 && (
                   <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
-                    Yıllık ${plan.priceYearly} olarak faturalandırılır
+                    {t.pricing.billedYearly.replace("{amount}", String(plan.priceYearly))}
                   </p>
                 )}
               </div>
@@ -282,7 +284,7 @@ export default function Pricing() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Yönlendiriliyor...
+                    {t.pricing.redirecting}
                   </span>
                 ) : plan.planType === "free" ? (
                   <span className="flex items-center justify-center gap-2">
@@ -304,12 +306,12 @@ export default function Pricing() {
                       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
-                    Giriş Yap ve {plan.planType === "lifetime" ? "Lifetime Al" : "Pro Al"}
+                    {t.pricing.signInAndGet.replace("{plan}", plan.planType === "lifetime" ? t.pricing.lifetime.name : t.pricing.pro.name)}
                   </span>
                 ) : plan.planType === "lifetime" ? (
-                  "Lifetime Al"
+                  t.pricing.getLifetime
                 ) : (
-                  "Pro Al"
+                  t.pricing.getPro
                 )}
               </button>
 
@@ -344,7 +346,7 @@ export default function Pricing() {
           transition={{ duration: 0.5, delay: 0.6 }}
           className="text-center text-sm text-stone-400 dark:text-stone-500 mt-10"
         >
-          🔒 Google ile giriş yap · 7 gün ücretsiz dene · İstediğin zaman iptal et
+          {t.pricing.bottomNote}
         </motion.p>
       </div>
     </section>
