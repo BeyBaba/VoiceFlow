@@ -404,5 +404,11 @@
     "s8Title": "8. İletişim",
     "s8Text": "Gizlilik politikamızla ilgili sorularınız için bize info@voiceflow.app adresinden ulaşabilirsiniz.",
     "allRightsReserved": "Tüm hakları saklıdır."
+  },
+  "notifications": {
+    "promptTitle": "Bildirimleri Aç",
+    "promptText": "Önemli güncellemeler ve hatırlatmalar için bildirimlere izin verin.",
+    "allow": "İzin Ver",
+    "dismiss": "Sonra"
   }
 }

@@ -404,5 +404,11 @@
     "s8Title": "8. Contact",
     "s8Text": "For questions about our privacy policy, please contact us at info@voiceflow.app.",
     "allRightsReserved": "All rights reserved."
+  },
+  "notifications": {
+    "promptTitle": "Enable Notifications",
+    "promptText": "Allow notifications for important updates and reminders.",
+    "allow": "Allow",
+    "dismiss": "Later"
   }
 }
