@@ -912,6 +912,17 @@ ipcMain.on("recording-state", (event, state) => {
   isRecording = state;
   updatePillState(state ? "recording" : "idle");
 
+  // Escape tusu: kayit sirasinda Escape = kaydi durdur + isle + yapistir (Ctrl+Space gibi)
+  if (state) {
+    try {
+      globalShortcut.register("Escape", () => {
+        if (isRecording) toggleRecording();
+      });
+    } catch (e) { console.warn("Escape shortcut register error:", e.message); }
+  } else {
+    try { globalShortcut.unregister("Escape"); } catch (e) { /* ignore */ }
+  }
+
   // Notify home window about recording state (for watchdog)
   if (homeWindow && !homeWindow.isDestroyed()) {
     homeWindow.webContents.send("dictation-state", state);
