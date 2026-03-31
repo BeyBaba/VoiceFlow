@@ -1,0 +1,375 @@
+{
+  "nav": {
+    "features": "Özellikler",
+    "useCases": "Kullanım",
+    "pricing": "Fiyatlandırma",
+    "testimonials": "Yorumlar",
+    "lightMode": "Aydınlık mod",
+    "darkMode": "Karanlık mod",
+    "webDemo": "Web Demo",
+    "signIn": "Giriş Yap",
+    "signInGoogle": "Google ile Giriş Yap",
+    "signOut": "Çıkış Yap",
+    "trialDaysLeft": "Free · {days} gün kaldı",
+    "expired": "Süre doldu",
+    "lifetime": "Lifetime",
+    "pro": "Pro"
+  },
+  "hero": {
+    "badge": "Windows, Chrome Extension & Web Demo — Hepsi Ücretsiz",
+    "headline1": "Yazma,",
+    "headline2": "sadece konuş.",
+    "subtitle": "AI ile konuşmanı profesyonel metne dönüştür. Yazmaktan",
+    "subtitle4x": "4 kat hızlı",
+    "subtitleEnd": "Dolgu kelimeler otomatik temizlenir, noktalama eklenir, tarzına uyum sağlar.",
+    "aiEnhanced": "AI Enhanced",
+    "rawVoice": "Raw Voice Input",
+    "recording": "Recording",
+    "done": "Done",
+    "downloadWindows": "Windows İndir",
+    "free": "Ücretsiz",
+    "webDemo": "Web Demo",
+    "chromeExtension": "Chrome Extension",
+    "windows": "Windows",
+    "chrome": "Chrome",
+    "webApp": "Web App",
+    "languages": "12+ Dil"
+  },
+  "features": {
+    "badge": "AI Destekli Özellikler",
+    "title1": "Sıradan bir dikte değil,",
+    "title2": "akıllı asistan",
+    "description": "VoiceFlow sadece ses-metin dönüşümü yapmaz. AI ile metninizi düzenler, biçimlendirir ve tam istediğiniz yere yapıştırır.",
+    "aiEdit": {
+      "title": "AI Otomatik Düzenleme",
+      "subtitle": "Konuş, AI düzeltsin",
+      "description": "VoiceFlow \"şey\", \"hani\", \"yani\" gibi dolgu kelimeleri otomatik temizler. Noktalama, büyük harf, dilbilgisi — hepsi AI tarafından düzenlenir.",
+      "before": "şey hani ben düşünüyorum ki yani bu projeyi ee ileri taşımalıyız",
+      "after": "Ben düşünüyorum ki bu projeyi ileri taşımalıyız.",
+      "rawInput": "Ham giriş",
+      "aiOutput": "AI çıktısı"
+    },
+    "everywhere": {
+      "title": "Her Yerde Çalışır",
+      "subtitle": "Tüm uygulamalarda",
+      "description": "Gmail, Slack, Word, VS Code, WhatsApp, ChatGPT... Herhangi bir metin alanında Ctrl+Space bas ve konuş. Ayrı kurulum gerekmez."
+    },
+    "speed": {
+      "title": "Anında Transkripsiyon",
+      "subtitle": "Groq Whisper AI",
+      "description": "Groq'un ultra-hızlı Whisper Large v3 modeli ile konuşmanız saniyeler içinde metne dönüşür. Ortalama yanıt süresi 0.5 saniye.",
+      "responseTime": "Yanıt süresi",
+      "accuracy": "Doğruluk",
+      "supportedLangs": "Desteklenen dil"
+    },
+    "commandMode": {
+      "title": "Komut Modu",
+      "subtitle": "Sesli komutlarla yönet",
+      "description": "\"Bunu resmi yap\", \"İngilizce'ye çevir\", \"Kısalt\" gibi sesli komutlarla metninizi anında dönüştürün. AI, ne istediğinizi anlar ve uygular.",
+      "cmd1": "Bunu resmi yap",
+      "res1": "Ton: Profesyonel",
+      "cmd2": "İngilizce'ye çevir",
+      "res2": "Dil: EN → TR",
+      "cmd3": "Kısalt",
+      "res3": "Özetle: %50",
+      "cmd4": "Madde listesi yap",
+      "res4": "Format: Bullet"
+    },
+    "multiLang": {
+      "title": "Çoklu Dil Desteği",
+      "subtitle": "12+ dil, sıfır ayar",
+      "description": "Türkçe, İngilizce, Almanca, Fransızca, İspanyolca, Japonca ve daha fazlası. Diller arası geçiş yapmak için sadece ayarlardan dil seçin."
+    },
+    "privacy": {
+      "title": "Gizlilik Odaklı",
+      "subtitle": "Verileriniz sizde kalır",
+      "description": "Ses kayıtlarınız sadece transkripsiyon için kullanılır ve saklanmaz. API anahtarınız cihazınızda şifreli tutulur. Sunucu tarafında veri depolamaz.",
+      "noStorage": "Ses kaydı saklanmaz",
+      "e2e": "Uçtan uca şifreleme",
+      "localKey": "Yerel API key",
+      "gdpr": "GDPR uyumlu"
+    },
+    "autoPaste": {
+      "title": "Otomatik Yapıştırma",
+      "subtitle": "Ctrl+V'ye bile gerek yok",
+      "description": "Transkripsiyon tamamlandığında metin otomatik olarak panoya kopyalanır ve aktif metin alanına yapıştırılır. Çift tıklama ile de yapıştırabilirsiniz.",
+      "speak": "Konuş",
+      "aiEdits": "AI düzenler",
+      "autoPaste": "Otomatik yapıştır"
+    },
+    "snippets": {
+      "title": "Snippet Kütüphanesi",
+      "subtitle": "Hazır şablonlar",
+      "description": "Sık kullandığınız cümleleri, e-posta şablonlarını ve imzaları kaydedin. Sesle çağırın, anında yapıştırın. Tekrar tekrar yazmaya son.",
+      "emailClose": "E-posta Kapanış",
+      "emailCloseText": "Saygılarımla, iyi çalışmalar dilerim.",
+      "meetingInvite": "Toplantı Daveti",
+      "meetingInviteText": "Yarınki toplantıya katılabilir misiniz?",
+      "thanks": "Teşekkür",
+      "thanksText": "İlginiz için teşekkür ederim."
+    }
+  },
+  "howItWorks": {
+    "title1": "4 adımda",
+    "title2": "dikte et",
+    "subtitle": "Kurulum 30 saniye. Sonra her yerde kullan.",
+    "step1Title": "Ctrl+Space bas",
+    "step1Desc": "Herhangi bir uygulamada, herhangi bir metin alanında. Windows uygulaması veya Chrome Extension ile çalışır.",
+    "step2Title": "Doğal konuş",
+    "step2Desc": "Düşüncelerinizi rahatça söyleyin. \"Şey\", \"hani\", \"yani\" gibi dolgu kelimeler sorun değil — AI hepsini temizler.",
+    "step3Title": "AI düzenler",
+    "step3Desc": "Groq Whisper AI konuşmanızı anlık olarak metne dönüştürür. Noktalama, büyük harf, dilbilgisi — hepsi otomatik.",
+    "step4Title": "Otomatik yapıştır",
+    "step4Desc": "Temiz metin otomatik olarak panoya kopyalanır ve aktif metin alanına yapıştırılır. Ctrl+V'ye bile gerek yok."
+  },
+  "speedComparison": {
+    "title1": "Konuşma hızında",
+    "title2": "düşün",
+    "subtitle": "Ses, yazmaktan 4 kat hızlı. Fikirlerini yavaşlatma.",
+    "typing": "Klavye ile yazma",
+    "wpm": "kelime / dakika",
+    "voiceflow": "VoiceFlow",
+    "faster": "Yazmaktan 4 kat hızlı",
+    "marquee": "4X HIZLI"
+  },
+  "useCases": {
+    "title1": "Herkes için",
+    "title2": "tasarlandı",
+    "subtitle": "İster kod yazın, ister içerik üretin, ister satış yapın — VoiceFlow iş akışınıza uyum sağlar.",
+    "developers": {
+      "label": "Geliştiriciler",
+      "title": "Sesinizle daha hızlı kod yazın",
+      "description": "Kod yorumları, dokümantasyon, commit mesajları ve hatta pseudocode dikte edin. VoiceFlow teknik jargonu anlar ve mükemmel biçimlendirir.",
+      "stats": "Günde 2+ saat tasarruf"
+    },
+    "students": {
+      "label": "Öğrenciler",
+      "title": "Düşünce hızında ödev yazın",
+      "description": "Ders notlarını, fikirleri ve çalışma notlarını anında cilalı metne dönüştürün. Akademik formatlama dahil.",
+      "stats": "3 kat hızlı ödev yazma"
+    },
+    "creators": {
+      "label": "İçerik Üreticileri",
+      "title": "Fikirleri kaybolmadan yakalayın",
+      "description": "Blog yazıları, senaryolar, sosyal medya içerikleri — aklınızdakileri söyleyin, AI düzeltsin. Yavaş yazmaya fikirleri feda etmeyin.",
+      "stats": "10 kat daha fazla içerik"
+    },
+    "sales": {
+      "label": "Satış",
+      "title": "Müşterilere saniyeler içinde yanıt verin",
+      "description": "Kişiselleştirilmiş takipler, CRM notları ve teklifler — hepsi sesle. Rakipleriniz yazarken siz çoktan cevap vermiş olun.",
+      "stats": "%50 daha hızlı yanıt"
+    },
+    "accessibility": {
+      "label": "Erişilebilirlik",
+      "title": "Klavyesiz yazın",
+      "description": "RSI, motor engeller veya yazma güçlüğü çekenler için. VoiceFlow tüm uygulamalarda tam klavyesiz bilgisayar kullanımı sağlar.",
+      "stats": "%100 klavyesiz iş akışı"
+    },
+    "lawyers": {
+      "label": "Avukatlar",
+      "title": "Hukuki belgeleri zahmetsizce hazırlayın",
+      "description": "Sözleşmeleri, dilekçeleri ve dava notlarını hassasiyetle dikte edin. VoiceFlow hukuki terminolojiyi öğrenir.",
+      "stats": "4 kat hızlı belge hazırlama"
+    },
+    "support": {
+      "label": "Destek",
+      "title": "Destek taleplerini ışık hızında çözün",
+      "description": "Müşteri yanıtları, dahili notlar ve eskalasyon özetleri sesle. Aynı ekiple 2 kat daha fazla talep çözün.",
+      "stats": "2 kat talep çözüm oranı"
+    },
+    "leaders": {
+      "label": "Yöneticiler",
+      "title": "Her yerden yönetin",
+      "description": "Slack mesajları, e-postalar ve toplantı notları — hepsi eller serbest. Hareket halindeki liderler için mükemmel.",
+      "stats": "Günde 90 dakika tasarruf"
+    }
+  },
+  "comparison": {
+    "badge": "Karşılaştırma",
+    "title1": "Neden",
+    "title2": "?",
+    "subtitle": "Aynı işi yarı fiyata, daha hızlı ve daha güvenli yapıyoruz.",
+    "feature": "Özellik",
+    "others": "Diğerleri",
+    "bottomText": "Daha az ödeyip daha fazlasını al.",
+    "viewPlans": "Planları Gör",
+    "monthlyPrice": "Aylık Fiyat",
+    "lifetimeOption": "Lifetime Seçenek",
+    "freePlan": "Ücretsiz Plan",
+    "ramUsage": "RAM Kullanımı",
+    "startupTime": "Açılış Süresi",
+    "privacyLabel": "Gizlilik",
+    "dataStorage": "Veri Saklama",
+    "langSupport": "Dil Desteği",
+    "aiEditing": "AI Düzenleme",
+    "autoPaste": "Otomatik Yapıştırma",
+    "platform": "Platform",
+    "usMonthly": "$8/ay",
+    "themMonthly": "$15/ay",
+    "usLifetime": "$149 tek sefer",
+    "themLifetime": "Yok",
+    "usFree": "2.000 kelime/gün",
+    "themFree": "2.000 kelime/hafta",
+    "usRam": "~150 MB",
+    "themRam": "~800 MB",
+    "usStartup": "~2 saniye",
+    "themStartup": "~8-10 saniye",
+    "usPrivacy": "Lokal API Key",
+    "themPrivacy": "Bulut (3. taraf)",
+    "usData": "Hiçbir şey saklanmaz",
+    "themData": "Bulutta işlenir",
+    "usLang": "12+ Dil",
+    "themLang": "100+ Dil",
+    "usPlatform": "Windows + Chrome",
+    "themPlatform": "Mac/Win/iOS/Android"
+  },
+  "pricing": {
+    "badge": "Fiyatlandırma",
+    "title1": "Rakiplerden",
+    "title2": "%47 daha uygun",
+    "subtitle": "Aynı kalite, yarı fiyat. Üstelik Lifetime seçeneğiyle bir kere öde, sonsuza dek kullan.",
+    "monthly": "Aylık",
+    "yearly": "Yıllık",
+    "yearlySave": "%38 Tasarruf",
+    "perOneTime": "/tek sefer",
+    "perMonth": "/ay",
+    "billedYearly": "Yıllık ${amount} olarak faturalandırılır",
+    "mostPopular": "En Popüler",
+    "redirecting": "Yönlendiriliyor...",
+    "signInAndStart": "Giriş Yap ve Başla",
+    "alreadyActive": "Zaten Aktif ✓",
+    "trialExpired": "Deneme Süresi Doldu",
+    "freeDownload": "Ücretsiz İndir ({days} gün kaldı)",
+    "signInAndGet": "Giriş Yap ve {plan} Al",
+    "getPro": "Pro Al",
+    "getLifetime": "Lifetime Al",
+    "checkoutError": "Ödeme sayfası açılamadı. Lütfen tekrar deneyin.",
+    "genericError": "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "bottomNote": "Google ile giriş yap · 7 gün ücretsiz dene · İstediğin zaman iptal et",
+    "free": {
+      "name": "Free",
+      "description": "7 günlük ücretsiz deneme",
+      "f1": "Günlük 2.000 kelime",
+      "f2": "12+ dil desteği",
+      "f3": "AI otomatik düzenleme",
+      "f4": "Otomatik yapıştırma",
+      "f5": "Temel transkripsiyon",
+      "f6": "Komut modu",
+      "f7": "Snippet kütüphanesi",
+      "f8": "Öncelikli destek"
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "Profesyoneller için",
+      "f1": "Sınırsız kelime",
+      "f5": "Gelişmiş transkripsiyon",
+      "f8": "Öncelikli destek"
+    },
+    "lifetime": {
+      "name": "Lifetime",
+      "description": "Bir kere öde, sonsuza dek kullan",
+      "f1": "Sınırsız kelime — sonsuza dek",
+      "f8": "Öncelikli destek + erken erişim"
+    }
+  },
+  "testimonials": {
+    "badge": "Kullanıcı Yorumları",
+    "title1": "Binlerce kullanıcı",
+    "title2": "seviyor",
+    "subtitle": "Profesyoneller, öğrenciler ve içerik üreticileri her gün VoiceFlow'a güveniyor.",
+    "accessibilityBadge": "Erişilebilirlik Hikayesi",
+    "t1": {
+      "quote": "Parkinson hastasıyım ve artık yazmak benim için çok zor. VoiceFlow sayesinde tekrar üretken oldum. Bu uygulama hayatımı değiştirdi.",
+      "name": "Hasan Çelik",
+      "role": "Emekli Öğretmen"
+    },
+    "t2": {
+      "quote": "VoiceFlow ile 3 kat daha fazla içerik üretiyorum. Ellerim artık ağrımıyor!",
+      "name": "Zeynep Yıldız",
+      "role": "İçerik Üretici"
+    },
+    "t3": {
+      "quote": "RSI sorunu yaşayan bir geliştirici olarak VoiceFlow kariyerimi kurtardı. Ağrısız kod yazabiliyorum.",
+      "name": "Burak Kaya",
+      "role": "Kıdemli Geliştirici"
+    },
+    "t4": {
+      "quote": "E-posta yanıt sürem %60 düştü. Satış ekibinin tamamı kullanıyor artık.",
+      "name": "Elif Demir",
+      "role": "Satış Direktörü"
+    },
+    "t5": {
+      "quote": "Tezimi VoiceFlow ile yazdım, yüzlerce saat tasarruf ettim. AI düzenleme inanılmaz doğru.",
+      "name": "Mert Arslan",
+      "role": "Doktora Öğrencisi"
+    },
+    "t6": {
+      "quote": "Tüm hukuk ekibimiz VoiceFlow kullanıyor. Belge taslağı hazırlama süresi yarıya indi.",
+      "name": "Selin Öztürk",
+      "role": "Avukat, Öztürk Hukuk"
+    },
+    "t7": {
+      "quote": "İngilizce ve Türkçe arasında sorunsuz geçiş yapıyorum. Çoklu dil desteği kusursuz.",
+      "name": "Ahmet Yılmaz",
+      "role": "Ürün Yöneticisi"
+    },
+    "t8": {
+      "quote": "Sabah yürüyüşümde bir kitap bölümünün tamamını dikte ettim. Artık her yerde yazabiliyorum.",
+      "name": "Ayşe Korkmaz",
+      "role": "Yazar"
+    },
+    "t9": {
+      "quote": "Yıllardır kullandığım en iyi AI ürünü. Söylediklerimi değil, kastettiğimi anlıyor.",
+      "name": "Deniz Şahin",
+      "role": "CEO, TechStart"
+    }
+  },
+  "integrations": {
+    "badge": "Entegrasyonlar",
+    "title1": "Her yerde",
+    "title2": "çalışır",
+    "subtitle": "VoiceFlow, 30+ favori uygulamanızda her metin alanında çalışır. Eklenti yok, kurulum yok — sadece konuş.",
+    "andMore": "Ve metin alanı olan her uygulama"
+  },
+  "cta": {
+    "title": "Bugün konuşmaya başla",
+    "subtitle": "VoiceFlow'u ücretsiz indir. Kredi kartı gerekmez. Hemen kullanmaya başla — yarından itibaren daha hızlı yazacaksın.",
+    "download": "Ücretsiz İndir",
+    "viewPlans": "Planları Gör",
+    "webDemo": "Web Demo",
+    "freeStart": "Ücretsiz başla",
+    "noCard": "Kredi kartı yok",
+    "lifetimeOption": "Lifetime seçenek"
+  },
+  "trustedBy": {
+    "title": "Her yerden profesyoneller kullanıyor"
+  },
+  "footer": {
+    "product": "Ürün",
+    "features": "Özellikler",
+    "pricing": "Fiyatlandırma",
+    "comparison": "Karşılaştırma",
+    "webDemo": "Web Demo",
+    "downloadWindows": "Windows İndir",
+    "platform": "Platform",
+    "windowsApp": "Windows Uygulaması",
+    "chromeExtension": "Chrome Eklentisi",
+    "useCases": "Kullanım Alanları",
+    "resources": "Kaynaklar",
+    "helpCenter": "Yardım Merkezi",
+    "docs": "Dokümantasyon",
+    "community": "Topluluk",
+    "feedback": "Geri Bildirim",
+    "legal": "Yasal",
+    "privacyPolicy": "Gizlilik Politikası",
+    "terms": "Kullanım Şartları",
+    "cookies": "Çerez Politikası",
+    "brandDescription": "Sesinizi metne dönüştürmenin en hızlı yolu. Tüm platformlarda kullanılabilir.",
+    "copyright": "VoiceFlow. Tüm hakları saklıdır."
+  },
+  "languageSwitcher": {
+    "tr": "Türkçe",
+    "en": "English"
+  }
+}

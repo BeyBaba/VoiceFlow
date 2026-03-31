@@ -1,0 +1,375 @@
+{
+  "nav": {
+    "features": "Features",
+    "useCases": "Use Cases",
+    "pricing": "Pricing",
+    "testimonials": "Reviews",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "webDemo": "Web Demo",
+    "signIn": "Sign In",
+    "signInGoogle": "Sign in with Google",
+    "signOut": "Sign Out",
+    "trialDaysLeft": "Free · {days} days left",
+    "expired": "Expired",
+    "lifetime": "Lifetime",
+    "pro": "Pro"
+  },
+  "hero": {
+    "badge": "Windows, Chrome Extension & Web Demo — All Free",
+    "headline1": "Don't type,",
+    "headline2": "just speak.",
+    "subtitle": "Turn your voice into professional text with AI.",
+    "subtitle4x": "4x faster",
+    "subtitleEnd": "than typing. Filler words removed, punctuation added, adapts to your style.",
+    "aiEnhanced": "AI Enhanced",
+    "rawVoice": "Raw Voice Input",
+    "recording": "Recording",
+    "done": "Done",
+    "downloadWindows": "Download for Windows",
+    "free": "Free",
+    "webDemo": "Web Demo",
+    "chromeExtension": "Chrome Extension",
+    "windows": "Windows",
+    "chrome": "Chrome",
+    "webApp": "Web App",
+    "languages": "12+ Languages"
+  },
+  "features": {
+    "badge": "AI-Powered Features",
+    "title1": "Not just dictation,",
+    "title2": "smart assistant",
+    "description": "VoiceFlow doesn't just convert speech to text. It edits, formats, and pastes your text exactly where you want it.",
+    "aiEdit": {
+      "title": "AI Auto-Editing",
+      "subtitle": "Speak, AI corrects",
+      "description": "VoiceFlow automatically removes filler words like \"um\", \"uh\", \"like\". Punctuation, capitalization, grammar — all handled by AI.",
+      "before": "um so basically I think we should uh move the meeting to next Tuesday",
+      "after": "I think we should move the meeting to next Tuesday.",
+      "rawInput": "Raw input",
+      "aiOutput": "AI output"
+    },
+    "everywhere": {
+      "title": "Works Everywhere",
+      "subtitle": "In all apps",
+      "description": "Gmail, Slack, Word, VS Code, WhatsApp, ChatGPT... Press Ctrl+Space in any text field and speak. No setup needed."
+    },
+    "speed": {
+      "title": "Instant Transcription",
+      "subtitle": "Groq Whisper AI",
+      "description": "With Groq's ultra-fast Whisper Large v3 model, your speech becomes text in seconds. Average response time 0.5 seconds.",
+      "responseTime": "Response time",
+      "accuracy": "Accuracy",
+      "supportedLangs": "Supported languages"
+    },
+    "commandMode": {
+      "title": "Command Mode",
+      "subtitle": "Voice commands",
+      "description": "Transform your text instantly with voice commands like \"Make it formal\", \"Translate to English\", \"Shorten\". AI understands and applies.",
+      "cmd1": "Make it formal",
+      "res1": "Tone: Professional",
+      "cmd2": "Translate to English",
+      "res2": "Lang: EN → TR",
+      "cmd3": "Shorten",
+      "res3": "Summarize: 50%",
+      "cmd4": "Make bullet list",
+      "res4": "Format: Bullet"
+    },
+    "multiLang": {
+      "title": "Multi-Language Support",
+      "subtitle": "12+ languages, zero setup",
+      "description": "Turkish, English, German, French, Spanish, Japanese and more. Just select a language in settings to switch."
+    },
+    "privacy": {
+      "title": "Privacy-First",
+      "subtitle": "Your data stays with you",
+      "description": "Audio recordings are only used for transcription and never stored. Your API key is encrypted on your device. No server-side storage.",
+      "noStorage": "No audio stored",
+      "e2e": "End-to-end encryption",
+      "localKey": "Local API key",
+      "gdpr": "GDPR compliant"
+    },
+    "autoPaste": {
+      "title": "Auto-Paste",
+      "subtitle": "No Ctrl+V needed",
+      "description": "When transcription is complete, text is automatically copied to clipboard and pasted into the active text field. Double-click to paste too.",
+      "speak": "Speak",
+      "aiEdits": "AI edits",
+      "autoPaste": "Auto-paste"
+    },
+    "snippets": {
+      "title": "Snippet Library",
+      "subtitle": "Ready templates",
+      "description": "Save your frequently used phrases, email templates, and signatures. Call by voice, paste instantly. No more repetitive typing.",
+      "emailClose": "Email Closing",
+      "emailCloseText": "Best regards, have a great day.",
+      "meetingInvite": "Meeting Invite",
+      "meetingInviteText": "Can you join tomorrow's meeting?",
+      "thanks": "Thanks",
+      "thanksText": "Thank you for your interest."
+    }
+  },
+  "howItWorks": {
+    "title1": "Dictate in",
+    "title2": "4 steps",
+    "subtitle": "Setup takes 30 seconds. Then use it everywhere.",
+    "step1Title": "Press Ctrl+Space",
+    "step1Desc": "In any app, in any text field. Works with Windows app or Chrome Extension.",
+    "step2Title": "Speak naturally",
+    "step2Desc": "Say your thoughts freely. Filler words like \"um\", \"uh\", \"like\" are no problem — AI cleans them all.",
+    "step3Title": "AI edits",
+    "step3Desc": "Groq Whisper AI converts your speech to text instantly. Punctuation, capitalization, grammar — all automatic.",
+    "step4Title": "Auto-paste",
+    "step4Desc": "Clean text is automatically copied to clipboard and pasted into the active text field. No Ctrl+V needed."
+  },
+  "speedComparison": {
+    "title1": "Think at the",
+    "title2": "speed of speech",
+    "subtitle": "Voice is 4x faster than typing. Don't slow down your ideas.",
+    "typing": "Keyboard typing",
+    "wpm": "words / minute",
+    "voiceflow": "VoiceFlow",
+    "faster": "4x faster than typing",
+    "marquee": "4X FASTER"
+  },
+  "useCases": {
+    "title1": "Designed for",
+    "title2": "everyone",
+    "subtitle": "Whether you code, create content, or sell — VoiceFlow adapts to your workflow.",
+    "developers": {
+      "label": "Developers",
+      "title": "Code faster with your voice",
+      "description": "Dictate code comments, documentation, commit messages, and even pseudocode. VoiceFlow understands technical jargon and formats perfectly.",
+      "stats": "Save 2+ hours daily"
+    },
+    "students": {
+      "label": "Students",
+      "title": "Write assignments at the speed of thought",
+      "description": "Turn lecture notes, ideas, and study notes into polished text instantly. Academic formatting included.",
+      "stats": "3x faster assignments"
+    },
+    "creators": {
+      "label": "Content Creators",
+      "title": "Capture ideas before they vanish",
+      "description": "Blog posts, scripts, social media content — say what's on your mind, AI fixes it. Don't sacrifice ideas to slow typing.",
+      "stats": "10x more content"
+    },
+    "sales": {
+      "label": "Sales",
+      "title": "Respond to clients in seconds",
+      "description": "Personalized follow-ups, CRM notes, and proposals — all by voice. You've already replied while competitors are still typing.",
+      "stats": "50% faster responses"
+    },
+    "accessibility": {
+      "label": "Accessibility",
+      "title": "Type without a keyboard",
+      "description": "For those with RSI, motor disabilities, or typing difficulties. VoiceFlow enables fully keyboard-free computer use across all apps.",
+      "stats": "100% keyboard-free workflow"
+    },
+    "lawyers": {
+      "label": "Lawyers",
+      "title": "Prepare legal documents effortlessly",
+      "description": "Dictate contracts, petitions, and case notes with precision. VoiceFlow learns legal terminology.",
+      "stats": "4x faster document prep"
+    },
+    "support": {
+      "label": "Support",
+      "title": "Resolve tickets at light speed",
+      "description": "Customer responses, internal notes, and escalation summaries by voice. Resolve 2x more tickets with the same team.",
+      "stats": "2x ticket resolution rate"
+    },
+    "leaders": {
+      "label": "Executives",
+      "title": "Manage from anywhere",
+      "description": "Slack messages, emails, and meeting notes — all hands-free. Perfect for leaders on the move.",
+      "stats": "Save 90 minutes daily"
+    }
+  },
+  "comparison": {
+    "badge": "Comparison",
+    "title1": "Why",
+    "title2": "?",
+    "subtitle": "Same job, half the price, faster and more secure.",
+    "feature": "Feature",
+    "others": "Others",
+    "bottomText": "Pay less, get more.",
+    "viewPlans": "View Plans",
+    "monthlyPrice": "Monthly Price",
+    "lifetimeOption": "Lifetime Option",
+    "freePlan": "Free Plan",
+    "ramUsage": "RAM Usage",
+    "startupTime": "Startup Time",
+    "privacyLabel": "Privacy",
+    "dataStorage": "Data Storage",
+    "langSupport": "Language Support",
+    "aiEditing": "AI Editing",
+    "autoPaste": "Auto-Paste",
+    "platform": "Platform",
+    "usMonthly": "$8/mo",
+    "themMonthly": "$15/mo",
+    "usLifetime": "$149 one-time",
+    "themLifetime": "None",
+    "usFree": "2,000 words/day",
+    "themFree": "2,000 words/week",
+    "usRam": "~150 MB",
+    "themRam": "~800 MB",
+    "usStartup": "~2 seconds",
+    "themStartup": "~8-10 seconds",
+    "usPrivacy": "Local API Key",
+    "themPrivacy": "Cloud (3rd party)",
+    "usData": "Nothing stored",
+    "themData": "Cloud processed",
+    "usLang": "12+ Languages",
+    "themLang": "100+ Languages",
+    "usPlatform": "Windows + Chrome",
+    "themPlatform": "Mac/Win/iOS/Android"
+  },
+  "pricing": {
+    "badge": "Pricing",
+    "title1": "Compared to competitors",
+    "title2": "47% cheaper",
+    "subtitle": "Same quality, half the price. Plus a Lifetime option — pay once, use forever.",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "yearlySave": "Save 38%",
+    "perOneTime": "/one-time",
+    "perMonth": "/mo",
+    "billedYearly": "Billed annually at ${amount}",
+    "mostPopular": "Most Popular",
+    "redirecting": "Redirecting...",
+    "signInAndStart": "Sign In & Start",
+    "alreadyActive": "Already Active ✓",
+    "trialExpired": "Trial Expired",
+    "freeDownload": "Free Download ({days} days left)",
+    "signInAndGet": "Sign In & Get {plan}",
+    "getPro": "Get Pro",
+    "getLifetime": "Get Lifetime",
+    "checkoutError": "Could not open payment page. Please try again.",
+    "genericError": "An error occurred. Please try again.",
+    "bottomNote": "Sign in with Google · 7-day free trial · Cancel anytime",
+    "free": {
+      "name": "Free",
+      "description": "7-day free trial",
+      "f1": "2,000 words/day",
+      "f2": "12+ language support",
+      "f3": "AI auto-editing",
+      "f4": "Auto-paste",
+      "f5": "Basic transcription",
+      "f6": "Command mode",
+      "f7": "Snippet library",
+      "f8": "Priority support"
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For professionals",
+      "f1": "Unlimited words",
+      "f5": "Advanced transcription",
+      "f8": "Priority support"
+    },
+    "lifetime": {
+      "name": "Lifetime",
+      "description": "Pay once, use forever",
+      "f1": "Unlimited words — forever",
+      "f8": "Priority support + early access"
+    }
+  },
+  "testimonials": {
+    "badge": "User Reviews",
+    "title1": "Thousands of users",
+    "title2": "love it",
+    "subtitle": "Professionals, students, and content creators trust VoiceFlow every day.",
+    "accessibilityBadge": "Accessibility Story",
+    "t1": {
+      "quote": "I have Parkinson's and typing has become very difficult for me. Thanks to VoiceFlow, I'm productive again. This app changed my life.",
+      "name": "Hasan Celik",
+      "role": "Retired Teacher"
+    },
+    "t2": {
+      "quote": "I produce 3x more content with VoiceFlow. My hands don't hurt anymore!",
+      "name": "Zeynep Yildiz",
+      "role": "Content Creator"
+    },
+    "t3": {
+      "quote": "As a developer with RSI issues, VoiceFlow saved my career. I can code without pain.",
+      "name": "Burak Kaya",
+      "role": "Senior Developer"
+    },
+    "t4": {
+      "quote": "My email response time dropped by 60%. The entire sales team uses it now.",
+      "name": "Elif Demir",
+      "role": "Sales Director"
+    },
+    "t5": {
+      "quote": "I wrote my thesis with VoiceFlow, saving hundreds of hours. AI editing is incredibly accurate.",
+      "name": "Mert Arslan",
+      "role": "PhD Student"
+    },
+    "t6": {
+      "quote": "Our entire legal team uses VoiceFlow. Document drafting time has been cut in half.",
+      "name": "Selin Ozturk",
+      "role": "Lawyer, Ozturk Law"
+    },
+    "t7": {
+      "quote": "I switch seamlessly between English and Turkish. Multi-language support is flawless.",
+      "name": "Ahmet Yilmaz",
+      "role": "Product Manager"
+    },
+    "t8": {
+      "quote": "I dictated an entire book chapter during my morning walk. Now I can write anywhere.",
+      "name": "Ayse Korkmaz",
+      "role": "Writer"
+    },
+    "t9": {
+      "quote": "The best AI product I've used in years. It understands what I mean, not just what I say.",
+      "name": "Deniz Sahin",
+      "role": "CEO, TechStart"
+    }
+  },
+  "integrations": {
+    "badge": "Integrations",
+    "title1": "Works",
+    "title2": "everywhere",
+    "subtitle": "VoiceFlow works in every text field across 30+ of your favorite apps. No plugins, no setup — just speak.",
+    "andMore": "And every app with a text field"
+  },
+  "cta": {
+    "title": "Start speaking today",
+    "subtitle": "Download VoiceFlow for free. No credit card required. Start using it now — you'll type faster by tomorrow.",
+    "download": "Free Download",
+    "viewPlans": "View Plans",
+    "webDemo": "Web Demo",
+    "freeStart": "Free to start",
+    "noCard": "No credit card",
+    "lifetimeOption": "Lifetime option"
+  },
+  "trustedBy": {
+    "title": "Used by professionals everywhere"
+  },
+  "footer": {
+    "product": "Product",
+    "features": "Features",
+    "pricing": "Pricing",
+    "comparison": "Comparison",
+    "webDemo": "Web Demo",
+    "downloadWindows": "Download for Windows",
+    "platform": "Platform",
+    "windowsApp": "Windows App",
+    "chromeExtension": "Chrome Extension",
+    "useCases": "Use Cases",
+    "resources": "Resources",
+    "helpCenter": "Help Center",
+    "docs": "Documentation",
+    "community": "Community",
+    "feedback": "Feedback",
+    "legal": "Legal",
+    "privacyPolicy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookie Policy",
+    "brandDescription": "The fastest way to turn your voice into text. Available on all platforms.",
+    "copyright": "VoiceFlow. All rights reserved."
+  },
+  "languageSwitcher": {
+    "tr": "Türkçe",
+    "en": "English"
+  }
+}
