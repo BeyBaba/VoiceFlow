@@ -45,6 +45,11 @@
 - Komut verildiginde ASLA placeholder birakma — gercek degerlerle doldur
 - Kullanici kopyala-yapistir yapacak, ekstra duzenleme yapmasina gerek kalmamali
 
+### Versiyon ve Release Notu Kurali
+- Versiyon numarasi: `desktop-app/package.json` dosyasindan oku, ASLA elle yazma
+- Release notu / degisiklik ozeti: son commit mesajlarindan otomatik olustur
+- Kullaniciya komut verilecekse bu iki degeri onceden oku ve doldurulmus ver
+
 ## Onemli Kurallar
 - Master'a ASLA sormadan merge yapma
 - 3.1.3 exe backup'i her zaman koru (dist klasorunde)
