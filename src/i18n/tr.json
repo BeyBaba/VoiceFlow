@@ -374,5 +374,35 @@
   },
   "offline": {
     "banner": "İnternet bağlantınız kesildi. Bazı özellikler çalışmayabilir."
+  },
+  "privacy": {
+    "backHome": "Ana Sayfa",
+    "title": "Gizlilik Politikası",
+    "lastUpdated": "Son güncelleme: 31 Mart 2026",
+    "s1Title": "1. Genel Bakış",
+    "s1Text": "VoiceFlow, kullanıcılarının gizliliğine büyük önem verir. Bu politika, hangi verilerin toplandığını, nasıl kullanıldığını ve nasıl korunduğunu açıklar.",
+    "s2Title": "2. Toplanan Veriler",
+    "s2Item1": "Hesap bilgileri (e-posta, kullanıcı adı)",
+    "s2Item2": "Ses verileri: Yalnızca metne dönüştürme işlemi için kullanılır, sunucularda saklanmaz",
+    "s2Item3": "Kullanım istatistikleri (anonim)",
+    "s2Item4": "Cihaz bilgileri (işletim sistemi, tarayıcı versiyonu)",
+    "s3Title": "3. Verilerin Kullanımı",
+    "s3Text": "Toplanan veriler yalnızca hizmet kalitesini artırmak, kullanıcı deneyimini iyileştirmek ve teknik sorunları gidermek için kullanılır. Verileriniz üçüncü taraflarla paylaşılmaz veya satılmaz.",
+    "s4Title": "4. Ses Verisi Güvenliği",
+    "s4Text": "Ses kayıtlarınız yalnızca metne dönüştürme işlemi sırasında işlenir. İşlem tamamlandıktan sonra ses verisi otomatik olarak silinir. Sunucularımızda ses kaydı saklanmaz.",
+    "s5Title": "5. Veri Saklama ve Güvenlik",
+    "s5Text": "Verileriniz şifrelenmiş bağlantı (SSL/TLS) üzerinden iletilir ve güvenli sunucularda saklanır. Erişim yetkilendirme ile kontrol edilir.",
+    "s6Title": "6. KVKK Haklarınız",
+    "s6Text": "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aşağıdaki haklara sahipsiniz:",
+    "s6Item1": "Kişisel verilerinizin işlenip işlenmediğini öğrenme",
+    "s6Item2": "Kişisel verileriniz işlenmişse buna ilişkin bilgi talep etme",
+    "s6Item3": "Kişisel verilerinizin işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme",
+    "s6Item4": "Kişisel verilerinizin düzeltilmesini veya silinmesini isteme",
+    "s6Item5": "Hesabınızı ve tüm verilerinizi kalıcı olarak silme (hesap silme hakkı)",
+    "s7Title": "7. Çerezler",
+    "s7Text": "VoiceFlow, oturum yönetimi ve dil tercihi gibi temel işlevler için çerez kullanır. Analitik çerezleri yalnızca izninizle etkinleştirilir.",
+    "s8Title": "8. İletişim",
+    "s8Text": "Gizlilik politikamızla ilgili sorularınız için bize info@voiceflow.app adresinden ulaşabilirsiniz.",
+    "allRightsReserved": "Tüm hakları saklıdır."
   }
 }
