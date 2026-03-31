@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'voiceflow-v1.0.0';
+const CACHE_VERSION = 'voiceflow-v1.2.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json'

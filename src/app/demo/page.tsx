@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { playRecordStart, playRecordStop, playSuccess, playError, playCopy } from "@/lib/sounds";
 
 type TranscriptionResult = {
   raw: string;
@@ -99,6 +100,7 @@ export default function DemoPage() {
       mediaRecorder.start(250);
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
+      playRecordStart();
     } catch {
       setError(
         "Mikrofon erişimi reddedildi. Lütfen mikrofon iznini verin."
@@ -111,6 +113,7 @@ export default function DemoPage() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      playRecordStop();
     }
   }, [isRecording]);
 
@@ -152,11 +155,13 @@ export default function DemoPage() {
 
       if (!response.ok) {
         setError(data.error || "Transkripsiyon başarısız oldu");
+        playError();
         return;
       }
 
       if (!data.raw && !data.cleaned) {
         setError("Ses algılanamadı. Lütfen tekrar deneyin.");
+        playError();
         return;
       }
 
@@ -168,6 +173,7 @@ export default function DemoPage() {
         try {
           await navigator.clipboard.writeText(data.cleaned);
           lastCopiedTextRef.current = data.cleaned;
+          playSuccess();
           setAutoCopiedToast(true);
           setTimeout(() => setAutoCopiedToast(false), 3000);
         } catch {
@@ -176,6 +182,7 @@ export default function DemoPage() {
       }
     } catch {
       setError("Ağ hatası. İnternet bağlantınızı kontrol edin.");
+      playError();
     } finally {
       setIsProcessing(false);
     }
@@ -183,6 +190,7 @@ export default function DemoPage() {
 
   const copyToClipboard = async (text: string, label: string) => {
     await navigator.clipboard.writeText(text);
+    playCopy();
     setCopied(label);
     setTimeout(() => setCopied(null), 2000);
   };
