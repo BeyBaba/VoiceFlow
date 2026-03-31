@@ -47,6 +47,7 @@
 
 ### Versiyon ve Release Notu Kurali
 - Versiyon numarasi: `desktop-app/package.json` dosyasindan oku, ASLA elle yazma
+- Semantic Versioning: bug fix → patch (4.1.0 → 4.1.1), yeni ozellik → minor (4.1.0 → 4.2.0), buyuk kirilma → major (4.1.0 → 5.0.0)
 - Release notu / degisiklik ozeti: son commit mesajlarindan otomatik olustur
 - Kullaniciya komut verilecekse bu iki degeri onceden oku ve doldurulmus ver
 
