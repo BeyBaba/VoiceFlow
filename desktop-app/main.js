@@ -579,7 +579,8 @@ function toggleRecording() {
     mainWindow.restore();
   }
 
-  if (!mainWindow.isVisible()) {
+  const wasHidden = !mainWindow.isVisible();
+  if (wasHidden) {
     mainWindow.setPosition(newX, newY);
     mainWindow.show();
   }
@@ -589,7 +590,16 @@ function toggleRecording() {
   mainWindow.focus();
   mainWindow.moveTop();
 
-  mainWindow.webContents.send("toggle-recording");
+  // If window was hidden, wait for it to be ready before sending IPC
+  if (wasHidden) {
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("toggle-recording");
+      }
+    }, 300);
+  } else {
+    mainWindow.webContents.send("toggle-recording");
+  }
 }
 
 function registerShortcuts() {
@@ -917,10 +927,10 @@ ipcMain.on("wake-word-detected", () => {
   // Toggle recording — wake word starts/stops dictation
   toggleRecording();
 
-  // Clear the flag after recording has had time to start
+  // Clear the flag after recording has had time to start (longer to prevent blur race condition)
   setTimeout(() => {
     wakeWordTriggered = false;
-  }, 2000);
+  }, 4000);
 });
 
 // Resume power mode when recording finishes
