@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSession, signIn } from "next-auth/react";
+import { useI18n } from "@/i18n/context";
 
 function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
   if (!trialEndDate) return 0;
@@ -9,73 +10,74 @@ function getTrialDaysLeft(trialEndDate: string | null | undefined): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-const plans = [
-  {
-    name: "Free",
-    description: "7 günlük ücretsiz deneme",
-    priceMonthly: 0,
-    priceYearly: 0,
-    priceLifetime: null,
-    badge: null,
-    ctaStyle: "secondary" as const,
-    planType: "free",
-    features: [
-      { text: "Günlük 2.000 kelime", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Temel transkripsiyon", included: true },
-      { text: "Komut modu", included: false },
-      { text: "Snippet kütüphanesi", included: false },
-      { text: "Öncelikli destek", included: false },
-    ],
-  },
-  {
-    name: "Pro",
-    description: "Profesyoneller için",
-    priceMonthly: 8,
-    priceYearly: 60,
-    priceLifetime: null,
-    badge: null,
-    ctaStyle: "primary" as const,
-    planType: "pro",
-    features: [
-      { text: "Sınırsız kelime", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Gelişmiş transkripsiyon", included: true },
-      { text: "Komut modu", included: true },
-      { text: "Snippet kütüphanesi", included: true },
-      { text: "Öncelikli destek", included: true },
-    ],
-  },
-  {
-    name: "Lifetime",
-    description: "Bir kere öde, sonsuza dek kullan",
-    priceMonthly: null,
-    priceYearly: null,
-    priceLifetime: 149,
-    badge: "En Popüler",
-    ctaStyle: "lifetime" as const,
-    planType: "lifetime",
-    features: [
-      { text: "Sınırsız kelime — sonsuza dek", included: true },
-      { text: "12+ dil desteği", included: true },
-      { text: "AI otomatik düzenleme", included: true },
-      { text: "Otomatik yapıştırma", included: true },
-      { text: "Gelişmiş transkripsiyon", included: true },
-      { text: "Komut modu", included: true },
-      { text: "Snippet kütüphanesi", included: true },
-      { text: "Öncelikli destek + erken erişim", included: true },
-    ],
-  },
-];
-
 export default function Pricing() {
+  const { t } = useI18n();
   const [isYearly, setIsYearly] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
   const { data: session } = useSession();
+
+  const plans = [
+    {
+      name: t.pricing.free.name,
+      description: t.pricing.free.description,
+      priceMonthly: 0,
+      priceYearly: 0,
+      priceLifetime: null as number | null,
+      badge: null as string | null,
+      ctaStyle: "secondary" as const,
+      planType: "free",
+      features: [
+        { text: t.pricing.free.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.free.f5, included: true },
+        { text: t.pricing.free.f6, included: false },
+        { text: t.pricing.free.f7, included: false },
+        { text: t.pricing.free.f8, included: false },
+      ],
+    },
+    {
+      name: t.pricing.pro.name,
+      description: t.pricing.pro.description,
+      priceMonthly: 8,
+      priceYearly: 60,
+      priceLifetime: null as number | null,
+      badge: null as string | null,
+      ctaStyle: "primary" as const,
+      planType: "pro",
+      features: [
+        { text: t.pricing.pro.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.pro.f5, included: true },
+        { text: t.pricing.free.f6, included: true },
+        { text: t.pricing.free.f7, included: true },
+        { text: t.pricing.pro.f8, included: true },
+      ],
+    },
+    {
+      name: t.pricing.lifetime.name,
+      description: t.pricing.lifetime.description,
+      priceMonthly: null as number | null,
+      priceYearly: null as number | null,
+      priceLifetime: 149,
+      badge: t.pricing.mostPopular,
+      ctaStyle: "lifetime" as const,
+      planType: "lifetime",
+      features: [
+        { text: t.pricing.lifetime.f1, included: true },
+        { text: t.pricing.free.f2, included: true },
+        { text: t.pricing.free.f3, included: true },
+        { text: t.pricing.free.f4, included: true },
+        { text: t.pricing.pro.f5, included: true },
+        { text: t.pricing.free.f6, included: true },
+        { text: t.pricing.free.f7, included: true },
+        { text: t.pricing.lifetime.f8, included: true },
+      ],
+    },
+  ];
 
   const trialDaysLeft = session?.user
     ? getTrialDaysLeft(session.user.trialEndDate)
@@ -83,11 +85,11 @@ export default function Pricing() {
   const trialExpired = session?.user?.plan === "free" && trialDaysLeft === 0 && !!session.user.trialEndDate;
 
   const getFreeCta = () => {
-    if (!session) return "Giriş Yap ve Başla";
-    if (session.user?.plan === "pro" || session.user?.plan === "lifetime") return "Zaten Aktif ✓";
-    if (trialExpired) return "Deneme Süresi Doldu";
-    if (trialDaysLeft > 0) return `Ücretsiz İndir (${trialDaysLeft} gün kaldı)`;
-    return "Giriş Yap ve Başla";
+    if (!session) return t.pricing.signInAndStart;
+    if (session.user?.plan === "pro" || session.user?.plan === "lifetime") return t.pricing.alreadyActive;
+    if (trialExpired) return t.pricing.trialExpired;
+    if (trialDaysLeft > 0) return t.pricing.freeDownload.replace("{days}", String(trialDaysLeft));
+    return t.pricing.signInAndStart;
   };
 
   const handleCheckout = async (planType: string) => {
@@ -136,11 +138,11 @@ export default function Pricing() {
         window.location.href = data.url;
       } else {
         console.error("Checkout error:", data.error);
-        alert("Ödeme sayfası açılamadı. Lütfen tekrar deneyin.");
+        alert(t.pricing.checkoutError);
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+      alert(t.pricing.genericError);
     } finally {
       setLoading(null);
     }

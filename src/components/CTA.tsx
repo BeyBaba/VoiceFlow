@@ -2,8 +2,10 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useI18n } from "@/i18n/context";
 
 export default function CTA() {
+  const { t } = useI18n();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
@@ -40,11 +42,10 @@ export default function CTA() {
             </motion.div>
 
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6">
-              Bugün konuşmaya başla
+              {t.cta.title}
             </h2>
             <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-10">
-              VoiceFlow&apos;u ücretsiz indir. Kredi kartı gerekmez.
-              Hemen kullanmaya başla — yarından itibaren daha hızlı yazacaksın.
+              {t.cta.subtitle}
             </p>
 
             {/* Buttons */}
@@ -57,19 +58,19 @@ export default function CTA() {
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
-                Ücretsiz İndir
+                {t.cta.download}
               </a>
               <a
                 href="#pricing"
                 className="px-8 py-4 rounded-2xl border-2 border-white/20 text-white font-semibold text-lg hover:bg-white/10 transition-all flex items-center gap-2"
               >
-                Planları Gör
+                {t.cta.viewPlans}
               </a>
               <a
                 href="/demo"
                 className="px-8 py-4 rounded-2xl border-2 border-white/20 text-white font-semibold text-lg hover:bg-white/10 transition-all"
               >
-                Web Demo
+                {t.cta.webDemo}
               </a>
             </div>
 
@@ -79,19 +80,19 @@ export default function CTA() {
                 <svg className="w-4 h-4 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-                Ücretsiz başla
+                {t.cta.freeStart}
               </span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-                Kredi kartı yok
+                {t.cta.noCard}
               </span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-                Lifetime seçenek
+                {t.cta.lifetimeOption}
               </span>
             </div>
           </div>

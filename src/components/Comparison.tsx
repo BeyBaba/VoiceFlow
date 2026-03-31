@@ -1,21 +1,23 @@
 "use client";
 import { motion } from "framer-motion";
-
-const rows = [
-  { label: "Aylık Fiyat", us: "$8/ay", them: "$15/ay", win: true },
-  { label: "Lifetime Seçenek", us: "$149 tek sefer", them: "Yok", win: true },
-  { label: "Ücretsiz Plan", us: "2.000 kelime/gün", them: "2.000 kelime/hafta", win: true },
-  { label: "RAM Kullanımı", us: "~150 MB", them: "~800 MB", win: true },
-  { label: "Açılış Süresi", us: "~2 saniye", them: "~8-10 saniye", win: true },
-  { label: "Gizlilik", us: "Lokal API Key", them: "Bulut (3. taraf)", win: true },
-  { label: "Veri Saklama", us: "Hiçbir şey saklanmaz", them: "Bulutta işlenir", win: true },
-  { label: "Dil Desteği", us: "12+ Dil", them: "100+ Dil", win: false },
-  { label: "AI Düzenleme", us: "✓", them: "✓", win: null },
-  { label: "Otomatik Yapıştırma", us: "✓", them: "✓", win: null },
-  { label: "Platform", us: "Windows + Chrome", them: "Mac/Win/iOS/Android", win: false },
-];
+import { useI18n } from "@/i18n/context";
 
 export default function Comparison() {
+  const { t } = useI18n();
+
+  const rows = [
+    { label: t.comparison.monthlyPrice, us: t.comparison.usMonthly, them: t.comparison.themMonthly, win: true as boolean | null },
+    { label: t.comparison.lifetimeOption, us: t.comparison.usLifetime, them: t.comparison.themLifetime, win: true as boolean | null },
+    { label: t.comparison.freePlan, us: t.comparison.usFree, them: t.comparison.themFree, win: true as boolean | null },
+    { label: t.comparison.ramUsage, us: t.comparison.usRam, them: t.comparison.themRam, win: true as boolean | null },
+    { label: t.comparison.startupTime, us: t.comparison.usStartup, them: t.comparison.themStartup, win: true as boolean | null },
+    { label: t.comparison.privacyLabel, us: t.comparison.usPrivacy, them: t.comparison.themPrivacy, win: true as boolean | null },
+    { label: t.comparison.dataStorage, us: t.comparison.usData, them: t.comparison.themData, win: true as boolean | null },
+    { label: t.comparison.langSupport, us: t.comparison.usLang, them: t.comparison.themLang, win: false as boolean | null },
+    { label: t.comparison.aiEditing, us: "\u2713", them: "\u2713", win: null as boolean | null },
+    { label: t.comparison.autoPaste, us: "\u2713", them: "\u2713", win: null as boolean | null },
+    { label: t.comparison.platform, us: t.comparison.usPlatform, them: t.comparison.themPlatform, win: false as boolean | null },
+  ];
   return (
     <section id="comparison" className="relative py-24 overflow-hidden">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
@@ -28,17 +30,17 @@ export default function Comparison() {
           className="text-center mb-14"
         >
           <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 mb-4">
-            Karşılaştırma
+            {t.comparison.badge}
           </span>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-4">
-            Neden{" "}
+            {t.comparison.title1}{" "}
             <span className="bg-gradient-to-r from-teal-600 to-indigo-600 bg-clip-text text-transparent">
               VoiceFlow
             </span>
-            ?
+            {t.comparison.title2}
           </h2>
           <p className="text-lg text-stone-500 dark:text-stone-400 max-w-xl mx-auto">
-            Aynı işi yarı fiyata, daha hızlı ve daha güvenli yapıyoruz.
+            {t.comparison.subtitle}
           </p>
         </motion.div>
 
@@ -53,7 +55,7 @@ export default function Comparison() {
           {/* Table Header */}
           <div className="grid grid-cols-3 bg-stone-50 dark:bg-stone-800/50 border-b border-stone-200 dark:border-stone-700/50">
             <div className="p-4 text-sm font-semibold text-stone-500 dark:text-stone-400">
-              Özellik
+              {t.comparison.feature}
             </div>
             <div className="p-4 text-center">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-sm font-bold">
@@ -64,7 +66,7 @@ export default function Comparison() {
               </div>
             </div>
             <div className="p-4 text-center text-sm font-semibold text-stone-500 dark:text-stone-400">
-              Diğerleri
+              {t.comparison.others}
             </div>
           </div>
 
@@ -109,13 +111,13 @@ export default function Comparison() {
           className="text-center mt-10"
         >
           <p className="text-sm text-stone-400 dark:text-stone-500 mb-4">
-            Daha az ödeyip daha fazlasını al.
+            {t.comparison.bottomText}
           </p>
           <a
             href="#pricing"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-teal-500/25 transition-all hover:-translate-y-0.5"
           >
-            Planları Gör
+            {t.comparison.viewPlans}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>

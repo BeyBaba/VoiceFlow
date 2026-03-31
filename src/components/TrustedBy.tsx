@@ -1,5 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
+import { useI18n } from "@/i18n/context";
 
 const companies = [
   "Google", "Microsoft", "Amazon", "Meta", "Apple", "Netflix",
@@ -9,6 +10,7 @@ const companies = [
 ];
 
 export default function TrustedBy() {
+  const { t } = useI18n();
   return (
     <section className="relative py-12 overflow-hidden border-y border-stone-100 dark:border-stone-800/50">
       <motion.div
@@ -18,7 +20,7 @@ export default function TrustedBy() {
         transition={{ duration: 0.8 }}
       >
         <p className="text-center text-sm font-medium text-stone-400 dark:text-stone-500 mb-8 tracking-wider uppercase">
-          Her yerden profesyoneller kullanıyor
+          {t.trustedBy.title}
         </p>
 
         {/* Marquee Row 1 */}

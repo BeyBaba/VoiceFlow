@@ -1,31 +1,6 @@
 "use client";
 
-const footerLinks = {
-  "Ürün": [
-    { label: "Özellikler", href: "#features" },
-    { label: "Fiyatlandırma", href: "#pricing" },
-    { label: "Karşılaştırma", href: "#comparison" },
-    { label: "Web Demo", href: "/demo" },
-    { label: "Windows İndir", href: "/api/download" },
-  ],
-  "Platform": [
-    { label: "Windows Uygulaması", href: "#download" },
-    { label: "Chrome Eklentisi", href: "#download" },
-    { label: "Web Demo", href: "/demo" },
-    { label: "Kullanım Alanları", href: "#usecases" },
-  ],
-  "Kaynaklar": [
-    { label: "Yardım Merkezi", href: "#" },
-    { label: "Dokümantasyon", href: "#" },
-    { label: "Topluluk", href: "#" },
-    { label: "Geri Bildirim", href: "#" },
-  ],
-  "Yasal": [
-    { label: "Gizlilik Politikası", href: "#" },
-    { label: "Kullanım Şartları", href: "#" },
-    { label: "Çerez Politikası", href: "#" },
-  ],
-};
+import { useI18n } from "@/i18n/context";
 
 const socialLinks = [
   {
@@ -67,6 +42,35 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const { t } = useI18n();
+
+  const footerLinks = {
+    [t.footer.product]: [
+      { label: t.footer.features, href: "#features" },
+      { label: t.footer.pricing, href: "#pricing" },
+      { label: t.footer.comparison, href: "#comparison" },
+      { label: t.footer.webDemo, href: "/demo" },
+      { label: t.footer.downloadWindows, href: "/api/download" },
+    ],
+    [t.footer.platform]: [
+      { label: t.footer.windowsApp, href: "#download" },
+      { label: t.footer.chromeExtension, href: "#download" },
+      { label: t.footer.webDemo, href: "/demo" },
+      { label: t.footer.useCases, href: "#usecases" },
+    ],
+    [t.footer.resources]: [
+      { label: t.footer.helpCenter, href: "#" },
+      { label: t.footer.docs, href: "#" },
+      { label: t.footer.community, href: "#" },
+      { label: t.footer.feedback, href: "#" },
+    ],
+    [t.footer.legal]: [
+      { label: t.footer.privacyPolicy, href: "#" },
+      { label: t.footer.terms, href: "#" },
+      { label: t.footer.cookies, href: "#" },
+    ],
+  };
+
   return (
     <footer className="bg-stone-950 text-white pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,8 +97,7 @@ export default function Footer() {
               <span className="text-lg font-bold">VoiceFlow</span>
             </div>
             <p className="text-sm text-stone-400 leading-relaxed">
-              Sesinizi metne dönüştürmenin en hızlı yolu.
-              Tüm platformlarda kullanılabilir.
+              {t.footer.brandDescription}
             </p>
           </div>
 
@@ -123,7 +126,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="border-t border-stone-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-stone-500">
-            &copy; {new Date().getFullYear()} VoiceFlow. Tüm hakları saklıdır.
+            &copy; {new Date().getFullYear()} {t.footer.copyright}
           </p>
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (

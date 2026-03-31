@@ -2,91 +2,86 @@
 
 import { useState, useRef } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-
-const useCases = [
-  {
-    id: "developers",
-    label: "Geliştiriciler",
-    icon: "💻",
-    title: "Sesinizle daha hızlı kod yazın",
-    description:
-      "Kod yorumları, dokümantasyon, commit mesajları ve hatta pseudocode dikte edin. VoiceFlow teknik jargonu anlar ve mükemmel biçimlendirir.",
-    stats: "Günde 2+ saat tasarruf",
-    color: "from-blue-500/10 to-indigo-500/10",
-  },
-  {
-    id: "students",
-    label: "Öğrenciler",
-    icon: "🎓",
-    title: "Düşünce hızında ödev yazın",
-    description:
-      "Ders notlarını, fikirleri ve çalışma notlarını anında cilalı metne dönüştürün. Akademik formatlama dahil.",
-    stats: "3 kat hızlı ödev yazma",
-    color: "from-green-500/10 to-emerald-500/10",
-  },
-  {
-    id: "creators",
-    label: "İçerik Üreticileri",
-    icon: "🎨",
-    title: "Fikirleri kaybolmadan yakalayın",
-    description:
-      "Blog yazıları, senaryolar, sosyal medya içerikleri — aklınızdakileri söyleyin, AI düzeltsin. Yavaş yazmaya fikirleri feda etmeyin.",
-    stats: "10 kat daha fazla içerik",
-    color: "from-purple-500/10 to-pink-500/10",
-  },
-  {
-    id: "sales",
-    label: "Satış",
-    icon: "📈",
-    title: "Müşterilere saniyeler içinde yanıt verin",
-    description:
-      "Kişiselleştirilmiş takipler, CRM notları ve teklifler — hepsi sesle. Rakipleriniz yazarken siz çoktan cevap vermiş olun.",
-    stats: "%50 daha hızlı yanıt",
-    color: "from-orange-500/10 to-red-500/10",
-  },
-  {
-    id: "accessibility",
-    label: "Erişilebilirlik",
-    icon: "♿",
-    title: "Klavyesiz yazın",
-    description:
-      "RSI, motor engeller veya yazma güçlüğü çekenler için. VoiceFlow tüm uygulamalarda tam klavyesiz bilgisayar kullanımı sağlar.",
-    stats: "%100 klavyesiz iş akışı",
-    color: "from-teal-500/10 to-cyan-500/10",
-  },
-  {
-    id: "lawyers",
-    label: "Avukatlar",
-    icon: "⚖️",
-    title: "Hukuki belgeleri zahmetsizce hazırlayın",
-    description:
-      "Sözleşmeleri, dilekçeleri ve dava notlarını hassasiyetle dikte edin. VoiceFlow hukuki terminolojiyi öğrenir.",
-    stats: "4 kat hızlı belge hazırlama",
-    color: "from-amber-500/10 to-yellow-500/10",
-  },
-  {
-    id: "support",
-    label: "Destek",
-    icon: "🎧",
-    title: "Destek taleplerini ışık hızında çözün",
-    description:
-      "Müşteri yanıtları, dahili notlar ve eskalasyon özetleri sesle. Aynı ekiple 2 kat daha fazla talep çözün.",
-    stats: "2 kat talep çözüm oranı",
-    color: "from-rose-500/10 to-pink-500/10",
-  },
-  {
-    id: "leaders",
-    label: "Yöneticiler",
-    icon: "👔",
-    title: "Her yerden yönetin",
-    description:
-      "Slack mesajları, e-postalar ve toplantı notları — hepsi eller serbest. Hareket halindeki liderler için mükemmel.",
-    stats: "Günde 90 dakika tasarruf",
-    color: "from-sky-500/10 to-blue-500/10",
-  },
-];
+import { useI18n } from "@/i18n/context";
 
 export default function UseCases() {
+  const { t } = useI18n();
+
+  const useCases = [
+    {
+      id: "developers",
+      label: t.useCases.developers.label,
+      icon: "\uD83D\uDCBB",
+      title: t.useCases.developers.title,
+      description: t.useCases.developers.description,
+      stats: t.useCases.developers.stats,
+      color: "from-blue-500/10 to-indigo-500/10",
+    },
+    {
+      id: "students",
+      label: t.useCases.students.label,
+      icon: "\uD83C\uDF93",
+      title: t.useCases.students.title,
+      description: t.useCases.students.description,
+      stats: t.useCases.students.stats,
+      color: "from-green-500/10 to-emerald-500/10",
+    },
+    {
+      id: "creators",
+      label: t.useCases.creators.label,
+      icon: "\uD83C\uDFA8",
+      title: t.useCases.creators.title,
+      description: t.useCases.creators.description,
+      stats: t.useCases.creators.stats,
+      color: "from-purple-500/10 to-pink-500/10",
+    },
+    {
+      id: "sales",
+      label: t.useCases.sales.label,
+      icon: "\uD83D\uDCC8",
+      title: t.useCases.sales.title,
+      description: t.useCases.sales.description,
+      stats: t.useCases.sales.stats,
+      color: "from-orange-500/10 to-red-500/10",
+    },
+    {
+      id: "accessibility",
+      label: t.useCases.accessibility.label,
+      icon: "\u267F",
+      title: t.useCases.accessibility.title,
+      description: t.useCases.accessibility.description,
+      stats: t.useCases.accessibility.stats,
+      color: "from-teal-500/10 to-cyan-500/10",
+    },
+    {
+      id: "lawyers",
+      label: t.useCases.lawyers.label,
+      icon: "\u2696\uFE0F",
+      title: t.useCases.lawyers.title,
+      description: t.useCases.lawyers.description,
+      stats: t.useCases.lawyers.stats,
+      color: "from-amber-500/10 to-yellow-500/10",
+    },
+    {
+      id: "support",
+      label: t.useCases.support.label,
+      icon: "\uD83C\uDFA7",
+      title: t.useCases.support.title,
+      description: t.useCases.support.description,
+      stats: t.useCases.support.stats,
+      color: "from-rose-500/10 to-pink-500/10",
+    },
+    {
+      id: "leaders",
+      label: t.useCases.leaders.label,
+      icon: "\uD83D\uDC54",
+      title: t.useCases.leaders.title,
+      description: t.useCases.leaders.description,
+      stats: t.useCases.leaders.stats,
+      color: "from-sky-500/10 to-blue-500/10",
+    },
+  ];
+
   const [active, setActive] = useState(useCases[0].id);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
@@ -102,12 +97,11 @@ export default function UseCases() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            Herkes için{" "}
-            <span className="gradient-text">tasarlandı</span>
+            {t.useCases.title1}{" "}
+            <span className="gradient-text">{t.useCases.title2}</span>
           </h2>
           <p className="text-lg text-text-muted max-w-xl mx-auto">
-            İster kod yazın, ister içerik üretin, ister satış yapın —
-            VoiceFlow iş akışınıza uyum sağlar.
+            {t.useCases.subtitle}
           </p>
         </motion.div>
 
