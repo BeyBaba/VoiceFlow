@@ -758,16 +758,32 @@ function autoPasteToApp() {
   }
   updatePillState("idle");
 
-  // Small delay to let the previous app regain focus, then simulate Ctrl+V
+  const settings = loadSettings();
+  const useDblClick = settings.powerDblClick !== false;
+
+  // Small delay to let the previous app regain focus
   setTimeout(() => {
-    const psCommand = `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`;
-    exec(psCommand, (err) => {
-      if (err) {
-        console.error("Auto-paste error:", err);
-      } else {
-        console.log("Auto-paste: Ctrl+V sent successfully");
-      }
-    });
+    if (useDblClick) {
+      // Double-click at current mouse position (focus + select) then Ctrl+V
+      const psCommand = `powershell -Command "Add-Type -MemberDefinition '[DllImport(\\\"user32.dll\\\")] public static extern void mouse_event(int f,int x,int y,int d,int e);' -Name U -Namespace W; [W.U]::mouse_event(0x02,0,0,0,0); [W.U]::mouse_event(0x04,0,0,0,0); [W.U]::mouse_event(0x02,0,0,0,0); [W.U]::mouse_event(0x04,0,0,0,0); Start-Sleep -Milliseconds 100; Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`;
+      exec(psCommand, (err) => {
+        if (err) {
+          console.error("Auto-paste (dblclick) error:", err);
+        } else {
+          console.log("Auto-paste: double-click + Ctrl+V sent successfully");
+        }
+      });
+    } else {
+      // Just Ctrl+V
+      const psCommand = `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`;
+      exec(psCommand, (err) => {
+        if (err) {
+          console.error("Auto-paste error:", err);
+        } else {
+          console.log("Auto-paste: Ctrl+V sent successfully");
+        }
+      });
+    }
   }, 300);
 }
 
