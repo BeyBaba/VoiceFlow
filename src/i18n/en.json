@@ -374,5 +374,35 @@
   },
   "offline": {
     "banner": "You are offline. Some features may not be available."
+  },
+  "privacy": {
+    "backHome": "Home",
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: March 31, 2026",
+    "s1Title": "1. Overview",
+    "s1Text": "VoiceFlow values the privacy of its users. This policy explains what data is collected, how it is used, and how it is protected.",
+    "s2Title": "2. Data Collected",
+    "s2Item1": "Account information (email, username)",
+    "s2Item2": "Voice data: Used only for speech-to-text conversion, not stored on servers",
+    "s2Item3": "Usage statistics (anonymous)",
+    "s2Item4": "Device information (operating system, browser version)",
+    "s3Title": "3. Use of Data",
+    "s3Text": "Collected data is used solely to improve service quality, enhance user experience, and resolve technical issues. Your data is not shared with or sold to third parties.",
+    "s4Title": "4. Voice Data Security",
+    "s4Text": "Your voice recordings are processed only during the speech-to-text conversion. After processing is complete, voice data is automatically deleted. No voice recordings are stored on our servers.",
+    "s5Title": "5. Data Storage and Security",
+    "s5Text": "Your data is transmitted over encrypted connections (SSL/TLS) and stored on secure servers. Access is controlled through authorization.",
+    "s6Title": "6. Your Rights (KVKK/GDPR)",
+    "s6Text": "Under applicable data protection laws, you have the following rights:",
+    "s6Item1": "Learn whether your personal data is being processed",
+    "s6Item2": "Request information about processed personal data",
+    "s6Item3": "Learn the purpose of processing and whether data is used accordingly",
+    "s6Item4": "Request correction or deletion of your personal data",
+    "s6Item5": "Permanently delete your account and all associated data (right to erasure)",
+    "s7Title": "7. Cookies",
+    "s7Text": "VoiceFlow uses cookies for essential functions such as session management and language preference. Analytics cookies are only activated with your consent.",
+    "s8Title": "8. Contact",
+    "s8Text": "For questions about our privacy policy, please contact us at info@voiceflow.app.",
+    "allRightsReserved": "All rights reserved."
   }
 }
