@@ -1,8 +1,8 @@
 # VoiceFlow - Claude Code Kurallari
 
 ## KRITIK (Asla ihlal etme)
-1. **Push/Merge izni** - Onay olmadan asla push/merge yapma. Hook zorlasa bile YAPMA. Onay bekle.
-2. **main/master korumasi** - main'e ASLA sormadan merge yapma. PR ac, onay bekle.
+1. **Otomatik PR + Merge** - Claude otomatik PR olusturur ve merge eder. Kullaniciya "merge edeyim mi?" diye SORMA — direkt yap. Sadece sonucu bildir: "PR #X olusturuldu ve merge edildi"
+2. **main/master korumasi** - main'e direkt push YASAK. Her zaman claude/ branch → PR → merge akisi
 3. **PR zorunlulugu** - main'e direkt push yok, PR uzerinden merge
 4. **Test sonrasi push** - Syntax/bracket kontrolu yapilmadan push yapma
 5. **Gizli dosya korumasi** - .env, credentials, API key ASLA commit edilmez
@@ -37,37 +37,19 @@
 23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
 24. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
 
-## Release Kurali
-Her yeni degisiklik veya versiyon guncellemesinde:
-1. `desktop-app/package.json` versiyonunu guncelle
-2. Degisiklikleri commit + push yap
-3. Kullaniciya Build + Release komutlarini ver (asagidaki sablonlari kullan)
-4. Bu kural her session'da gecerlidir
-
-## Build Komutu (Her Versiyon Degisikliginde Otomatik Ver)
-Kod degisikligi yapildiginda kullaniciya bu PowerShell komutunu ver:
-```powershell
-cd "D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow"
-git pull origin claude/review-project-status-fgFJ9
-cd desktop-app
-npm install
-npm run build
-```
-Not: Branch ismi aktif branch'e gore degistirilmeli.
-
-## GitHub Release Komutu (Build Sonrasi Otomatik Ver)
-Build tamamlandiktan sonra kullaniciya bu PowerShell komutunu ver:
-```powershell
-cd "D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow\desktop-app"
-gh release create v{VERSION} "dist\VoiceFlow Setup {VERSION}.exe" --title "VoiceFlow v{VERSION}" --notes "{DEGISIKLIK_OZETI}"
-```
-Not: {VERSION} ve {DEGISIKLIK_OZETI} her seferinde guncelle.
-
-## KRITIK: Komut Verme Kurali
-- ASLA placeholder birakma ({VERSION}, {OZET} gibi)
-- Her seferinde versiyonu ve degisiklik ozetini DOLDURULMUS olarak ver
+## Build & Release Kurali
+- GitHub Actions workflow var (.github/workflows/build-windows-setup.yml)
+- package.json versiyonu degistiginde push → otomatik build + release
+- Claude ONCE otomatik yapmayi dener (GitHub Actions, gh CLI vb.)
+- Otomatik yapilamazsa (hata, erisim sorunu vb.) → kullaniciya PowerShell komutu verir
+- Komut verildiginde ASLA placeholder birakma — gercek degerlerle doldur
 - Kullanici kopyala-yapistir yapacak, ekstra duzenleme yapmasina gerek kalmamali
-- Ornek dogru format: `gh release create v4.1.0 "dist\VoiceFlow Setup 4.1.0.exe" --title "VoiceFlow v4.1.0" --notes "aciklama buraya"`
+
+### Versiyon ve Release Notu Kurali
+- Versiyon numarasi: `desktop-app/package.json` dosyasindan oku, ASLA elle yazma
+- Semantic Versioning: bug fix → patch (4.1.0 → 4.1.1), yeni ozellik → minor (4.1.0 → 4.2.0), buyuk kirilma → major (4.1.0 → 5.0.0)
+- Release notu / degisiklik ozeti: son commit mesajlarindan otomatik olustur
+- Kullaniciya komut verilecekse bu iki degeri onceden oku ve doldurulmus ver
 
 ## Onemli Kurallar
 - Master'a ASLA sormadan merge yapma
