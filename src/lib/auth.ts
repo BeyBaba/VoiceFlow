@@ -2,6 +2,13 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 
+// Super user listesi — rate limit, plan kısıtlaması, trial süresi uygulanmaz
+const SUPER_USERS = ["savasarac@gmail.com"];
+
+export function isSuperUser(email: string | null | undefined): boolean {
+  return !!email && SUPER_USERS.includes(email);
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
@@ -23,8 +30,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: { email: user.email },
       });
 
+      const superUser = isSuperUser(user.email);
+
       if (!existing) {
-        // İlk kez giriş: 40 günlük trial başlat
         const now = new Date();
         const trialEnd = new Date(now.getTime() + 40 * 24 * 60 * 60 * 1000);
         await prisma.customer.create({
@@ -33,28 +41,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name || null,
             image: user.image || null,
             googleId: profile?.sub || null,
-            plan: "free",
-            trialStartDate: now,
-            trialEndDate: trialEnd,
+            plan: superUser ? "lifetime" : "free",
+            trialStartDate: superUser ? null : now,
+            trialEndDate: superUser ? null : trialEnd,
           },
         });
       } else {
-        // Mevcut kullanıcı: profil bilgilerini güncelle
         await prisma.customer.update({
           where: { email: user.email },
           data: {
             name: user.name || existing.name,
             image: user.image || existing.image,
             googleId: profile?.sub || existing.googleId,
-            // Trial sadece free plan + trial yoksa set et
-            ...(existing.plan === "free" && !existing.trialStartDate
-              ? {
-                  trialStartDate: new Date(),
-                  trialEndDate: new Date(
-                    Date.now() + 40 * 24 * 60 * 60 * 1000
-                  ),
-                }
-              : {}),
+            // Super user her zaman lifetime
+            ...(superUser
+              ? { plan: "lifetime", trialStartDate: null, trialEndDate: null }
+              : existing.plan === "free" && !existing.trialStartDate
+                ? {
+                    trialStartDate: new Date(),
+                    trialEndDate: new Date(
+                      Date.now() + 40 * 24 * 60 * 60 * 1000
+                    ),
+                  }
+                : {}),
           },
         });
       }

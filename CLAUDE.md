@@ -108,6 +108,14 @@
 23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
 24. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
 
+## Super User Kurali
+- `savasarac@gmail.com` hesabi SUPER USER'dir
+- Rate limit, plan kisitlamasi, trial suresi bu hesap icin GECERLI DEGILDIR
+- Super user her zaman `lifetime` plan'a sahiptir
+- Bu kural TUM projelerde gecerlidir
+- Yeni proje olusturulurken auth/payment kodunda super user kontrolu EKLENMELI
+- Super user listesi: src/lib/auth.ts icinde SUPER_USERS array'inde tanimli
+
 ## Onemli Kurallar
 - Otokopi (auto-copy) ASLA kapatilamaz — her zaman acik kalmali
 - Power Mode ve Auto-paste sadece Pro/Trial kullanicilara acik
