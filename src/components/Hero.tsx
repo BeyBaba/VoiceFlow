@@ -178,8 +178,8 @@ export default function Hero() {
           </a>
 
           <a
-            href="/chrome-extension.zip"
-            download
+            href="/VoiceFlow.Chrome.Extension.zip"
+            download="VoiceFlow.Chrome.Extension.zip"
             className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-lg hover:from-indigo-500 hover:to-purple-500 transition-all shadow-xl shadow-indigo-500/25 hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 flex items-center gap-2"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

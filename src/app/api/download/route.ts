@@ -1,69 +1,77 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "fs/promises";
+import path from "path";
 
 // GET /api/download → Private GitHub repo'dan en son exe'yi indir
 // GITHUB_TOKEN env variable gerekli (private repo erişimi için)
-export async function GET() {
+// Fallback: public/downloads/VoiceFlow-Setup.exe dosyasını sunar
+export async function GET(request: NextRequest) {
   const token = process.env.GITHUB_TOKEN;
 
   try {
-    // GitHub API'den latest release'i al
-    const res = await fetch(
-      "https://api.github.com/repos/BeyBaba/VoiceFlow/releases/latest",
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        next: { revalidate: 300 }, // 5 dakika cache
-      }
-    );
-
-    if (!res.ok) {
-      return new NextResponse(
-        downloadPage("Indirme linki alinamadi. Lutfen daha sonra tekrar deneyin."),
-        { status: 500, headers: { "Content-Type": "text/html; charset=utf-8" } }
+    if (token) {
+      // GitHub API'den latest release'i al
+      const res = await fetch(
+        "https://api.github.com/repos/BeyBaba/VoiceFlow/releases/latest",
+        {
+          headers: {
+            Accept: "application/vnd.github.v3+json",
+            Authorization: `Bearer ${token}`,
+          },
+          next: { revalidate: 300 }, // 5 dakika cache
+        }
       );
+
+      if (res.ok) {
+        const release = await res.json();
+
+        // .exe uzantili asset'i bul
+        const exeAsset = release.assets?.find(
+          (a: { name: string }) => a.name.endsWith(".exe")
+        );
+
+        if (exeAsset) {
+          // Private repo: asset URL'e token ile eriş
+          const assetUrl = exeAsset.url;
+          const downloadRes = await fetch(assetUrl, {
+            headers: {
+              Accept: "application/octet-stream",
+              Authorization: `Bearer ${token}`,
+            },
+            redirect: "follow",
+          });
+
+          if (downloadRes.ok) {
+            return new NextResponse(downloadRes.body, {
+              headers: {
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": `attachment; filename="${exeAsset.name}"`,
+                "Content-Length": exeAsset.size?.toString() || "",
+              },
+            });
+          }
+        }
+      }
     }
 
-    const release = await res.json();
-
-    // .exe uzantili asset'i bul
-    const exeAsset = release.assets?.find(
-      (a: { name: string }) => a.name.endsWith(".exe")
-    );
-
-    if (!exeAsset) {
+    // Fallback: local dosyadan sun
+    const localPath = path.join(process.cwd(), "public", "downloads", "VoiceFlow-Setup.exe");
+    try {
+      const fileBuffer = await readFile(localPath);
+      return new NextResponse(fileBuffer, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": 'attachment; filename="VoiceFlow-Setup.exe"',
+          "Content-Length": fileBuffer.length.toString(),
+        },
+      });
+    } catch {
+      // Local dosya da yoksa hata sayfası göster
       return new NextResponse(
-        downloadPage("Exe dosyasi bulunamadi. Lutfen daha sonra tekrar deneyin."),
+        downloadPage("Indirme dosyasi bulunamadi. Lutfen daha sonra tekrar deneyin."),
         { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
       );
     }
-
-    // Private repo: asset URL'e token ile eriş
-    const assetUrl = exeAsset.url; // API URL (not browser_download_url)
-    const downloadRes = await fetch(assetUrl, {
-      headers: {
-        Accept: "application/octet-stream",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      redirect: "follow",
-    });
-
-    if (!downloadRes.ok) {
-      return new NextResponse(
-        downloadPage("Dosya indirilemedi. Lutfen daha sonra tekrar deneyin."),
-        { status: 500, headers: { "Content-Type": "text/html; charset=utf-8" } }
-      );
-    }
-
-    // Dosyayı kullanıcıya stream et
-    return new NextResponse(downloadRes.body, {
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${exeAsset.name}"`,
-        "Content-Length": exeAsset.size?.toString() || "",
-      },
-    });
   } catch {
     return new NextResponse(
       downloadPage("Bir hata olustu. Lutfen daha sonra tekrar deneyin."),

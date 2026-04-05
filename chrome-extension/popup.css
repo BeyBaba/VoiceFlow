@@ -117,7 +117,7 @@ body {
 
 /* ===== MAIN SCREEN ===== */
 #mainScreen {
-  padding: 10px 14px;
+  padding: 16px 14px;
   width: 300px;
 }
 
@@ -211,14 +211,20 @@ body {
 }
 
 /* ===== RESULT VIEW ===== */
+#resultView {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .result-box {
-  flex: 1;
+  flex: 1 1 100%;
   background: rgba(15, 118, 110, 0.1);
   border: 1px solid rgba(15, 118, 110, 0.25);
   border-radius: 10px;
   padding: 8px 12px;
   min-width: 0;
   overflow: hidden;
+  max-width: 100%;
 }
 
 .result-text {
@@ -228,6 +234,7 @@ body {
   color: #E7E5E4;
   word-break: break-word;
   display: block;
+  overflow-wrap: break-word;
 }
 
 .result-badge {
@@ -235,7 +242,7 @@ body {
   color: #2DD4BF;
   font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 /* ===== IDLE VIEW: mic button ===== */

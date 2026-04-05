@@ -1,17 +1,17 @@
-// Language-specific prompts for Whisper
-const LANGUAGE_PROMPTS = {
-  tr: "Bu bir Türkçe konuşma kaydıdır. Lütfen Türkçe olarak yazıya dökün.",
-  de: "Dies ist eine deutsche Sprachaufnahme. Bitte auf Deutsch transkribieren.",
-  fr: "Ceci est un enregistrement vocal en français. Veuillez transcrire en français.",
-  es: "Esta es una grabación de voz en español. Por favor, transcribir en español.",
-  ja: "これは日本語の音声録音です。日本語で書き起こしてください。",
-  ko: "이것은 한국어 음성 녹음입니다. 한국어로 전사해 주세요.",
-  zh: "这是一段中文语音录音。请用中文转录。",
-  pt: "Esta é uma gravação de voz em português. Por favor, transcreva em português.",
-  it: "Questa è una registrazione vocale in italiano. Si prega di trascrivere in italiano.",
-  ru: "Это запись голоса на русском языке. Пожалуйста, транскрибируйте на русском.",
-  ar: "هذا تسجيل صوتي باللغة العربية. يرجى النسخ باللغة العربية.",
-  en: "",
+// Language codes for Web Speech API
+const LANGUAGE_CODES = {
+  tr: "tr-TR",
+  en: "en-US",
+  de: "de-DE",
+  fr: "fr-FR",
+  es: "es-ES",
+  ja: "ja-JP",
+  ko: "ko-KR",
+  zh: "zh-CN",
+  pt: "pt-BR",
+  it: "it-IT",
+  ru: "ru-RU",
+  ar: "ar-SA",
 };
 
 // Filler word patterns per language
@@ -24,12 +24,13 @@ const FILLER_PATTERNS = {
 };
 
 // State
-let mediaRecorder = null;
-let audioChunks = [];
+let recognition = null;
 let isRecording = false;
 let isProcessing = false;
 let timerInterval = null;
 let seconds = 0;
+let fullTranscript = "";
+let interimTranscript = "";
 
 // Elements
 const setupScreen = document.getElementById("setupScreen");
@@ -54,22 +55,19 @@ const toastText = document.getElementById("toastText");
 
 // ========== INIT ==========
 async function init() {
-  const data = await chrome.storage.local.get(["setupComplete", "apiKey"]);
+  // Check Web Speech API support
+  if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+    showToast("Bu tarayıcı ses tanımayı desteklemiyor!");
+    return;
+  }
+
+  const data = await chrome.storage.local.get(["setupComplete"]);
 
   if (data.setupComplete) {
-    // Setup done → show main screen and auto-start recording
     showMainScreen();
-
-    if (!data.apiKey) {
-      // No API key yet → show idle with toast
-      showView("idle");
-      showToast("Önce Ayarlar'dan API Key girin!");
-    } else {
-      // Auto-start recording immediately
-      startRecording();
-    }
+    // Auto-start recording immediately
+    startRecording();
   } else {
-    // First run → setup flow
     showSetupScreen();
   }
 }
@@ -101,10 +99,8 @@ saveLangBtn.addEventListener("click", () => {
     setupComplete: true,
     autoPaste: true,
   });
-  // Go to main screen but show idle (need API key)
   showMainScreen();
-  showView("idle");
-  showToast("Sağ tık → Ayarlar'dan API Key girin");
+  startRecording();
 });
 
 // ========== MAIN SCREEN ==========
@@ -137,153 +133,141 @@ micBtn.addEventListener("click", () => {
   }
 });
 
-// ========== RECORDING ==========
+// ========== RECORDING (Web Speech API) ==========
 async function startRecording() {
-  const data = await chrome.storage.local.get(["apiKey"]);
-  if (!data.apiKey) {
-    showView("idle");
-    showToast("Önce Ayarlar'dan API Key girin!");
-    chrome.runtime.openOptionsPage();
-    return;
-  }
+  const data = await chrome.storage.local.get(["language"]);
+  const language = data.language || "tr";
+  const langCode = LANGUAGE_CODES[language] || "tr-TR";
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-    audioChunks = [];
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = langCode;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
+    fullTranscript = "";
+    interimTranscript = "";
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+
+      if (final) {
+        fullTranscript += final;
+      }
+      interimTranscript = interim;
     };
 
-    mediaRecorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-      await transcribe(audioBlob);
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error === "not-allowed") {
+        showToast("Mikrofon erişimi yok!");
+        isRecording = false;
+        isProcessing = false;
+        stopTimer();
+        showView("idle");
+      } else if (event.error === "no-speech") {
+        // Silently restart if no speech detected
+        if (isRecording) {
+          try { recognition.start(); } catch (e) { /* ignore */ }
+        }
+      }
     };
 
-    mediaRecorder.start(250);
+    recognition.onend = () => {
+      // If still recording (auto-ended by browser), restart
+      if (isRecording) {
+        try { recognition.start(); } catch (e) { /* ignore */ }
+        return;
+      }
+
+      // Recording was intentionally stopped — process results
+      if (isProcessing) {
+        processResult();
+      }
+    };
+
+    recognition.start();
     isRecording = true;
     seconds = 0;
     timerEl.textContent = "0:00";
     showView("recording");
     startTimer();
+    // Toolbar ikonunu kırmızıya çevir
+    chrome.runtime.sendMessage({ action: "set-icon-active" }).catch(() => {});
   } catch (err) {
+    console.error("Recognition start error:", err);
     showView("idle");
-    showToast("Mikrofon erişimi yok!");
+    showToast("Ses tanıma başlatılamadı!");
   }
 }
 
 function stopRecording() {
-  if (mediaRecorder && isRecording) {
-    mediaRecorder.stop();
+  if (recognition && isRecording) {
     isRecording = false;
     isProcessing = true;
     stopTimer();
     showView("processing");
+    recognition.stop();
+    // Toolbar ikonunu varsayılana döndür
+    chrome.runtime.sendMessage({ action: "set-icon-default" }).catch(() => {});
   }
 }
 
-// ========== TRANSCRIBE ==========
-async function transcribe(audioBlob) {
-  const data = await chrome.storage.local.get(["apiKey", "language"]);
-  const apiKey = data.apiKey;
+// ========== PROCESS RESULT ==========
+async function processResult() {
+  const data = await chrome.storage.local.get(["language"]);
   const language = data.language || "tr";
 
-  if (!apiKey) {
+  // Combine final + any remaining interim
+  let rawText = (fullTranscript + interimTranscript).trim();
+  const cleaned = cleanTranscript(rawText, language);
+
+  if (!cleaned) {
+    showToast("Ses algılanamadı");
     isProcessing = false;
     showView("idle");
-    showToast("API Key gerekli!");
     return;
   }
 
+  // Show result
+  resultText.textContent = cleaned;
+  isProcessing = false;
+  showView("result");
+
+  // Auto-copy to clipboard
   try {
-    const file = new File([audioBlob], "recording.webm", { type: "audio/webm" });
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("model", "whisper-large-v3-turbo");
-    formData.append("language", language);
-    formData.append("response_format", "verbose_json");
-    formData.append("temperature", "0");
+    await navigator.clipboard.writeText(cleaned);
+  } catch {
+    // ignore
+  }
 
-    const prompt = LANGUAGE_PROMPTS[language] || "";
-    if (prompt) formData.append("prompt", prompt);
-
-    let response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-    });
-
-    // Fallback to whisper-large-v3 if turbo fails
-    if (!response.ok && response.status !== 401) {
-      console.warn("Turbo failed, trying whisper-large-v3...");
-      const fb = new FormData();
-      fb.append("file", new File([audioBlob], "recording.webm", { type: "audio/webm" }));
-      fb.append("model", "whisper-large-v3");
-      fb.append("language", language);
-      fb.append("response_format", "verbose_json");
-      fb.append("temperature", "0");
-      if (prompt) fb.append("prompt", prompt);
-      response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: fb,
-      });
+  // Send to content script for double-click paste
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "store-text", text: cleaned });
     }
+  });
 
-    if (!response.ok) {
-      console.error("Groq error:", await response.text());
-      showToast(response.status === 401 ? "API Key geçersiz!" : "Transkripsiyon hatası!");
-      isProcessing = false;
-      showView("idle");
-      return;
-    }
-
-    const result = await response.json();
-    const rawText = result.text || "";
-    const cleaned = cleanTranscript(rawText, language);
-
-    if (!cleaned) {
-      showToast("Ses algılanamadı");
-      isProcessing = false;
-      showView("idle");
-      return;
-    }
-
-    // Show result
-    resultText.textContent = cleaned;
-    isProcessing = false;
-    showView("result");
-
-    // Auto-copy to clipboard
-    try {
-      await navigator.clipboard.writeText(cleaned);
-    } catch {
-      // ignore
-    }
-
-    // Send to content script for double-click paste
+  // Auto-paste if enabled
+  const settings = await chrome.storage.local.get(["autoPaste"]);
+  if (settings.autoPaste !== false) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "store-text", text: cleaned });
+        chrome.tabs.sendMessage(tabs[0].id, { action: "paste", text: cleaned });
       }
     });
-
-    // Auto-paste if enabled
-    const settings = await chrome.storage.local.get(["autoPaste"]);
-    if (settings.autoPaste !== false) {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "paste", text: cleaned });
-        }
-      });
-    }
-  } catch (err) {
-    console.error("Transcription error:", err);
-    showToast("Bağlantı hatası!");
-    isProcessing = false;
-    showView("idle");
   }
 }
 

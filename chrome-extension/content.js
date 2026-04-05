@@ -110,17 +110,18 @@ document.addEventListener("dblclick", (e) => {
 
   if (isInput || isTextarea || isEditable) {
     e.preventDefault();
+    const textWithSpace = lastTranscribedText + " ";
 
     if (isInput || isTextarea) {
       const start = el.selectionStart || 0;
       const end = el.selectionEnd || 0;
       const value = el.value;
-      el.value = value.slice(0, start) + lastTranscribedText + value.slice(end);
-      el.selectionStart = el.selectionEnd = start + lastTranscribedText.length;
+      el.value = value.slice(0, start) + textWithSpace + value.slice(end);
+      el.selectionStart = el.selectionEnd = start + textWithSpace.length;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     } else if (isEditable) {
-      document.execCommand("insertText", false, lastTranscribedText);
+      document.execCommand("insertText", false, textWithSpace);
     }
 
     // Clear after paste so it doesn't paste again
@@ -131,6 +132,8 @@ document.addEventListener("dblclick", (e) => {
 // Direct paste function (called from popup auto-paste)
 function pasteText(text) {
   const activeEl = document.activeElement;
+  // Dikté sonrası otomatik boşluk ekle
+  const textWithSpace = text + " ";
 
   if (!activeEl) return;
 
@@ -139,8 +142,8 @@ function pasteText(text) {
     const start = activeEl.selectionStart || 0;
     const end = activeEl.selectionEnd || 0;
     const value = activeEl.value;
-    activeEl.value = value.slice(0, start) + text + value.slice(end);
-    activeEl.selectionStart = activeEl.selectionEnd = start + text.length;
+    activeEl.value = value.slice(0, start) + textWithSpace + value.slice(end);
+    activeEl.selectionStart = activeEl.selectionEnd = start + textWithSpace.length;
     activeEl.dispatchEvent(new Event("input", { bubbles: true }));
     activeEl.dispatchEvent(new Event("change", { bubbles: true }));
     return;
@@ -148,7 +151,7 @@ function pasteText(text) {
 
   // Handle contentEditable elements (Google Docs, Notion, Slack, etc.)
   if (activeEl.isContentEditable || activeEl.getAttribute("contenteditable") === "true") {
-    document.execCommand("insertText", false, text);
+    document.execCommand("insertText", false, textWithSpace);
     return;
   }
 
@@ -162,10 +165,10 @@ function pasteText(text) {
     if (rect.width > 0 && rect.height > 0) {
       el.focus();
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-        el.value += text;
+        el.value += textWithSpace;
         el.dispatchEvent(new Event("input", { bubbles: true }));
       } else {
-        document.execCommand("insertText", false, text);
+        document.execCommand("insertText", false, textWithSpace);
       }
       break;
     }
