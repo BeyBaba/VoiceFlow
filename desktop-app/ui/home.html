@@ -1589,7 +1589,9 @@
     async function pmTestCapture(chunks, mimeType) {
       if (!pmTestListening) return;
       // Cooldown: prevent rapid-fire API calls
-      if (Date.now() - pmTestLastApiCall < PM_TEST_API_COOLDOWN) {
+      const SU_TEST = ["savasarac@gmail.com"];
+      const testCooldown = SU_TEST.includes(currentSettings.userEmail) ? 500 : PM_TEST_API_COOLDOWN;
+      if (Date.now() - pmTestLastApiCall < testCooldown) {
         console.log("Test API cooldown active, skipping");
         return;
       }
@@ -1629,15 +1631,18 @@
         };
 
         let resp = null;
-        for (let attempt = 0; attempt < 4; attempt++) {
+        const SUPER_USERS_TEST = ["savasarac@gmail.com"];
+        const isSUTest = SUPER_USERS_TEST.includes(currentSettings.userEmail);
+        const testMaxRetries = isSUTest ? 6 : 4;
+        for (let attempt = 0; attempt < testMaxRetries; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + apiKey },
             body: buildTestFD(),
           });
-          console.log("Test Groq status:", resp.status, "attempt:", attempt);
+          console.log("Test Groq status:", resp.status, "attempt:", attempt, isSUTest ? "(SU)" : "");
           if (resp.status === 429) {
-            const waitMs = Math.pow(2, attempt + 1) * 2000; // 4s, 8s, 16s, 32s
+            const waitMs = isSUTest ? Math.pow(2, attempt) * 500 : Math.pow(2, attempt + 1) * 2000;
             if (liveEl) liveEl.textContent = "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
             await new Promise(r => setTimeout(r, waitMs));
             continue;
