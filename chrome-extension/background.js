@@ -27,12 +27,32 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
-// Handle messages from content script
+// Handle messages from content script and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "get-settings") {
-    chrome.storage.local.get(["apiKey", "language", "autoPaste"], (data) => {
+    chrome.storage.local.get(["language", "autoPaste"], (data) => {
       sendResponse(data);
     });
     return true; // async response
+  }
+
+  // Toggle toolbar icon between active (red) and default (teal)
+  if (message.action === "set-icon-active") {
+    chrome.action.setIcon({
+      path: {
+        "16": "icons/icon16-active.png",
+        "48": "icons/icon48-active.png",
+        "128": "icons/icon128-active.png",
+      },
+    });
+  }
+  if (message.action === "set-icon-default") {
+    chrome.action.setIcon({
+      path: {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png",
+      },
+    });
   }
 });

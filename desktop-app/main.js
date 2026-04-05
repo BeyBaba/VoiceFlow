@@ -65,7 +65,7 @@ function createMainWindow() {
     : screenWidth - 400;
   const winY = isFirstRun
     ? Math.round((screenHeight - winHeight) / 2)
-    : 60;
+    : 120;
 
   mainWindow = new BrowserWindow({
     width: winWidth,

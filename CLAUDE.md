@@ -5,23 +5,57 @@
 2. **main/master korumasi** - main'e direkt push YASAK. Her zaman claude/ branch → PR → merge akisi
 3. **PR zorunlulugu** - main'e direkt push yok, PR uzerinden merge
 4. **Test sonrasi push** - Syntax/bracket kontrolu yapilmadan push yapma
-5. **Gizli dosya korumasi** - .env, credentials, API key ASLA commit edilmez
-6. **Placeholder yasak** - Kullaniciya verilen komutlarda ASLA placeholder birakma ({VERSION}, {OZET} gibi). Her seferinde gercek degerleri DOLDURULMUS olarak ver. Kullanici kopyala-yapistir yapacak, ekstra duzenleme yapmasina gerek kalmamali.
-7. **Windows PowerShell zorunlu** - ASLA Ubuntu/Linux/bash komutu verme. Her zaman Windows PowerShell formati kullan. Ornek: `rm -rf` degil `Remove-Item -Recurse`
+5. **Gizli dosya korumasi** - .env, .env.local, .env.*.local, credentials, API key ASLA commit edilmez. .gitignore'da mutlaka olmali.
+6. **Placeholder yasak** - Kullaniciya verilen komutlarda ASLA placeholder birakma ({VERSION}, {OZET} gibi). Her seferinde gercek degerleri DOLDURULMUS olarak ver.
+7. **Kullaniciya komut verirken PowerShell formati** - Kullaniciya terminal komutu verilecekse HER ZAMAN Windows PowerShell formati kullan. Ornek: `rm -rf` degil `Remove-Item -Recurse`. Claude kendi ortaminda (WSL/Linux) bash kullanabilir ama kullaniciya verilen komutlar PowerShell olmali.
+8. **Token guvenligi** - Token'i ASLA chat'e yazdirma, dosyaya yazma, CLAUDE.md'ye yazma. Token gerektiginde kullaniciya terminalde calistirmasi icin komut ver.
 
 ## Kullanici Calisma Ortami
 - Varsayilan proje yolu: `D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow`
 - Terminal: PowerShell (WSL degil)
 - Build ve komutlar icin her zaman bu yolu kullan
+- Claude Code (WSL/Linux) ortaminda bash kullanilir, kullaniciya komut verilirken PowerShell
+
+## Kullanici Iletisim Stili
+- Kullanici hizli ve kisa yazar, yazim hatalari olabilir
+- Sesli mesajdan cevrilmis metin olabilir, cumleler yarim kalabilir
+- Emin degilsen TAHMIN ETME, sor: "Sunu mu demek istedin: ...?"
+- Yarim cumleyi kendi kafana gore tamamlama
+- Turkce-Ingilizce karisik yazabilir, bu normal
+
+## Ekran Goruntusu Kurali
+- Kullanici ekran goruntusu gonderdiginde:
+  1. Gordugunu OZETLE: "Ekranda sunu goruyorum: ..."
+  2. "Dogru anladim mi?" diye TEYIT AL
+  3. Teyit almadan aksiyon alma
+- Gormedigini uydurup "su olmus olabilir" deme
+
+## Guvenlik — Kod Degisikligi Kurali
+- 3 veya daha fazla dosyada degisiklik yapilacaksa:
+  1. Once degisecek dosyalarin listesini goster
+  2. Her dosyada NE degisecegini kisaca acikla
+  3. Kullanicidan onay al
+  4. Onay gelmeden degisiklik yapma
+- Kritik dosyalar (config, auth, database, payment) icin TEK dosya bile olsa onay al
+
+## Projeler Arasi Ogrenme
+- Bir projede cozulen sorun diger projelerde de gecerli olabilir
+- Bilinen projeler: ADHD Killer, VoiceFlow, GhostX, BILSAV PWA
+- "Bu sorunu [diger proje]'de soyle cozmustuk, burada da uygulayalim mi?" diye sor
 
 ## PROJE YAPISI
 8. **PWA** - manifest.json, service worker, app icons, standalone mode
+   - iOS Safari: apple-mobile-web-app-capable, apple-mobile-web-app-status-bar-style, apple-touch-icon
+   - Android Chrome: manifest.json display:standalone, theme-color
+   - Desktop: manifest.json ile kurulabilir
+   - iOS'ta "Ana Ekrana Ekle" CALISMALI
+   - PNG/SVG ikonlar her platform icin hazir (192x192, 512x512)
 9. **Mobil uyumluluk** - Responsive, 768px breakpoint, sidebar tam ekran gecisi
 10. **Haptic feedback** - Tum butonlarda navigator.vibrate()
 11. **Mobil-first** - viewport meta, zoom engelleme, device-width. Ekran boyutuna otomatik uyum. Telefon/tablet/desktop farkli gosterim.
 12. **Adaptive UI** - Mobilde native gibi (tam ekran, gesture, bottom nav). Web'de web gibi (sidebar, hover, genis layout). Platform algila, farkli UX sun.
 13. **i18n-ready** - UI string'leri dil dosyasindan (tr.json, en.json). Hardcoded metin yok. Yeni dil = yeni JSON
-14. **.gitignore zorunlu** - node_modules/, .next/, .env, dist/, build/, .DS_Store
+14. **.gitignore zorunlu** - node_modules/, .next/, .env, .env.local, .env.*.local, dist/, build/, .DS_Store, *.log, coverage/
 
 ## VERSIYON VE DEPLOY
 15. **Semantic Versioning** - v1.0.0 (major.minor.patch)
@@ -29,13 +63,19 @@
 17. **README.md zorunlu** - Brainstorm/tasarim bittikten sonra "README olusturayim mi?" sor
 18. **GitHub Releases** - Her versiyon gecisinde changelog
 19. **Commit dili** - Turkce, conventional commits (feat:, fix:, chore:)
-20. **Duplicate kontrolu** - Ayni repodan birden fazla deploy yok
+20. **Duplicate kontrolu** - Ayni repodan birden fazla Vercel/Netlify deploy yok. Deploy oncesi kontrol et, varsa UYAR.
 21. **Otomatik indirme linki** - /api/download endpoint'i GitHub Releases'tan en son exe'yi bulup kullaniciya stream eder. Private repo icin GITHUB_TOKEN kullanir. Hardcoded dosya linki KULLANMA.
 22. **CI/CD Build** - GitHub Actions workflow var (.github/workflows/build-windows-setup.yml). package.json versiyonu degistiginde otomatik build + release yapar. Kullaniciya manuel komut verme.
+23. **Her versiyon degisiminde indirme linki ver** - Masaustu app: EXE indirme linki (GitHub Releases). Web app: canli URL. ASLA "indirme linki hazir" deyip link vermeden gecme.
 
-## META
-23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
-24. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
+## Vercel + SQLite YASAK
+- Vercel serverless ortaminda SQLite CALISMAZ (/tmp her cold start'ta sifirlanir)
+- Vercel + SQLite ❌ / Vercel + execSync ❌ / Vercel + lokal dosya DB ❌
+- ZORUNLU: Vercel + Supabase (PostgreSQL)
+- Mevcut Supabase Org: savasarac@gmail.com's Org (giddtvgowtnloabwsvin)
+- Bolge tercihi: eu-west-2 (Turkiye'ye yakin)
+- Her proje icin yeni Supabase projesi ac, mevcut projeleri karistirma
+- Kontrol listesi: DB Supabase mi? / Prisma provider postgresql mi? / DATABASE_URL Supabase connection string mi? / Vercel env'e eklendi mi? / prisma generate + db push yapildi mi?
 
 ## Build & Release Kurali
 - GitHub Actions workflow var (.github/workflows/build-windows-setup.yml)
@@ -43,16 +83,40 @@
 - Claude ONCE otomatik yapmayi dener (GitHub Actions, gh CLI vb.)
 - Otomatik yapilamazsa (hata, erisim sorunu vb.) → kullaniciya PowerShell komutu verir
 - Komut verildiginde ASLA placeholder birakma — gercek degerlerle doldur
-- Kullanici kopyala-yapistir yapacak, ekstra duzenleme yapmasina gerek kalmamali
 
 ### Versiyon ve Release Notu Kurali
 - Versiyon numarasi: `desktop-app/package.json` dosyasindan oku, ASLA elle yazma
 - Semantic Versioning: bug fix → patch (4.1.0 → 4.1.1), yeni ozellik → minor (4.1.0 → 4.2.0), buyuk kirilma → major (4.1.0 → 5.0.0)
 - Release notu / degisiklik ozeti: son commit mesajlarindan otomatik olustur
-- Kullaniciya komut verilecekse bu iki degeri onceden oku ve doldurulmus ver
+- Major versiyon artisi oncesi (ornegin 4.x → 5.0) ZIP yedek al
+
+### GitHub Actions Workflow Zorunlu Ayarlari
+- permissions: contents: write → Release olusturma icin ZORUNLU
+- Bu olmadan softprops/action-gh-release 403/failure verir
+
+## Skill Onerileri
+- Yeni feature → /concise-planning once calistir
+- Hata ayiklama → /systematic-debugging kullan
+- React/UI isi → /react-best-practices aktif et
+- Guvenlik review → /api-security-best-practices calistir
+- Electron isi → /electron-development kullan
+- Ses/voice isi → /voice-ai-development kullan
+- Chrome extension → /chrome-extension-developer kullan
+- PWA isi → /progressive-web-app kullan
+
+## META
+23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
+24. **Proaktif davranis** - Eksiklik gorursen soyle, oneri sun
+
+## Super User Kurali
+- `savasarac@gmail.com` hesabi SUPER USER'dir
+- Rate limit, plan kisitlamasi, trial suresi bu hesap icin GECERLI DEGILDIR
+- Super user her zaman `lifetime` plan'a sahiptir
+- Bu kural TUM projelerde gecerlidir
+- Yeni proje olusturulurken auth/payment kodunda super user kontrolu EKLENMELI
+- Super user listesi: src/lib/auth.ts icinde SUPER_USERS array'inde tanimli
 
 ## Onemli Kurallar
-- Master'a ASLA sormadan merge yapma
-- 3.1.3 exe backup'i her zaman koru (dist klasorunde)
 - Otokopi (auto-copy) ASLA kapatilamaz — her zaman acik kalmali
 - Power Mode ve Auto-paste sadece Pro/Trial kullanicilara acik
+- 3.1.3 exe backup'i her zaman koru (dist klasorunde)
