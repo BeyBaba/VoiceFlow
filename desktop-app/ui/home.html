@@ -230,6 +230,7 @@
         <div class="nav-item" data-page="s-appearance"><span class="nav-icon">🎨</span> Gorunum</div>
         <div class="nav-item" data-page="s-privacy"><span class="nav-icon">🔒</span> Gizlilik</div>
         <div class="nav-item" data-page="s-about"><span class="nav-icon">ℹ️</span> Hakkinda</div>
+        <div class="nav-item" data-page="s-apiusage" id="navApiUsage" style="display:none"><span class="nav-icon">📊</span> API Maliyet</div>
         <div class="nav-divider"></div>
         <div class="word-count-bar" id="wordCountBar">
           <div class="wc-header"><span>Bugun</span><span id="wcText">0 / 2.000</span></div>
@@ -519,6 +520,74 @@
           <div class="card" style="border-color:rgba(239,68,68,0.15)"><div class="card-row"><div class="card-label-wrap"><div class="card-label" style="color:#EF4444">Ayarlari Sifirla</div><div class="card-hint">Tum ayarlari sifirla</div></div><button class="danger-btn" id="sResetBtn">Sifirla</button></div></div>
         </div>
       </div>
+
+      <!-- SECRET: API USAGE / COST TRACKING — Only visible to Super Users -->
+      <div class="page" id="page-s-apiusage" style="display:none">
+        <div class="page-header"><h1 class="page-title">📊 API Maliyet Takibi</h1><p class="page-desc">Groq Whisper API kullanim ve maliyet analizi (Sadece Super User)</p></div>
+        <div class="page-body">
+          <!-- Summary Cards -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="card" style="text-align:center;padding:16px">
+              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:1px">Bugun</div>
+              <div style="font-size:24px;font-weight:900;color:var(--accent);margin:6px 0" id="auTodayRequests">0</div>
+              <div style="font-size:11px;color:var(--text-2)">istek</div>
+              <div style="font-size:13px;font-weight:700;margin-top:4px" id="auTodayCost">₺0.00</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:1px">Bu Ay</div>
+              <div style="font-size:24px;font-weight:900;color:#8B5CF6;margin:6px 0" id="auMonthRequests">0</div>
+              <div style="font-size:11px;color:var(--text-2)">istek</div>
+              <div style="font-size:13px;font-weight:700;margin-top:4px" id="auMonthCost">₺0.00</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:1px">Toplam</div>
+              <div style="font-size:24px;font-weight:900;color:#F59E0B;margin:6px 0" id="auTotalRequests">0</div>
+              <div style="font-size:11px;color:var(--text-2)">istek</div>
+              <div style="font-size:13px;font-weight:700;margin-top:4px" id="auTotalCost">₺0.00</div>
+            </div>
+          </div>
+
+          <!-- Duration Stats -->
+          <div class="card" style="padding:16px">
+            <div class="card-label" style="margin-bottom:10px">Ses Suresi</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div><div style="font-size:10px;color:var(--text-3)">Bugun</div><div style="font-size:16px;font-weight:800" id="auTodayDuration">0 dk</div></div>
+              <div><div style="font-size:10px;color:var(--text-3)">Bu Ay</div><div style="font-size:16px;font-weight:800" id="auMonthDuration">0 dk</div></div>
+              <div><div style="font-size:10px;color:var(--text-3)">Toplam</div><div style="font-size:16px;font-weight:800" id="auTotalDuration">0 dk</div></div>
+            </div>
+          </div>
+
+          <!-- Pricing Info -->
+          <div class="card" style="padding:16px">
+            <div class="card-label" style="margin-bottom:8px">Fiyat Bilgisi</div>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.8">
+              <div>Groq Whisper: <strong>$0.111/saat</strong> ses (~₺3.60/saat)</div>
+              <div>Ortalama dikte: <strong>~5 saniye</strong> = ~₺0.005/istek</div>
+              <div>Power Mode dinleme: <strong>~2 saniye</strong>/klip = ~₺0.002/istek</div>
+              <div style="margin-top:6px;padding:8px;background:rgba(139,92,246,0.05);border-radius:6px">
+                <strong>Ornek:</strong> Gunluk 100 dikte + 500 PM klip = ~₺1.50/gun = ~₺45/ay
+              </div>
+            </div>
+          </div>
+
+          <!-- Daily Chart (last 7 days) -->
+          <div class="card" style="padding:16px">
+            <div class="card-label" style="margin-bottom:10px">Son 7 Gun</div>
+            <div id="auChart" style="display:flex;align-items:flex-end;gap:6px;height:100px"></div>
+          </div>
+
+          <!-- Reset -->
+          <div class="card" style="border-color:rgba(239,68,68,0.15)">
+            <div class="card-row">
+              <div class="card-label-wrap">
+                <div class="card-label" style="color:#EF4444">Istatistikleri Sifirla</div>
+                <div class="card-hint">Tum API kullanim verilerini temizle</div>
+              </div>
+              <button class="danger-btn" onclick="if(confirm('Tum API istatistikleri silinecek. Emin misiniz?')){saveSetting('apiUsageLog',[]);loadApiUsageStats();showToast('Istatistikler sifirlandi');}">Sifirla</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -696,6 +765,10 @@
       document.getElementById("userPlanBadge").textContent=userPlanText;
       document.getElementById("userPlanBadge").className="user-plan "+(isSuperUser?"pro":isPro?"pro":"free");
       document.getElementById("wordCountBar").style.display=(isSuperUser||isPro)?"none":"block";
+      // Show API Usage menu only for Super Users
+      const apiUsageNav = document.getElementById("navApiUsage");
+      if (apiUsageNav) apiUsageNav.style.display = isSuperUser ? "" : "none";
+      if (isSuperUser) loadApiUsageStats();
       if(!isPro) updateWordCount();
       const api=document.getElementById("statusApi");
       if(currentSettings.apiKey){api.textContent="Aktif";api.className="status-card-value ok";}else{api.textContent="Eksik";api.className="status-card-value warn";}
@@ -1115,6 +1188,9 @@
           const result = await resp.json();
           const text = (result.text || "").trim();
           console.log("PowerMode heard:", text);
+
+          // Log API usage (estimate ~2 sec per PM clip)
+          if (typeof logApiUsage === "function") logApiUsage(2, "powermode");
 
           // Filter out Whisper hallucinations
           const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah"];
@@ -1573,6 +1649,8 @@
           const result = await resp.json();
           const text = (result.text || "").trim();
           console.log("Test Groq heard:", text);
+          // Log API usage (test clip ~3 sec)
+          if (typeof logApiUsage === "function") logApiUsage(3, "test");
 
           const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
           const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
@@ -1887,6 +1965,90 @@
     function installUpdate() {
       if (updateReady) {
         showToast("Guncelleme yukleniyor, uygulama yeniden baslatilacak...");
+      }
+    }
+
+    // ==================== API USAGE TRACKING (Super User Only) ====================
+    // Groq Whisper pricing: $0.111/hour = $0.00185/minute = $0.0000308/second
+    const GROQ_PRICE_PER_SEC_USD = 0.0000308;
+    const USD_TO_TRY = 32.5; // Approximate USD/TRY rate
+
+    function logApiUsage(durationSec, type) {
+      // type: "dictate" or "powermode"
+      const log = currentSettings.apiUsageLog || [];
+      log.push({
+        time: Date.now(),
+        duration: durationSec,
+        type: type,
+        costUsd: durationSec * GROQ_PRICE_PER_SEC_USD
+      });
+      // Keep max 10000 entries to prevent bloat
+      if (log.length > 10000) log.splice(0, log.length - 10000);
+      saveSetting("apiUsageLog", log);
+    }
+
+    function loadApiUsageStats() {
+      const log = currentSettings.apiUsageLog || [];
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const monthStr = now.toISOString().slice(0, 7); // YYYY-MM
+
+      let todayReqs = 0, todayDur = 0, todayCost = 0;
+      let monthReqs = 0, monthDur = 0, monthCost = 0;
+      let totalReqs = log.length, totalDur = 0, totalCost = 0;
+
+      // Daily buckets for chart (last 7 days)
+      const dayBuckets = {};
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        dayBuckets[d.toISOString().split("T")[0]] = { reqs: 0, cost: 0 };
+      }
+
+      for (const entry of log) {
+        const entryDate = new Date(entry.time).toISOString().split("T")[0];
+        const entryMonth = new Date(entry.time).toISOString().slice(0, 7);
+        const dur = entry.duration || 2; // default 2 sec
+        const cost = entry.costUsd || dur * GROQ_PRICE_PER_SEC_USD;
+
+        totalDur += dur;
+        totalCost += cost;
+
+        if (entryDate === todayStr) { todayReqs++; todayDur += dur; todayCost += cost; }
+        if (entryMonth === monthStr) { monthReqs++; monthDur += dur; monthCost += cost; }
+        if (dayBuckets[entryDate]) { dayBuckets[entryDate].reqs++; dayBuckets[entryDate].cost += cost; }
+      }
+
+      const fmtTry = (usd) => "₺" + (usd * USD_TO_TRY).toFixed(2);
+      const fmtDur = (sec) => sec >= 3600 ? (sec / 3600).toFixed(1) + " saat" : sec >= 60 ? Math.round(sec / 60) + " dk" : sec + " sn";
+
+      // Update DOM
+      const el = (id) => document.getElementById(id);
+      if (el("auTodayRequests")) el("auTodayRequests").textContent = todayReqs;
+      if (el("auTodayCost")) el("auTodayCost").textContent = fmtTry(todayCost);
+      if (el("auTodayDuration")) el("auTodayDuration").textContent = fmtDur(todayDur);
+      if (el("auMonthRequests")) el("auMonthRequests").textContent = monthReqs;
+      if (el("auMonthCost")) el("auMonthCost").textContent = fmtTry(monthCost);
+      if (el("auMonthDuration")) el("auMonthDuration").textContent = fmtDur(monthDur);
+      if (el("auTotalRequests")) el("auTotalRequests").textContent = totalReqs;
+      if (el("auTotalCost")) el("auTotalCost").textContent = fmtTry(totalCost);
+      if (el("auTotalDuration")) el("auTotalDuration").textContent = fmtDur(totalDur);
+
+      // Chart
+      const chartEl = el("auChart");
+      if (chartEl) {
+        const days = Object.entries(dayBuckets);
+        const maxReqs = Math.max(...days.map(d => d[1].reqs), 1);
+        chartEl.innerHTML = days.map(([date, data]) => {
+          const h = Math.max(4, Math.round((data.reqs / maxReqs) * 80));
+          const dayName = new Date(date).toLocaleDateString("tr-TR", { weekday: "short" });
+          const costStr = "₺" + (data.cost * USD_TO_TRY).toFixed(2);
+          return '<div style="flex:1;text-align:center" title="' + date + ': ' + data.reqs + ' istek, ' + costStr + '">' +
+            '<div style="height:' + h + 'px;background:linear-gradient(180deg,var(--accent),#4F46E5);border-radius:4px 4px 0 0;margin:0 auto;width:80%"></div>' +
+            '<div style="font-size:9px;color:var(--text-3);margin-top:4px">' + dayName + '</div>' +
+            '<div style="font-size:9px;color:var(--text-2);font-weight:700">' + data.reqs + '</div>' +
+          '</div>';
+        }).join("");
       }
     }
 

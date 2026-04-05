@@ -657,6 +657,16 @@ async function transcribe(audioBlob) {
 
     const result = await response.json();
     const rawText = result.text || "";
+
+    // Log API usage for cost tracking (duration from result or estimate 5 sec)
+    try {
+      const dictDuration = result.duration || 5;
+      const settings = await window.voiceflow.getSettings();
+      const usageLog = settings.apiUsageLog || [];
+      usageLog.push({ time: Date.now(), duration: dictDuration, type: "dictate", costUsd: dictDuration * 0.0000308 });
+      if (usageLog.length > 10000) usageLog.splice(0, usageLog.length - 10000);
+      window.voiceflow.saveSettings({ apiUsageLog: usageLog });
+    } catch (e) { console.log("Usage log error:", e); }
     const cleaned = cleanTranscript(rawText, language);
 
     if (!cleaned) {
