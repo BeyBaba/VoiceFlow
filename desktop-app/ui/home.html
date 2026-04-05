@@ -957,7 +957,7 @@
     const PM_COOLDOWN = 5000;
     const PM_MIN_SPEECH_MS = 800; // Minimum speech duration before sending to Groq
     const PM_MIN_BLOB = 2000; // Minimum blob size (bytes) to avoid noise clips
-    const PM_MAX_REQUESTS_PER_MIN = 8; // Self-throttle: max API calls per minute
+    const PM_MAX_REQUESTS_PER_MIN = 30; // Self-throttle: max API calls per minute (Super Users get unlimited)
     let pmRequestTimestamps = []; // Track API call timestamps for rate limiting
 
     async function pmStart() {
@@ -1060,10 +1060,12 @@
       if (pmIsCapturing || !pmIsListening) return;
       if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
 
-      // Self-throttle: check requests per minute
+      // Self-throttle: check requests per minute (Super Users bypass)
       const now = Date.now();
       pmRequestTimestamps = pmRequestTimestamps.filter(t => now - t < 60000);
-      if (pmRequestTimestamps.length >= PM_MAX_REQUESTS_PER_MIN) {
+      const SUPER_USERS = ["savasarac@gmail.com"];
+      const isSU = SUPER_USERS.includes(currentSettings.userEmail);
+      if (!isSU && pmRequestTimestamps.length >= PM_MAX_REQUESTS_PER_MIN) {
         console.log("PM self-throttle: " + pmRequestTimestamps.length + " requests in last minute, skipping");
         return;
       }
@@ -1091,15 +1093,18 @@
         };
 
         let resp = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
+        const maxRetries = isSU ? 5 : 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
           resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + EMBEDDED_API_KEY },
             body: buildFormData(),
           });
           if (resp.status === 429) {
-            const waitMs = Math.pow(2, attempt + 1) * 2000; // 4s, 8s, 16s
-            console.log("PowerMode 429, retry", attempt+1, "wait", waitMs + "ms");
+            const waitMs = isSU ? Math.pow(2, attempt) * 1000 : Math.pow(2, attempt + 1) * 2000;
+            const liveEl2 = document.getElementById("pmLiveText");
+            if (liveEl2) liveEl2.textContent = "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
+            console.log("PowerMode 429, retry", attempt+1, "wait", waitMs + "ms", isSU ? "(SuperUser)" : "");
             await new Promise(r => setTimeout(r, waitMs));
             continue;
           }
