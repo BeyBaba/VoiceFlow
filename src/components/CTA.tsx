@@ -73,7 +73,7 @@ export default function CTA() {
                 {t.cta.webDemo}
               </a>
               <a
-                href="/chrome-extension.zip"
+                href="/VoiceFlow.Chrome.Extension.zip"
                 download
                 className="px-8 py-4 rounded-2xl border-2 border-white/20 text-white font-semibold text-lg hover:bg-white/10 transition-all flex items-center gap-2"
               >
