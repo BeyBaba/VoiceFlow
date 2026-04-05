@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 
+// Versiyon: desktop-app/package.json ile senkron tutulmalı
+const CURRENT_VERSION = "4.2.2";
+
 // GET /api/download → Private GitHub repo'dan en son exe'yi indir
 // GITHUB_TOKEN env variable gerekli (private repo erişimi için)
 // Fallback: public/downloads/VoiceFlow-Setup.exe dosyasını sunar
@@ -42,10 +45,13 @@ export async function GET(request: NextRequest) {
           });
 
           if (downloadRes.ok) {
+            // Release tag'inden versiyon al (v4.2.2 -> 4.2.2)
+            const releaseVersion = release.tag_name?.replace(/^v/, "") || CURRENT_VERSION;
+            const filename = `VoiceFlow-Setup-${releaseVersion}.exe`;
             return new NextResponse(downloadRes.body, {
               headers: {
                 "Content-Type": "application/octet-stream",
-                "Content-Disposition": `attachment; filename="${exeAsset.name}"`,
+                "Content-Disposition": `attachment; filename="${filename}"`,
                 "Content-Length": exeAsset.size?.toString() || "",
               },
             });
@@ -54,14 +60,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback: local dosyadan sun
+    // Fallback: local dosyadan sun (versiyonlu isimle)
     const localPath = path.join(process.cwd(), "public", "downloads", "VoiceFlow-Setup.exe");
+    const filename = `VoiceFlow-Setup-${CURRENT_VERSION}.exe`;
     try {
       const fileBuffer = await readFile(localPath);
       return new NextResponse(fileBuffer, {
         headers: {
           "Content-Type": "application/octet-stream",
-          "Content-Disposition": 'attachment; filename="VoiceFlow-Setup.exe"',
+          "Content-Disposition": `attachment; filename="${filename}"`,
           "Content-Length": fileBuffer.length.toString(),
         },
       });

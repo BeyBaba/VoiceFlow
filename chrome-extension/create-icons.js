@@ -2,7 +2,7 @@
  * VoiceFlow Chrome Extension Icon Generator
  * Run: node create-icons.js
  * Creates 16x16, 48x48, 128x128 PNG icons
- * Design: Clean microphone on transparent/dark background - looks great in Chrome toolbar
+ * Design: Bold microphone icon optimized for Chrome toolbar visibility
  */
 
 const fs = require("fs");
@@ -88,10 +88,13 @@ function setPixel(pixels, width, x, y, r, g, b, a = 255) {
 }
 
 function fillCircle(pixels, width, cx, cy, radius, r, g, b, a = 255) {
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      if (dx * dx + dy * dy <= radius * radius) {
-        setPixel(pixels, width, cx + dx, cy + dy, r, g, b, a);
+  for (let dy = -radius - 1; dy <= radius + 1; dy++) {
+    for (let dx = -radius - 1; dx <= radius + 1; dx++) {
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= radius) {
+        const edge = radius - dist;
+        const alpha = edge < 1 ? Math.round(edge * a) : a;
+        setPixel(pixels, width, cx + dx, cy + dy, r, g, b, alpha);
       }
     }
   }
@@ -128,141 +131,142 @@ function fillRect(pixels, width, x, y, w, h, r, g, b, a = 255) {
   }
 }
 
-// Draw the default (inactive) icon: teal circle + white microphone
-function drawIcon(pixels, width, height) {
-  const s = width / 128;
-  const cx = width / 2;
-  const cy = height / 2;
-
-  // Circle background with teal gradient
-  const radius = Math.round(60 * s);
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
+// Draw arc (U-shape around mic)
+function drawArc(pixels, width, cx, cy, outerR, innerR, r, g, b, a = 255) {
+  for (let dy = -outerR - 1; dy <= outerR + 1; dy++) {
+    for (let dx = -outerR - 1; dx <= outerR + 1; dx++) {
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= radius) {
-        // Smooth edge anti-aliasing
-        const edge = radius - dist;
-        const alpha = edge < 1 ? Math.round(edge * 255) : 255;
-        // Gradient: teal top -> slightly darker bottom
-        const t = (dy + radius) / (2 * radius);
-        const r = Math.round(13 + t * 2);
-        const g = Math.round(148 - t * 30);
-        const b = Math.round(136 - t * 20);
+      if (dist <= outerR && dist >= innerR && dy > 0) {
+        const edgeOuter = outerR - dist;
+        const edgeInner = dist - innerR;
+        const edge = Math.min(edgeOuter, edgeInner);
+        const alpha = edge < 1 ? Math.round(edge * a) : a;
         setPixel(pixels, width, cx + dx, cy + dy, r, g, b, alpha);
       }
     }
   }
+}
 
-  // White microphone
-  const micW = Math.round(20 * s);
-  const micH = Math.round(30 * s);
-  const micX = Math.round((width - micW) / 2);
-  const micY = Math.round(24 * s);
-  const micR = Math.round(10 * s);
+// ============ 16px ICON (simplified for toolbar clarity) ============
+function drawIcon16(pixels, width, height, bgR, bgG, bgB) {
+  const cx = 8;
+  const cy = 8;
 
-  // Mic body
-  fillRoundedRect(pixels, width, micX, micY, micW, micH, micR, 255, 255, 255);
+  // Background circle - fills most of the 16x16 space
+  fillCircle(pixels, width, cx, cy, 7, bgR, bgG, bgB);
 
-  // U-shaped arc around mic
-  const arcCY = Math.round(50 * s);
-  const arcOuterR = Math.round(22 * s);
-  const arcInnerR = Math.round(18 * s);
+  // Mic body (bold, simple rectangle with rounded top)
+  fillRoundedRect(pixels, width, 6, 3, 4, 7, 2, 255, 255, 255);
 
-  for (let dy = -arcOuterR; dy <= arcOuterR; dy++) {
-    for (let dx = -arcOuterR; dx <= arcOuterR; dx++) {
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= arcOuterR && dist >= arcInnerR && dy > -2 * s) {
-        setPixel(pixels, width, cx + dx, arcCY + dy, 255, 255, 255);
-      }
-    }
-  }
+  // U-arc
+  drawArc(pixels, width, cx, 7, 5, 3, 255, 255, 255);
 
   // Stem
-  const stemW = Math.round(4 * s);
-  const stemX = Math.round((width - stemW) / 2);
-  const stemY = Math.round(72 * s);
-  const stemH = Math.round(14 * s);
-  fillRect(pixels, width, stemX, stemY, stemW, stemH, 255, 255, 255);
+  fillRect(pixels, width, 7, 12, 2, 2, 255, 255, 255);
 
   // Base
-  const baseW = Math.round(24 * s);
-  const baseH = Math.round(4 * s);
-  const baseX = Math.round((width - baseW) / 2);
-  const baseY = Math.round(84 * s);
-  fillRoundedRect(pixels, width, baseX, baseY, baseW, baseH, Math.round(2 * s), 255, 255, 255);
+  fillRect(pixels, width, 5, 13, 6, 1, 255, 255, 255);
 }
 
-// Draw the active (recording) icon: red circle + white microphone
-function drawActiveIcon(pixels, width, height) {
-  const s = width / 128;
-  const cx = width / 2;
-  const cy = height / 2;
+// ============ 48px ICON ============
+function drawIcon48(pixels, width, height, bgR, bgG, bgB) {
+  const cx = 24;
+  const cy = 24;
 
-  // Red circle background
-  const radius = Math.round(60 * s);
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
+  // Background circle with gradient
+  const radius = 22;
+  for (let dy = -radius - 1; dy <= radius + 1; dy++) {
+    for (let dx = -radius - 1; dx <= radius + 1; dx++) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= radius) {
         const edge = radius - dist;
         const alpha = edge < 1 ? Math.round(edge * 255) : 255;
         const t = (dy + radius) / (2 * radius);
-        const r = Math.round(239 - t * 20);
-        const g = Math.round(68 - t * 20);
-        const b = Math.round(68 - t * 10);
+        const r = Math.round(bgR + t * 5);
+        const g = Math.round(bgG - t * 20);
+        const b = Math.round(bgB - t * 15);
         setPixel(pixels, width, cx + dx, cy + dy, r, g, b, alpha);
       }
     }
   }
 
-  // White microphone (same as default)
-  const micW = Math.round(20 * s);
-  const micH = Math.round(30 * s);
-  const micX = Math.round((width - micW) / 2);
-  const micY = Math.round(24 * s);
-  const micR = Math.round(10 * s);
-  fillRoundedRect(pixels, width, micX, micY, micW, micH, micR, 255, 255, 255);
+  // Mic body
+  fillRoundedRect(pixels, width, 19, 9, 10, 14, 5, 255, 255, 255);
 
-  const arcCY = Math.round(50 * s);
-  const arcOuterR = Math.round(22 * s);
-  const arcInnerR = Math.round(18 * s);
-  for (let dy = -arcOuterR; dy <= arcOuterR; dy++) {
-    for (let dx = -arcOuterR; dx <= arcOuterR; dx++) {
+  // U-arc
+  drawArc(pixels, width, cx, 19, 10, 7, 255, 255, 255);
+
+  // Stem
+  fillRect(pixels, width, 23, 29, 2, 5, 255, 255, 255);
+
+  // Base
+  fillRoundedRect(pixels, width, 18, 33, 12, 2, 1, 255, 255, 255);
+}
+
+// ============ 128px ICON ============
+function drawIcon128(pixels, width, height, bgR, bgG, bgB) {
+  const cx = 64;
+  const cy = 64;
+
+  // Background circle with gradient
+  const radius = 60;
+  for (let dy = -radius - 1; dy <= radius + 1; dy++) {
+    for (let dx = -radius - 1; dx <= radius + 1; dx++) {
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= arcOuterR && dist >= arcInnerR && dy > -2 * s) {
-        setPixel(pixels, width, cx + dx, arcCY + dy, 255, 255, 255);
+      if (dist <= radius) {
+        const edge = radius - dist;
+        const alpha = edge < 1 ? Math.round(edge * 255) : 255;
+        const t = (dy + radius) / (2 * radius);
+        const r = Math.round(bgR + t * 5);
+        const g = Math.round(bgG - t * 25);
+        const b = Math.round(bgB - t * 18);
+        setPixel(pixels, width, cx + dx, cy + dy, r, g, b, alpha);
       }
     }
   }
 
-  const stemW = Math.round(4 * s);
-  const stemX = Math.round((width - stemW) / 2);
-  const stemY = Math.round(72 * s);
-  const stemH = Math.round(14 * s);
-  fillRect(pixels, width, stemX, stemY, stemW, stemH, 255, 255, 255);
+  // Mic body
+  fillRoundedRect(pixels, width, 52, 24, 24, 36, 12, 255, 255, 255);
 
-  const baseW = Math.round(24 * s);
-  const baseH = Math.round(4 * s);
-  const baseX = Math.round((width - baseW) / 2);
-  const baseY = Math.round(84 * s);
-  fillRoundedRect(pixels, width, baseX, baseY, baseW, baseH, Math.round(2 * s), 255, 255, 255);
+  // U-arc
+  drawArc(pixels, width, cx, 52, 26, 21, 255, 255, 255);
+
+  // Stem
+  fillRect(pixels, width, 62, 78, 4, 14, 255, 255, 255);
+
+  // Base
+  fillRoundedRect(pixels, width, 50, 90, 28, 4, 2, 255, 255, 255);
 }
+
+// Teal colors (default)
+const TEAL = { r: 13, g: 148, b: 136 };
+// Red colors (active/recording)
+const RED = { r: 239, g: 68, b: 68 };
+
+// Size-specific draw functions
+const drawFuncs = {
+  16: drawIcon16,
+  48: drawIcon48,
+  128: drawIcon128,
+};
 
 // Generate icons
 const sizes = [16, 48, 128];
 
 for (const size of sizes) {
-  // Default (inactive) icons
-  const png = createPNG(size, size, drawIcon);
+  const drawFunc = drawFuncs[size];
+
+  // Default (inactive) icons - teal
+  const png = createPNG(size, size, (px, w, h) => drawFunc(px, w, h, TEAL.r, TEAL.g, TEAL.b));
   fs.writeFileSync(`icons/icon${size}.png`, png);
   console.log(`Created icons/icon${size}.png (${png.length} bytes)`);
 
-  // Active (recording) icons - red background
-  const activePng = createPNG(size, size, drawActiveIcon);
+  // Active (recording) icons - red
+  const activePng = createPNG(size, size, (px, w, h) => drawFunc(px, w, h, RED.r, RED.g, RED.b));
   fs.writeFileSync(`icons/icon${size}-active.png`, activePng);
   console.log(`Created icons/icon${size}-active.png (${activePng.length} bytes)`);
 }
 
 console.log("\nDone! Icons created in icons/ folder.");
-console.log("Default: teal circle + white mic");
-console.log("Active: red circle + white mic");
+console.log("Default: teal circle + white mic (optimized per size)");
+console.log("Active: red circle + white mic (optimized per size)");
