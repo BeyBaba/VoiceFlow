@@ -3,7 +3,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 
 // Versiyon: desktop-app/package.json ile senkron tutulmalı
-const CURRENT_VERSION = "4.2.4";
+const CURRENT_VERSION = "4.2.5";
 
 // GET /api/download → Private GitHub repo'dan en son exe'yi indir
 // GITHUB_TOKEN env variable gerekli (private repo erişimi için)

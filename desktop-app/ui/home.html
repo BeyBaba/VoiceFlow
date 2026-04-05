@@ -453,7 +453,7 @@
                 <div>&#10005; Otomatik yapistirma</div>
                 <div>&#10005; Gunluk 2.000 kelime siniri</div>
               </div>
-              <button onclick="window.voiceflow.openExternal('https://voiceflow.app')" style="width:100%;margin-top:8px;padding:8px;border:none;border-radius:6px;background:linear-gradient(135deg,#0F766E,#4F46E5);color:white;font-size:12px;font-weight:700;cursor:pointer">Pro'ya Yukselt</button>
+              <button onclick="window.voiceflow.openExternal('https://voice-flow-six.vercel.app')" style="width:100%;margin-top:8px;padding:8px;border:none;border-radius:6px;background:linear-gradient(135deg,#0F766E,#4F46E5);color:white;font-size:12px;font-weight:700;cursor:pointer">Pro'ya Yukselt</button>
             </div>
           </div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
@@ -581,7 +581,7 @@
       const btn=document.getElementById("btnActivate");
       btn.disabled=true; btn.textContent="Dogrulanıyor...";
       try {
-        const res = await fetch("https://voiceflow.app/api/verify-license", {
+        const res = await fetch("https://voice-flow-six.vercel.app/api/verify-license", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: e, licenseKey: k })
@@ -616,7 +616,7 @@
       let trialDaysLeft = 0;
       let trialEndDate = null;
       try {
-        const res = await fetch("https://voiceflow.app/api/verify-license", {
+        const res = await fetch("https://voice-flow-six.vercel.app/api/verify-license", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email, licenseKey: key || undefined })
@@ -676,12 +676,15 @@
       const isPro=currentSettings.isPro;
       const trialActive=currentSettings.trialActive;
       const trialDays=currentSettings.trialDaysLeft||0;
-      let planText = isPro ? "Pro" : "Free";
-      let userPlanText = isPro ? "Pro" : "Ucretsiz";
-      if (!isPro && trialActive && trialDays > 0) {
+      // Super user kontrolu
+      const SUPER_USERS=["savasarac@gmail.com"];
+      const isSuperUser=SUPER_USERS.includes(currentSettings.userEmail);
+      let planText = isSuperUser ? "Lifetime" : (isPro ? "Pro" : "Free");
+      let userPlanText = isSuperUser ? "Super User" : (isPro ? "Pro" : "Ucretsiz");
+      if (!isSuperUser && !isPro && trialActive && trialDays > 0) {
         planText = "Trial (" + trialDays + " gun)";
         userPlanText = "Deneme - " + trialDays + " gun";
-      } else if (!isPro && currentSettings.trialEndDate) {
+      } else if (!isSuperUser && !isPro && currentSettings.trialEndDate) {
         const trialEnd = new Date(currentSettings.trialEndDate);
         if (trialEnd <= new Date()) {
           planText = "Suresi Doldu";
@@ -689,10 +692,10 @@
         }
       }
       document.getElementById("planBadge").textContent=planText;
-      document.getElementById("planBadge").className="brand-badge"+(isPro?" pro":"");
+      document.getElementById("planBadge").className="brand-badge"+(isSuperUser?" pro":isPro?" pro":"");
       document.getElementById("userPlanBadge").textContent=userPlanText;
-      document.getElementById("userPlanBadge").className="user-plan "+(isPro?"pro":"free");
-      document.getElementById("wordCountBar").style.display=isPro?"none":"block";
+      document.getElementById("userPlanBadge").className="user-plan "+(isSuperUser?"pro":isPro?"pro":"free");
+      document.getElementById("wordCountBar").style.display=(isSuperUser||isPro)?"none":"block";
       if(!isPro) updateWordCount();
       const api=document.getElementById("statusApi");
       if(currentSettings.apiKey){api.textContent="Aktif";api.className="status-card-value ok";}else{api.textContent="Eksik";api.className="status-card-value warn";}
@@ -903,7 +906,7 @@
       on("sPillPosition","change",v=>saveSetting("pillPosition",v));
       on("sSendStats","change",v=>saveSetting("sendStats",v));
       on("sKeepHistory","change",v=>saveSetting("keepHistory",v));
-      document.getElementById("aboutWebsite").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://voiceflow.app");});
+      document.getElementById("aboutWebsite").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://voice-flow-six.vercel.app");});
       document.getElementById("aboutGroq").addEventListener("click",e=>{e.preventDefault();window.voiceflow.openExternal("https://console.groq.com");});
       document.getElementById("sResetBtn").addEventListener("click",()=>{if(confirm("Tum ayarlar sifirlanacak. Emin misiniz?")){window.voiceflow.resetSettings();showToast("Sifirlandi!");location.reload();}});
     }
@@ -1519,7 +1522,8 @@
         if (!apiKey) { if (liveEl) liveEl.textContent = "API baglantisi yok!"; return; }
 
         // Build prompt hint with wake words for better Turkish recognition
-        const testWakeHint = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join(", ");
+        const wakeWordsArr = (currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean);
+        const testWakeHint = wakeWordsArr.join(", ");
         const buildTestFD = () => {
           const f = new FormData();
           f.append("file", blob, "test.webm");
@@ -1527,7 +1531,11 @@
           f.append("language", currentSettings.language || "tr");
           f.append("temperature", "0");
           f.append("response_format", "json");
-          if (testWakeHint) f.append("prompt", testWakeHint);
+          // Whisper prompt: wake word'leri acikca belirt, kisaltma yapmasini onle
+          const promptText = testWakeHint
+            ? "Uyanma kelimeleri: " + testWakeHint + ". Bu kelimeleri tam olarak yazin, kisaltma yapmayin. Ornegin 'Prof.' degil 'Profesör' yazin."
+            : "Bu bir Turkce ses kaydidir.";
+          f.append("prompt", promptText);
           return f;
         };
 
