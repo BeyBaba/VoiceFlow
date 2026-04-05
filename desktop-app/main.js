@@ -249,11 +249,19 @@ function createHomeWindow(navigateTo) {
   homeWindow.setMenuBarVisibility(false);
   homeWindow.loadFile("ui/home.html");
 
-  // Always bring to front when opened
+  // Always bring to front when opened — force foreground on Windows
   homeWindow.webContents.on("did-finish-load", () => {
     homeWindow.show();
     homeWindow.focus();
     homeWindow.moveTop();
+    // Force to foreground on Windows (temporarily set alwaysOnTop then release)
+    homeWindow.setAlwaysOnTop(true);
+    setTimeout(() => {
+      if (homeWindow && !homeWindow.isDestroyed()) {
+        homeWindow.setAlwaysOnTop(false);
+        homeWindow.focus();
+      }
+    }, 500);
     // Open DevTools in dev mode for debugging
     if (!app.isPackaged) homeWindow.webContents.openDevTools({ mode: "detach" });
     // Navigate to specific page if requested

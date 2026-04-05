@@ -1121,11 +1121,19 @@
             if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
             const matchEl = document.getElementById("pmMatchIndicator");
 
-            // Check wake words (multi-command support) with fuzzy Turkish matching
-            const wakeWords = currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []);
+            // Check ALL wake words (multi-command support) with fuzzy Turkish matching
+            // Re-read wake words from inputs to ensure fresh values
+            const wakeWords = [
+              document.getElementById("sWakeWord1")?.value?.trim(),
+              document.getElementById("sWakeWord2")?.value?.trim(),
+              document.getElementById("sWakeWord3")?.value?.trim()
+            ].filter(w => w && w.length >= 2);
+            // Fallback to settings if inputs not available
+            const finalWakeWords = wakeWords.length > 0 ? wakeWords : (currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []));
             const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
             const nText = norm(text);
-            const matchedWord = wakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
+            console.log("PM wake check: text='" + text + "' words=" + JSON.stringify(finalWakeWords));
+            const matchedWord = finalWakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
 
             if (matchedWord) {
               pmLastWakeTime = Date.now();
