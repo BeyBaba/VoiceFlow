@@ -201,32 +201,9 @@ function updatePillState(state) {
 }
 
 // ========== SETTINGS WINDOW ==========
+// settings.html artık kullanılmıyor — home.html'deki ayarlar bölümüne yönlendir
 function createSettingsWindow() {
-  if (settingsWindow) {
-    settingsWindow.show();
-    settingsWindow.focus();
-    return;
-  }
-
-  settingsWindow = new BrowserWindow({
-    width: 700,
-    height: 560,
-    frame: true,
-    resizable: false,
-    icon: path.join(__dirname, "assets", "icon.ico"),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  settingsWindow.setMenuBarVisibility(false);
-  settingsWindow.loadFile("ui/settings.html");
-
-  settingsWindow.on("closed", () => {
-    settingsWindow = null;
-  });
+  createHomeWindow("s-general");
 }
 
 // ========== HOME WINDOW ==========
