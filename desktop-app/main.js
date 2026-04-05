@@ -1220,8 +1220,18 @@ app.whenReady().then(async () => {
   const isRegistered = globalShortcut.isRegistered(dictateKey);
   console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
-  // Always open home window on start
-  createHomeWindow();
+  // Always open home window on start — first run opens settings page
+  const startupSettings = loadSettings();
+  if (!startupSettings.setupComplete || !startupSettings.firstHomeShown) {
+    // First install or first run — open settings page directly
+    createHomeWindow("s-general");
+    // Mark first home as shown
+    const s = loadSettings();
+    s.firstHomeShown = true;
+    saveSettings(s);
+  } else {
+    createHomeWindow();
+  }
 
   // Check license status from server (with timeout — don't block forever)
   try {
