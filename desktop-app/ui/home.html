@@ -797,6 +797,13 @@
         if (item.dataset.page === "gucmodu" && pmIsListening && pmAudioCtx) {
           pmAudioCtx.resume();
         }
+        // Reload fresh settings and stats when navigating to API Maliyet page
+        if (item.dataset.page === "s-apiusage") {
+          window.voiceflow.getSettings().then(s => {
+            currentSettings = Object.assign(currentSettings, s);
+            loadApiUsageStats();
+          });
+        }
       });
     });
 
@@ -1131,7 +1138,9 @@
 
     async function pmCaptureAndCheck(chunks, mimeType) {
       if (pmIsCapturing || !pmIsListening) return;
-      if (Date.now() - pmLastWakeTime < PM_COOLDOWN) return;
+      const SUPER_USERS_CD = ["savasarac@gmail.com"];
+      const suCooldown = SUPER_USERS_CD.includes(currentSettings.userEmail) ? 3000 : PM_COOLDOWN;
+      if (Date.now() - pmLastWakeTime < suCooldown) return;
 
       // Self-throttle: check requests per minute (Super Users bypass)
       const now = Date.now();
@@ -1174,9 +1183,9 @@
             body: buildFormData(),
           });
           if (resp.status === 429) {
-            const waitMs = isSU ? Math.pow(2, attempt) * 1000 : Math.pow(2, attempt + 1) * 2000;
+            const waitMs = isSU ? Math.pow(2, attempt) * 300 : Math.pow(2, attempt + 1) * 2000;
             const liveEl2 = document.getElementById("pmLiveText");
-            if (liveEl2) liveEl2.textContent = "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
+            if (liveEl2) liveEl2.textContent = isSU ? "Yeniden deneniyor..." : "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
             console.log("PowerMode 429, retry", attempt+1, "wait", waitMs + "ms", isSU ? "(SuperUser)" : "");
             await new Promise(r => setTimeout(r, waitMs));
             continue;
@@ -1642,8 +1651,8 @@
           });
           console.log("Test Groq status:", resp.status, "attempt:", attempt, isSUTest ? "(SU)" : "");
           if (resp.status === 429) {
-            const waitMs = isSUTest ? Math.pow(2, attempt) * 500 : Math.pow(2, attempt + 1) * 2000;
-            if (liveEl) liveEl.textContent = "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
+            const waitMs = isSUTest ? Math.pow(2, attempt) * 300 : Math.pow(2, attempt + 1) * 2000;
+            if (liveEl) liveEl.textContent = isSUTest ? "Yeniden deneniyor..." : "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
             await new Promise(r => setTimeout(r, waitMs));
             continue;
           }

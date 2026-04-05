@@ -89,6 +89,12 @@ function createMainWindow() {
 
   mainWindow.loadFile("ui/index.html");
 
+  // Force set icon at runtime to override Windows cache
+  const mainIcon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.ico"));
+  if (!mainIcon.isEmpty()) {
+    mainWindow.setIcon(mainIcon);
+  }
+
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
     console.error("Failed to load:", errorCode, errorDescription);
   });
@@ -251,6 +257,11 @@ function createHomeWindow(navigateTo) {
 
   // Always bring to front when opened — force foreground on Windows
   homeWindow.webContents.on("did-finish-load", () => {
+    // Force set icon at runtime to override Windows cache
+    const runtimeIcon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.ico"));
+    if (!runtimeIcon.isEmpty()) {
+      homeWindow.setIcon(runtimeIcon);
+    }
     homeWindow.show();
     homeWindow.focus();
     homeWindow.moveTop();
