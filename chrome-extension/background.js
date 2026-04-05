@@ -15,15 +15,21 @@ chrome.contextMenus.onClicked.addListener((info) => {
 });
 
 // Handle keyboard shortcut (Ctrl+Space)
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
   if (command === "toggle-recording") {
-    // Send message to popup if open
-    chrome.runtime.sendMessage({ action: "toggle-recording" }).catch(() => {
-      // Popup not open - open it
-      chrome.action.openPopup().catch(() => {
-        // openPopup not supported in all contexts, ignore
-      });
-    });
+    // Send toggle-recording to the active tab's content script
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, { action: "toggle-recording" }).catch(() => {
+          // Content script not loaded — try opening popup as fallback
+          chrome.action.openPopup().catch(() => {});
+        });
+      }
+    } catch {
+      // Fallback: try opening popup
+      chrome.action.openPopup().catch(() => {});
+    }
   }
 });
 
