@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "VoiceFlow - Voice to Text",
-  "version": "1.1.0",
-  "description": "Konuş, AI metne dönüştürsün. Herhangi bir metin alanında Ctrl+Space ile dikte et.",
+  "version": "1.2.0",
+  "description": "Speak and let AI transcribe. Dictate in any text field with Ctrl+Space. Supports 12 languages.",
   "permissions": [
     "activeTab",
     "storage",
@@ -21,7 +21,10 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -36,7 +39,7 @@
       "suggested_key": {
         "default": "Ctrl+Space"
       },
-      "description": "Dikte etmeye başla/durdur"
+      "description": "Start/stop voice dictation"
     }
   }
 }

@@ -27,7 +27,6 @@ autoPasteCheckbox.addEventListener("change", () => {
 resetBtn.addEventListener("click", () => {
   if (confirm("Tüm ayarlar sıfırlanacak. Emin misiniz?")) {
     chrome.storage.local.clear(() => {
-      apiKeyInput.value = "";
       langSelect.value = "tr";
       autoPasteCheckbox.checked = true;
       showToast("Ayarlar sıfırlandı!");
