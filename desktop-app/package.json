@@ -21,6 +21,7 @@
       "output": "dist"
     },
     "forceCodeSigning": false,
+    "artifactName": "VoiceFlow-Setup-${version}.exe",
     "win": {
       "target": [
         {
