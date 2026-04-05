@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
 
 // Versiyon: desktop-app/package.json ile senkron tutulmalı
 const CURRENT_VERSION = "4.2.8";
 
-// GET /api/download → Private GitHub repo'dan en son exe'yi indir
-// GITHUB_TOKEN env variable gerekli (private repo erişimi için)
-// Fallback: public/downloads/VoiceFlow-Setup.exe dosyasını sunar
+// GET /api/download → GitHub Release'ten exe indirme linki
+// Dosyayı proxy etmek yerine doğrudan GitHub'a yönlendirir (Vercel timeout/size sorunu önlenir)
 export async function GET(request: NextRequest) {
   const token = process.env.GITHUB_TOKEN;
 
@@ -28,57 +25,45 @@ export async function GET(request: NextRequest) {
       if (res.ok) {
         const release = await res.json();
 
-        // .exe uzantili asset'i bul
+        // .exe uzantılı asset'i bul (blockmap hariç)
         const exeAsset = release.assets?.find(
-          (a: { name: string }) => a.name.endsWith(".exe")
+          (a: { name: string }) =>
+            a.name.endsWith(".exe") && !a.name.endsWith(".blockmap")
         );
 
         if (exeAsset) {
-          // Private repo: asset URL'e token ile eriş
-          const assetUrl = exeAsset.url;
-          const downloadRes = await fetch(assetUrl, {
+          // Private repo için: GitHub API'den geçici indirme URL'si al
+          const assetRes = await fetch(exeAsset.url, {
             headers: {
               Accept: "application/octet-stream",
               Authorization: `Bearer ${token}`,
             },
-            redirect: "follow",
+            redirect: "manual", // Redirect'i takip etme, URL'yi al
           });
 
-          if (downloadRes.ok) {
-            // Release tag'inden versiyon al (v4.2.2 -> 4.2.2)
-            const releaseVersion = release.tag_name?.replace(/^v/, "") || CURRENT_VERSION;
-            const filename = `VoiceFlow-Setup-${releaseVersion}.exe`;
-            return new NextResponse(downloadRes.body, {
-              headers: {
-                "Content-Type": "application/octet-stream",
-                "Content-Disposition": `attachment; filename="${filename}"`,
-                "Content-Length": exeAsset.size?.toString() || "",
-              },
-            });
+          // GitHub 302 redirect verir — Location header'da gerçek indirme URL'si var
+          const directUrl = assetRes.headers.get("Location");
+
+          if (directUrl) {
+            // Kullanıcıyı doğrudan GitHub CDN'e yönlendir
+            return NextResponse.redirect(directUrl);
+          }
+
+          // Redirect yoksa browser_download_url dene
+          if (exeAsset.browser_download_url) {
+            return NextResponse.redirect(exeAsset.browser_download_url);
           }
         }
       }
     }
 
-    // Fallback: local dosyadan sun (versiyonlu isimle)
-    const localPath = path.join(process.cwd(), "public", "downloads", "VoiceFlow-Setup.exe");
-    const filename = `VoiceFlow-Setup-${CURRENT_VERSION}.exe`;
-    try {
-      const fileBuffer = await readFile(localPath);
-      return new NextResponse(fileBuffer, {
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Content-Length": fileBuffer.length.toString(),
-        },
-      });
-    } catch {
-      // Local dosya da yoksa hata sayfası göster
-      return new NextResponse(
-        downloadPage("Indirme dosyasi bulunamadi. Lutfen daha sonra tekrar deneyin."),
-        { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
-      );
-    }
+    // Token yoksa veya release bulunamazsa hata sayfası
+    return new NextResponse(
+      downloadPage(
+        `Indirme linki hazirlanamadi. Lutfen daha sonra tekrar deneyin.`
+      ),
+      { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
+    );
   } catch {
     return new NextResponse(
       downloadPage("Bir hata olustu. Lutfen daha sonra tekrar deneyin."),
