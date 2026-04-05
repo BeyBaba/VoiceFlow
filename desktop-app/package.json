@@ -1,6 +1,6 @@
 {
   "name": "voiceflow-desktop",
-  "version": "4.2.8",
+  "version": "4.2.9",
   "description": "VoiceFlow - AI Sesli Dikte Uygulamasi",
   "main": "main.js",
   "scripts": {
@@ -48,7 +48,7 @@
       "installerSidebar": null,
       "license": "assets/install-notice.txt",
       "perMachine": false,
-      "deleteAppDataOnUninstall": false,
+      "deleteAppDataOnUninstall": true,
       "menuCategory": true
     },
     "publish": [

@@ -568,16 +568,13 @@ function toggleRecording() {
   mainWindow.focus();
   mainWindow.moveTop();
 
-  // If window was hidden, wait for it to be ready before sending IPC
-  if (wasHidden) {
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("toggle-recording");
-      }
-    }, 300);
-  } else {
-    mainWindow.webContents.send("toggle-recording");
-  }
+  // Send toggle-recording IPC — wait a bit if window was just shown
+  const sendDelay = wasHidden ? 600 : 0;
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("toggle-recording");
+    }
+  }, sendDelay);
 }
 
 function registerShortcuts() {
@@ -1221,18 +1218,8 @@ app.whenReady().then(async () => {
   const isRegistered = globalShortcut.isRegistered(dictateKey);
   console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
-  // Always open home window on start — first run opens settings page
-  const startupSettings = loadSettings();
-  if (!startupSettings.setupComplete || !startupSettings.firstHomeShown) {
-    // First install or first run — open settings page directly
-    createHomeWindow("s-general");
-    // Mark first home as shown
-    const s = loadSettings();
-    s.firstHomeShown = true;
-    saveSettings(s);
-  } else {
-    createHomeWindow();
-  }
+  // Always open home window on start — Ana Sayfa
+  createHomeWindow();
 
   // Check license status from server (with timeout — don't block forever)
   try {
@@ -1249,16 +1236,13 @@ app.whenReady().then(async () => {
     powerModeActive = true;
   }
 
-  // Auto-start: enable on first run only, notify user via home window
+  // Auto-start: always ensure it's enabled unless user explicitly disabled it
   try {
     const autoStartSettings = loadSettings();
-    if (autoStartSettings.autoStartInitialized === undefined) {
-      // First run — enable auto-start and mark as initialized
+    if (autoStartSettings.autoStartDisabledByUser !== true) {
+      // Enable auto-start (default ON)
       app.setLoginItemSettings({ openAtLogin: true });
-      const s = loadSettings();
-      s.autoStartInitialized = true;
-      saveSettings(s);
-      console.log("Auto-start enabled on first run");
+      console.log("Auto-start enabled");
       // Notify user after home window loads
       if (homeWindow && !homeWindow.isDestroyed()) {
         homeWindow.webContents.on("did-finish-load", () => {

@@ -879,7 +879,7 @@
 
     function setupSettingsListeners(){
       on("sLang","change",v=>saveSetting("language",v));
-      on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);showToast(v?"Otomatik baslama acik":"Kapali");});
+      on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);saveSetting("autoStartDisabledByUser",!v);showToast(v?"Otomatik baslama acik":"Kapali");});
       on("sAutoUpdate","change",v=>{saveSetting("autoUpdateEnabled",v);saveSetting("autoUpdateAsked",true);showToast(v?"Otomatik guncelleme acik":"Otomatik guncelleme kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
