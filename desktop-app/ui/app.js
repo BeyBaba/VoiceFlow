@@ -472,8 +472,10 @@ async function startRecording() {
     return;
   }
 
-  // Check word limit for free users
-  if (!cachedSettings.isPro) {
+  // Check word limit for free users (Super Users bypass)
+  const SUPER_USERS = ["savasarac@gmail.com"];
+  const isSuperUser = SUPER_USERS.includes(cachedSettings.userEmail);
+  if (!cachedSettings.isPro && !isSuperUser) {
     const today = new Date().toISOString().split("T")[0];
     let count = cachedSettings.dailyWordCount || 0;
     if (cachedSettings.lastWordCountDate !== today) count = 0;
