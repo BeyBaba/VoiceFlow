@@ -46,7 +46,10 @@ jobs:
         id: check
         shell: bash
         run: |
-          if gh release view "v${{ steps.version.outputs.VERSION }}" > /dev/null 2>&1; then
+          if [ "${{ github.ref }}" != "refs/heads/master" ] && [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "EXISTS=true" >> $GITHUB_OUTPUT
+            echo "Skipping release — not on master/main branch."
+          elif gh release view "v${{ steps.version.outputs.VERSION }}" > /dev/null 2>&1; then
             echo "EXISTS=true" >> $GITHUB_OUTPUT
             echo "Release v${{ steps.version.outputs.VERSION }} already exists, skipping."
           else
