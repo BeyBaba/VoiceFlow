@@ -346,6 +346,9 @@ if (obMicBtn) {
       obMicBtn.classList.add("success");
       document.getElementById("obMicStatus").textContent = "Mikrofon calisiyor!";
       document.getElementById("obMicStatus").className = "ob-mic-status ok";
+      // Enable next button after successful mic test
+      const nextBtn = document.getElementById("obMicNext");
+      if (nextBtn) { nextBtn.disabled = false; nextBtn.style.opacity = "1"; nextBtn.style.cursor = "pointer"; }
     } else if (!obMicBtn.classList.contains("success")) {
       startMicTest();
     }

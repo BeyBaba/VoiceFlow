@@ -846,6 +846,10 @@ ipcMain.handle("save-settings", (event, data) => {
     } else {
       hidePill();
     }
+    // Open home window after onboarding completes
+    if (!homeWindow || homeWindow.isDestroyed()) {
+      createHomeWindow();
+    }
   }
 
   return merged;
@@ -1226,8 +1230,11 @@ app.whenReady().then(async () => {
   const isRegistered = globalShortcut.isRegistered(dictateKey);
   console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
-  // Always open home window on start — Ana Sayfa
-  createHomeWindow();
+  // Only open home window if setup is complete — don't show during onboarding
+  const homeSettings = loadSettings();
+  if (homeSettings.setupComplete) {
+    createHomeWindow();
+  }
 
   // Check license status from server (with timeout — don't block forever)
   try {
