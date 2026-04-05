@@ -611,8 +611,16 @@ function registerShortcuts() {
   const dictateKey = sc.dictate || "CommandOrControl+Space";
   try {
     const r = globalShortcut.register(dictateKey, () => toggleRecording());
-    if (r) console.log("Shortcut dictate:", dictateKey);
-    else console.warn("Shortcut dictate failed:", dictateKey);
+    if (r) {
+      console.log("Shortcut dictate registered OK:", dictateKey);
+    } else {
+      console.warn("Shortcut dictate FAILED (baska uygulama kullanıyor olabilir):", dictateKey);
+      // Fallback: Ctrl+Shift+Space dene
+      const fallback = "CommandOrControl+Shift+Space";
+      const r2 = globalShortcut.register(fallback, () => toggleRecording());
+      if (r2) console.log("Shortcut dictate fallback registered:", fallback);
+      else console.warn("Shortcut dictate fallback also failed:", fallback);
+    }
   } catch (e) { console.warn("Shortcut dictate error:", e.message); }
 
   // Paste last text
@@ -1228,6 +1236,12 @@ app.whenReady().then(async () => {
   createPillWindow();
   createTray();
   registerShortcuts();
+
+  // Shortcut kayıt durumunu kontrol et
+  const settings = loadSettings();
+  const dictateKey = settings.shortcuts?.dictate || "CommandOrControl+Space";
+  const isRegistered = globalShortcut.isRegistered(dictateKey);
+  console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
   // Always open home window on start
   createHomeWindow();
