@@ -211,7 +211,7 @@
   <div id="dashboardView">
     <div class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
+        <div class="brand-icon" style="background:#4A90D9;border-radius:8px;"><svg viewBox="0 0 512 512" width="20" height="20"><circle cx="256" cy="256" r="256" fill="#4A90D9"/><g fill="white"><rect x="205" y="120" width="102" height="180" rx="51" ry="51"/><path d="M168 280 A88 88 0 0 0 344 280" fill="none" stroke="white" stroke-width="24" stroke-linecap="round"/><rect x="244" y="355" width="24" height="60"/><rect x="200" y="405" width="112" height="24" rx="12"/></g></svg></div>
         <span class="brand-name">VoiceFlow</span>
         <span class="brand-badge" id="planBadge">Free</span>
       </div>
@@ -384,6 +384,18 @@
               </div>
               <div id="pmDownloadText" style="font-size:11px;color:var(--text-3);margin-top:4px">%0</div>
             </div>
+          </div>
+
+          <!-- Sensitivity slider -->
+          <div class="card" style="padding:16px;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Hassasiyet Ayari</div>
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Dusuk = sadece net soylenen kelimeler, Yuksek = daha kolay tetiklenir</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:11px;color:var(--text-3);">Dusuk</span>
+              <input type="range" id="sPowerSensitivity" min="1" max="5" step="1" value="3" style="flex:1;accent-color:var(--accent);">
+              <span style="font-size:11px;color:var(--text-3);">Yuksek</span>
+            </div>
+            <div style="text-align:center;margin-top:4px;font-size:11px;color:var(--accent)" id="sensitivityLabel">Orta (3/5)</div>
           </div>
 
           <div class="divider"></div>
@@ -945,6 +957,9 @@
       document.getElementById("sWakeWord2").value = ww[1] || "";
       document.getElementById("sWakeWord3").value = ww[2] || "";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
+      const sens = s.powerSensitivity || 3;
+      document.getElementById("sPowerSensitivity").value = sens;
+      document.getElementById("sensitivityLabel").textContent = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"][sens];
       document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
       if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
@@ -1235,19 +1250,47 @@
         voskRecognizer.on("result", (msg) => {
           const text = (msg.result?.text || "").trim();
           if (!text || text === "[unk]" || !pmIsListening || pmIsCapturing) return;
-          console.log("Vosk heard:", text);
+
+          // Get confidence from Vosk word-level results
+          const wordResults = msg.result?.result || [];
+          const avgConf = wordResults.length > 0
+            ? wordResults.reduce((sum, w) => sum + (w.conf || 0), 0) / wordResults.length
+            : 0;
+
+          // Sensitivity-based confidence threshold
+          // 1=Cok Dusuk (0.95), 2=Dusuk (0.85), 3=Orta (0.75), 4=Yuksek (0.60), 5=Cok Yuksek (0.40)
+          const sensitivity = currentSettings.powerSensitivity || 3;
+          const confThresholds = [0, 0.95, 0.85, 0.75, 0.60, 0.40];
+          const confThreshold = confThresholds[sensitivity];
+
+          console.log("Vosk heard:", text, "conf:", avgConf.toFixed(2), "threshold:", confThreshold);
 
           const liveEl = document.getElementById("pmLiveText");
           const matchEl = document.getElementById("pmMatchIndicator");
           if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
 
-          // Check against wake words
+          // Reject low-confidence results
+          if (avgConf < confThreshold) {
+            if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '" (guven: %' + Math.round(avgConf*100) + ')</span>';
+            return;
+          }
+
+          // Check against wake words — strict matching (no loose fuzzy)
           const currentWakeWords = getWakeWords();
           const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").trim();
           const nText = norm(text);
           const matchedWord = currentWakeWords.find(w => {
             const nw = norm(w);
-            return nText.includes(nw) || nw.includes(nText) || fuzzyMatch(nText, nw);
+            // Exact match or contains
+            if (nText === nw || nText.includes(nw)) return true;
+            // Phonetic match (Turkish chars)
+            const pText = phoneticNorm(nText);
+            const pW = phoneticNorm(nw);
+            if (pText === pW || pText.includes(pW)) return true;
+            // Tight Levenshtein: max 1 for short words, max 2 for long
+            const maxDist = pW.length <= 5 ? 1 : 2;
+            if (Math.abs(pText.length - pW.length) <= 2 && levenshtein(pText, pW) <= maxDist) return true;
+            return false;
           });
 
           if (matchedWord && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
@@ -1816,6 +1859,14 @@
 
     document.getElementById("sPowerDblClick").addEventListener("change", function() {
       saveSetting("powerDblClick", this.checked);
+    });
+
+    // Sensitivity slider
+    const sensitivityLabels = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"];
+    document.getElementById("sPowerSensitivity").addEventListener("input", function() {
+      const v = parseInt(this.value);
+      document.getElementById("sensitivityLabel").textContent = sensitivityLabels[v];
+      saveSetting("powerSensitivity", v);
     });
 
     document.getElementById("sPowerAutoStart").addEventListener("change", function() {
