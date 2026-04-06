@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog, powerSaveBlocker } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
@@ -297,6 +297,26 @@ function createHomeWindow(navigateTo) {
       homeWindow.webContents.send("power-mode-resume");
     }
   });
+  // Keep power mode alive when window is minimized or loses focus
+  homeWindow.on("minimize", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      // Send resume after a short delay to counteract Chromium AudioContext suspension
+      setTimeout(() => {
+        if (homeWindow && !homeWindow.isDestroyed()) {
+          homeWindow.webContents.send("power-mode-resume");
+        }
+      }, 500);
+    }
+  });
+  homeWindow.on("blur", () => {
+    if (powerModeActive && homeWindow && !homeWindow.isDestroyed()) {
+      setTimeout(() => {
+        if (homeWindow && !homeWindow.isDestroyed()) {
+          homeWindow.webContents.send("power-mode-resume");
+        }
+      }, 500);
+    }
+  });
 
   // Don't destroy on close — hide instead (keeps Power Mode mic alive)
   homeWindow.on("close", (e) => {
@@ -549,13 +569,30 @@ function createFallbackIcon() {
 // ========== POWER MODE (Wake Word Detection) ==========
 // Power mode now runs directly in home.html — no separate window needed
 
+let powerSaveBlockerId = null;
+
 function startPowerMode() {
   powerModeActive = true;
+  // Prevent system from suspending the app (keeps audio processing alive in background)
+  if (powerSaveBlockerId === null || !powerSaveBlocker.isStarted(powerSaveBlockerId)) {
+    powerSaveBlockerId = powerSaveBlocker.start("prevent-app-suspension");
+    console.log("PowerSaveBlocker started, id:", powerSaveBlockerId);
+  }
+  // Ensure background throttling is disabled for home window
+  if (homeWindow && !homeWindow.isDestroyed()) {
+    homeWindow.webContents.backgroundThrottling = false;
+  }
   console.log("Power mode activated (state tracked)");
 }
 
 function stopPowerMode() {
   powerModeActive = false;
+  // Release power save blocker
+  if (powerSaveBlockerId !== null && powerSaveBlocker.isStarted(powerSaveBlockerId)) {
+    powerSaveBlocker.stop(powerSaveBlockerId);
+    console.log("PowerSaveBlocker stopped, id:", powerSaveBlockerId);
+    powerSaveBlockerId = null;
+  }
   console.log("Power mode deactivated (state tracked)");
 }
 
