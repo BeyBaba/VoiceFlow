@@ -16,6 +16,14 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.1": [
+    "Setup ekrani ilk kurulumda otomatik on planda aciliyor",
+    "Pill bar (Ctrl+Space bar) varsayilan olarak gizli",
+    "Wake word alanlari arasinda TAB ile gecis",
+    "Guc Modu'nda mikrofon secimi dropdown eklendi",
+    "Vosk model indirme takilirsa 'Yeniden Dene' butonu",
+    "Kurulum sonrasi Windows ikon cache yenileniyor",
+  ],
   "4.7.0": [
     "Dikte penceresi kapanma sorunu KESIN cozuldu — blur handler tamamen devre disi",
     "Pencere SADECE ESC, Ctrl+Space veya Kapat butonu ile kapaniyor",
@@ -180,9 +188,20 @@ function createMainWindow() {
   });
 
   mainWindow.webContents.on("did-finish-load", () => {
-    // Only show main dictation window if user is authenticated
     const s = loadSettings();
-    if (s.isAuthenticated && s.setupComplete) {
+    if (!s.setupComplete || !s.isAuthenticated) {
+      // First run / not logged in — show setup wizard in front of everything
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.moveTop();
+      mainWindow.setAlwaysOnTop(true);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setAlwaysOnTop(true); // Keep on top during setup
+        }
+      }, 500);
+    } else {
+      // Normal use — show dictation window
       mainWindow.show();
       mainWindow.focus();
     }
@@ -230,8 +249,9 @@ function createPillWindow() {
   pillWindow.loadFile("ui/pill.html");
 
   pillWindow.webContents.on("did-finish-load", () => {
+    // Pill is hidden by default — only show if explicitly enabled in settings
     const settings = loadSettings();
-    if (settings.setupComplete && settings.isAuthenticated && settings.showPill !== false) {
+    if (settings.showPill === true && settings.setupComplete && settings.isAuthenticated) {
       pillWindow.show();
     }
   });
@@ -251,7 +271,7 @@ function createPillWindow() {
 function showPill() {
   if (pillWindow && !pillWindow.isDestroyed()) {
     const settings = loadSettings();
-    if (settings.showPill !== false) {
+    if (settings.showPill === true) {
       pillWindow.show();
     }
   }
@@ -961,7 +981,7 @@ ipcMain.handle("save-settings", (event, data) => {
 
   // Show/hide pill based on settings
   if (merged.setupComplete) {
-    if (merged.showPill !== false) {
+    if (merged.showPill === true) {
       showPill();
     } else {
       hidePill();
