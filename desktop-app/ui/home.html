@@ -1003,21 +1003,55 @@
           d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
       return d[m][n];
     }
+    // Turkish phonetic normalization for better wake word matching
+    function phoneticNorm(s) {
+      return s.toLowerCase()
+        .replace(/ph/g, "f").replace(/gh/g, "g")
+        .replace(/ö/g, "o").replace(/ü/g, "u").replace(/ç/g, "c")
+        .replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ı/g, "i")
+        .replace(/â/g, "a").replace(/î/g, "i").replace(/û/g, "u")
+        .replace(/[.,!?;:'"·\-–—]/g, "").trim();
+    }
+
     function fuzzyMatch(heard, target) {
       // Exact include check
       if (heard.includes(target)) return true;
+      // Phonetic versions for broader matching
+      const pTarget = phoneticNorm(target);
+      const pHeard = phoneticNorm(heard);
+      if (pHeard.includes(pTarget)) return true;
+
       const words = heard.split(/\s+/);
+      // Also check multi-word combinations (e.g. "Altyazı M.K." → "altyazimk")
+      const joinedHeard = phoneticNorm(words.join(""));
+
+      // Check if joined heard text contains the target phonetically
+      if (pTarget.length >= 4 && joinedHeard.includes(pTarget)) return true;
+
+      // Check if target starts with or ends with a significant portion of heard
+      if (pTarget.length >= 5 && (joinedHeard.startsWith(pTarget.slice(0, 4)) || joinedHeard.endsWith(pTarget.slice(-4)))) {
+        if (levenshtein(joinedHeard, pTarget) <= 3) return true;
+      }
+
       for (const w of words) {
         if (w === target) return true;
+        const pw = phoneticNorm(w);
         // Very short words (≤3 chars like "hey"): EXACT match only, no fuzzy
-        if (target.length <= 3) continue;
-        // Medium words (4-5 chars): allow distance 1, same length only
-        if (target.length <= 5) {
-          if (Math.abs(w.length - target.length) <= 1 && levenshtein(w, target) <= 1) return true;
-        } else {
-          // Longer words (6+ chars): allow distance 2
-          if (Math.abs(w.length - target.length) <= 2 && levenshtein(w, target) <= 2) return true;
+        if (pTarget.length <= 3) {
+          if (pw === pTarget) return true;
+          continue;
         }
+        // Medium words (4-5 chars): allow distance 1
+        if (pTarget.length <= 5) {
+          if (Math.abs(pw.length - pTarget.length) <= 1 && levenshtein(pw, pTarget) <= 1) return true;
+        } else {
+          // Longer words (6+ chars like "profesor"): allow distance 3 for phonetic
+          if (Math.abs(pw.length - pTarget.length) <= 3 && levenshtein(pw, pTarget) <= 3) return true;
+        }
+        // Starts-with check: if word starts with first 4+ chars of target
+        if (pTarget.length >= 5 && pw.length >= 4 && pw.startsWith(pTarget.slice(0, 4))) return true;
+        // Ends-with check: if word ends with last 4+ chars of target
+        if (pTarget.length >= 5 && pw.length >= 4 && pw.endsWith(pTarget.slice(-4))) return true;
       }
       return false;
     }
@@ -1163,7 +1197,14 @@
         const blob = new Blob(chunks, { type: mimeType });
         if (blob.size < PM_MIN_BLOB) { pmIsCapturing = false; console.log("PM clip too small:", blob.size); return; }
 
-        // No prompt hint for power mode — prevents Whisper hallucinating wake words from noise
+        // Build wake word hint for Whisper prompt (improves transcription accuracy)
+        const pmWakeWords = [
+          document.getElementById("sWakeWord1")?.value?.trim(),
+          document.getElementById("sWakeWord2")?.value?.trim(),
+          document.getElementById("sWakeWord3")?.value?.trim()
+        ].filter(w => w && w.length >= 2);
+        const pmWakeHint = pmWakeWords.length > 0 ? pmWakeWords.join(", ") : "";
+
         const buildFormData = () => {
           const f = new FormData();
           f.append("file", blob, "clip.webm");
@@ -1171,6 +1212,9 @@
           f.append("language", currentSettings.language || "tr");
           f.append("temperature", "0");
           f.append("response_format", "json");
+          if (pmWakeHint) {
+            f.append("prompt", "Uyanma kelimeleri: " + pmWakeHint + ". Bu kelimeleri tam olarak yazin, kisaltma yapmayin. Ornegin 'Prof.' degil 'Profesör' yazin.");
+          }
           return f;
         };
 
@@ -1202,7 +1246,7 @@
           if (typeof logApiUsage === "function") logApiUsage(2, "powermode");
 
           // Filter out Whisper hallucinations
-          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah"];
+          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "altyazı m.k.", "altyazi m.k.", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah", "sessiz", "silence", "music", "müzik", "alkış", "applause"];
           const cleanText = text.replace(/[.,!?;:'"·\-–—…\s]/g, "").toLowerCase();
           const isHallucination = text.length <= 1 || cleanText.length <= 1 || hallucinations.includes(text.toLowerCase().trim()) || /^(.)\1{2,}$/.test(cleanText) || text.length > 100;
           console.log("PM filter: text='" + text + "' clean='" + cleanText + "' hall=" + isHallucination);
@@ -1242,8 +1286,13 @@
           console.error("PowerMode Groq error:", resp.status);
           const liveEl2 = document.getElementById("pmLiveText");
           if (resp.status === 429 && liveEl2) {
-            liveEl2.textContent = "API rate limit — biraz bekleyin";
-            liveEl2.style.color = "#F59E0B";
+            if (isSU) {
+              liveEl2.textContent = "Yeniden deneniyor...";
+              liveEl2.style.color = "var(--text-3)";
+            } else {
+              liveEl2.textContent = "API rate limit — biraz bekleyin";
+              liveEl2.style.color = "#F59E0B";
+            }
           } else if (liveEl2) {
             liveEl2.textContent = "API hatasi: " + resp.status;
             liveEl2.style.color = "#EF4444";
