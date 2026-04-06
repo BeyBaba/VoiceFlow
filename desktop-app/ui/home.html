@@ -408,7 +408,7 @@
             <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Dusuk = sadece net soylenen kelimeler, Yuksek = daha kolay tetiklenir</div>
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="font-size:11px;color:var(--text-3);">Dusuk</span>
-              <input type="range" id="sPowerSensitivity" min="1" max="5" step="1" value="3" style="flex:1;accent-color:var(--accent);">
+              <input type="range" id="sPowerSensitivity" min="1" max="5" step="1" value="2" style="flex:1;accent-color:var(--accent);">
               <span style="font-size:11px;color:var(--text-3);">Yuksek</span>
             </div>
             <div style="text-align:center;margin-top:4px;font-size:11px;color:var(--accent)" id="sensitivityLabel">Orta (3/5)</div>
@@ -986,10 +986,10 @@
       document.getElementById("sWakeWord2").value = ww[1] || "";
       document.getElementById("sWakeWord3").value = ww[2] || "";
       document.getElementById("sPowerDblClick").checked=s.powerDblClick!==false;
-      const sens = s.powerSensitivity || 3;
+      const sens = s.powerSensitivity || 2;
       document.getElementById("sPowerSensitivity").value = sens;
       document.getElementById("sensitivityLabel").textContent = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"][sens];
-      document.getElementById("sPowerAutoStart").checked=!!s.powerAutoStart;
+      document.getElementById("sPowerAutoStart").checked=s.powerAutoStart!==false;
       if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
@@ -1288,7 +1288,7 @@
 
           // Sensitivity-based confidence threshold (RAISED for stricter matching)
           // 1=Cok Dusuk (0.99), 2=Dusuk (0.95), 3=Orta (0.90), 4=Yuksek (0.80), 5=Cok Yuksek (0.60)
-          const sensitivity = currentSettings.powerSensitivity || 3;
+          const sensitivity = currentSettings.powerSensitivity || 2;
           const confThresholds = [0, 0.99, 0.95, 0.90, 0.80, 0.60];
           const confThreshold = confThresholds[sensitivity];
 
@@ -1506,8 +1506,19 @@
       const s = states[status] || states.off;
       if (icon) icon.textContent = s.icon;
       if (text) { text.textContent = s.text; text.style.color = s.color; }
-      if (hint) hint.textContent = s.hint;
+      if (hint) {
+        if (status === "error" || status === "loading") {
+          hint.innerHTML = (s.hint ? s.hint + '<br>' : '') + '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>';
+        } else {
+          hint.textContent = s.hint;
+        }
+      }
       if (dash) { dash.textContent = s.dash; dash.style.color = s.color; }
+
+      // Show download progress for downloading state, retry button area for loading/error
+      if (dlProgress) {
+        dlProgress.style.display = (status === "downloading") ? "block" : "none";
+      }
     }
 
     // Listen for power mode updates from main process
