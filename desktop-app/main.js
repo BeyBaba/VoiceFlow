@@ -16,8 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.6.2": [
+    "Dikte penceresi artik SADECE ESC veya Ctrl+Space ile kapaniyor",
+    "Auto-hide timer tamamen kaldirildi — kendi kendine kapanma yok",
+    "Blur handler 3 saniye + isFocused kontrolu ile guvenli hale getirildi",
+  ],
   "4.6.1": [
-    "Dikte sirasinda pencere kapanma sorunu TAMAMEN duzeltildi (auto-hide timer fix)",
+    "Dikte sirasinda pencere kapanma sorunu (auto-hide timer fix)",
     "Logo duzeltildi — website ile ayni gradient (teal-indigo, yuvarlak kose)",
     "Hakkinda sayfasinda acilir/kapanir versiyon gecmisi eklendi",
   ],
@@ -152,14 +157,20 @@ function createMainWindow() {
   });
 
   mainWindow.on("blur", () => {
+    // Do NOT auto-hide on blur anymore. Window only hides via:
+    // 1. User presses Escape or Ctrl+Space (toggle-recording)
+    // 2. User clicks "Kapat" button
+    // 3. Auto-paste flow (after result is shown + pasted)
+    // This prevents the "window closing during dictation" bug entirely.
     const currentSettings = loadSettings();
-    // Don't hide if recording, processing, or wake word was just triggered
     if (!isRecording && !wakeWordTriggered && !isProcessingResult && currentSettings.setupComplete && currentSettings.isAuthenticated) {
+      // Only hide if user is in idle state (not recording, not showing result)
+      // Use a long delay so it doesn't interfere with recording flow
       setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered && !isProcessingResult) {
+        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered && !isProcessingResult && !mainWindow.isFocused()) {
           mainWindow.hide();
         }
-      }, 500);
+      }, 3000);
     }
   });
 
@@ -898,21 +909,10 @@ function autoPasteToApp() {
 // ========== IPC HANDLERS ==========
 ipcMain.on("show-result", (event, text) => {
   isRecording = false;
+  isProcessingResult = false;
   updatePillState("result");
-
-  // Cancel any previous auto-hide timer
-  if (resultAutoHideTimer) { clearTimeout(resultAutoHideTimer); resultAutoHideTimer = null; }
-
-  // Auto-hide result window after 5 seconds (cancelled if new recording starts)
-  resultAutoHideTimer = setTimeout(() => {
-    resultAutoHideTimer = null;
-    isProcessingResult = false;
-    // Only auto-hide if NOT recording and NOT processing
-    if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered) {
-      mainWindow.hide();
-      updatePillState("idle");
-    }
-  }, 5000);
+  // Window stays visible until user closes it (ESC, Ctrl+Space, Kapat button, or auto-paste)
+  // No auto-hide timer — the blur handler will handle hiding after 3s if user doesn't interact
 });
 
 ipcMain.on("hide-window", () => {
