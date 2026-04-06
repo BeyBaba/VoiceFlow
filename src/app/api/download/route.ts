@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Versiyon: desktop-app/package.json ile senkron tutulmalı
-const CURRENT_VERSION = "4.5.0";
+const CURRENT_VERSION = "4.5.1";
 
 // Vercel serverless function timeout — 60 saniye (Pro plan'da 300sn)
 export const maxDuration = 60;
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
           Accept: "application/vnd.github.v3+json",
           Authorization: `Bearer ${token}`,
         },
-        next: { revalidate: 300 },
+        cache: "no-store",
       }
     );
 
