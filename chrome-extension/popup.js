@@ -81,26 +81,28 @@ function showSetupScreen() {
 }
 
 grantMicBtn.addEventListener("click", async () => {
+  let micGranted = false;
   try {
     // Önce getUserMedia dene — popup'ta çalışırsa harika
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
+      micGranted = true;
     }
-    chrome.storage.local.set({ micPermissionGranted: true });
-    setupStep1.classList.add("hidden");
-    setupStep2.classList.remove("hidden");
   } catch (err) {
-    // getUserMedia popup'ta başarısız olabilir (Chrome kısıtlaması)
-    // Yine de devam et — SpeechRecognition kendi izin diyaloğunu tetikler
-    if (err.name === "NotAllowedError" || err.name === "SecurityError" || err.name === "NotFoundError") {
-      console.log("getUserMedia popup'ta çalışmadı, SpeechRecognition ile devam ediliyor");
-      chrome.storage.local.set({ micPermissionGranted: true });
-      setupStep1.classList.add("hidden");
-      setupStep2.classList.remove("hidden");
-    } else {
-      showToast("Mikrofon izni gerekli!");
-    }
+    // getUserMedia popup'ta genellikle başarısız olur (Chrome kısıtlaması)
+    console.log("getUserMedia popup'ta çalışmadı:", err.name);
+    micGranted = false;
+  }
+
+  // Her durumda devam et — mikrofon izni aktif sayfada verilecek
+  chrome.storage.local.set({ micPermissionGranted: micGranted });
+  setupStep1.classList.add("hidden");
+  setupStep2.classList.remove("hidden");
+
+  if (!micGranted) {
+    // Kullanıcıyı bilgilendir — mikrofon izni sayfa üzerinde verilecek
+    showToast("Mikrofon izni ilk kayıtta istenecek. Ctrl+Space ile başlayın.");
   }
 });
 
@@ -184,14 +186,12 @@ async function startRecording() {
     recognition.onerror = (event) => {
       console.error("Speech recognition error:", event.error);
       if (event.error === "not-allowed") {
-        // Mikrofon izni yoksa kullanıcıya adres çubuğundaki izinleri göster
-        showToast("Mikrofon izni gerekli! Adres çubuğundaki kilit ikonuna tıklayıp mikrofon iznini verin.");
+        // Mikrofon izni yoksa — popup yerine Ctrl+Space ile sayfada denesin
+        showToast("Popup'ta mikrofon izni verilemedi. Herhangi bir sayfada Ctrl+Space ile dikte edin — ilk seferde izin istenecek.");
         isRecording = false;
         isProcessing = false;
         stopTimer();
         showView("idle");
-        // Kurulum ekranını tekrar göster
-        chrome.storage.local.set({ setupComplete: false, micPermissionGranted: false });
       } else if (event.error === "no-speech") {
         // Silently restart if no speech detected
         if (isRecording) {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VoiceFlow - Voice to Text",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Speak and let AI transcribe. Dictate in any text field with Ctrl+Space. Supports 12 languages.",
   "permissions": [
     "activeTab",
