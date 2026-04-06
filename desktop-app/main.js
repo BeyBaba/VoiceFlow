@@ -16,6 +16,11 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.5.1": [
+    "Dikte sirasinda pencerenin kapanma sorunu duzeltildi",
+    "Sonuc ekrani artik 4 saniye sonra otomatik kapaniyor",
+    "Indirme linki cache sorunu duzeltildi",
+  ],
   "4.5.0": [
     "Yerel ses tanima motoru (Vosk) eklendi — internet gerektirmez",
     "Uyanma kelimesi artik yerel olarak algilaniyor (API yok)",
@@ -45,6 +50,7 @@ let homeWindow = null;
 // powerModeWindow removed — power mode runs in homeWindow
 let tray = null;
 let isRecording = false;
+let isProcessingResult = false; // Prevents blur from hiding window during transcription/result display
 let powerModeActive = false;
 let wakeWordTriggered = false; // Prevents blur from hiding window during wake word activation
 
@@ -134,12 +140,13 @@ function createMainWindow() {
 
   mainWindow.on("blur", () => {
     const currentSettings = loadSettings();
-    if (!isRecording && !wakeWordTriggered && currentSettings.setupComplete && currentSettings.isAuthenticated) {
+    // Don't hide if recording, processing, or wake word was just triggered
+    if (!isRecording && !wakeWordTriggered && !isProcessingResult && currentSettings.setupComplete && currentSettings.isAuthenticated) {
       setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered) {
+        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered && !isProcessingResult) {
           mainWindow.hide();
         }
-      }, 200);
+      }, 500);
     }
   });
 
@@ -873,10 +880,21 @@ function autoPasteToApp() {
 ipcMain.on("show-result", (event, text) => {
   isRecording = false;
   updatePillState("result");
+
+  // Auto-hide result window after 4 seconds (unless autoPaste handles it)
+  setTimeout(() => {
+    isProcessingResult = false;
+    // Auto-hide main window after showing result
+    if (mainWindow && !mainWindow.isDestroyed() && !isRecording) {
+      mainWindow.hide();
+      updatePillState("idle");
+    }
+  }, 4000);
 });
 
 ipcMain.on("hide-window", () => {
   isRecording = false;
+  isProcessingResult = false;
   if (mainWindow) mainWindow.hide();
   updatePillState("idle");
 });
@@ -1020,6 +1038,10 @@ ipcMain.on("wake-word-detected", () => {
 // Resume power mode when recording finishes
 ipcMain.on("recording-state", (event, state) => {
   isRecording = state;
+  // Keep window visible during recording and briefly after (processing/result)
+  if (state) {
+    isProcessingResult = true;
+  }
   updatePillState(state ? "recording" : "idle");
 
   // Escape tusu: kayit sirasinda Escape = kaydi durdur + isle + yapistir (Ctrl+Space gibi)
