@@ -1270,10 +1270,10 @@
             ? wordResults.reduce((sum, w) => sum + (w.conf || 0), 0) / wordResults.length
             : 0;
 
-          // Sensitivity-based confidence threshold
-          // 1=Cok Dusuk (0.95), 2=Dusuk (0.85), 3=Orta (0.75), 4=Yuksek (0.60), 5=Cok Yuksek (0.40)
+          // Sensitivity-based confidence threshold (RAISED for stricter matching)
+          // 1=Cok Dusuk (0.99), 2=Dusuk (0.95), 3=Orta (0.90), 4=Yuksek (0.80), 5=Cok Yuksek (0.60)
           const sensitivity = currentSettings.powerSensitivity || 3;
-          const confThresholds = [0, 0.95, 0.85, 0.75, 0.60, 0.40];
+          const confThresholds = [0, 0.99, 0.95, 0.90, 0.80, 0.60];
           const confThreshold = confThresholds[sensitivity];
 
           console.log("Vosk heard:", text, "conf:", avgConf.toFixed(2), "threshold:", confThreshold);
@@ -1288,21 +1288,21 @@
             return;
           }
 
-          // Check against wake words — strict matching (no loose fuzzy)
+          // Check against wake words — VERY strict matching
+          // No includes() — only exact match or Levenshtein distance 1
           const currentWakeWords = getWakeWords();
           const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").trim();
           const nText = norm(text);
           const matchedWord = currentWakeWords.find(w => {
             const nw = norm(w);
-            // Exact match or contains
-            if (nText === nw || nText.includes(nw)) return true;
-            // Phonetic match (Turkish chars)
+            // Exact match ONLY (no includes/contains)
+            if (nText === nw) return true;
+            // Phonetic exact match (Turkish chars)
             const pText = phoneticNorm(nText);
             const pW = phoneticNorm(nw);
-            if (pText === pW || pText.includes(pW)) return true;
-            // Tight Levenshtein: max 1 for short words, max 2 for long
-            const maxDist = pW.length <= 5 ? 1 : 2;
-            if (Math.abs(pText.length - pW.length) <= 2 && levenshtein(pText, pW) <= maxDist) return true;
+            if (pText === pW) return true;
+            // Very tight Levenshtein: max 1 char difference, text length must be very close
+            if (Math.abs(pText.length - pW.length) <= 1 && levenshtein(pText, pW) <= 1) return true;
             return false;
           });
 

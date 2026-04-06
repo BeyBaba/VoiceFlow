@@ -16,6 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.0": [
+    "Dikte penceresi kapanma sorunu KESIN cozuldu — blur handler tamamen devre disi",
+    "Pencere SADECE ESC, Ctrl+Space veya Kapat butonu ile kapaniyor",
+    "Uyanma kelimesi hassasiyeti duzeltildi — sahte tetiklenmeler engellendi",
+    "Confidence threshold'lari yukseltildi (seviye 1 icin %99)",
+    "Chrome extension mikrofon izni akisi iyilestirildi",
+  ],
   "4.6.2": [
     "Dikte penceresi artik SADECE ESC veya Ctrl+Space ile kapaniyor",
     "Auto-hide timer tamamen kaldirildi — kendi kendine kapanma yok",
@@ -157,21 +164,12 @@ function createMainWindow() {
   });
 
   mainWindow.on("blur", () => {
-    // Do NOT auto-hide on blur anymore. Window only hides via:
-    // 1. User presses Escape or Ctrl+Space (toggle-recording)
-    // 2. User clicks "Kapat" button
-    // 3. Auto-paste flow (after result is shown + pasted)
-    // This prevents the "window closing during dictation" bug entirely.
-    const currentSettings = loadSettings();
-    if (!isRecording && !wakeWordTriggered && !isProcessingResult && currentSettings.setupComplete && currentSettings.isAuthenticated) {
-      // Only hide if user is in idle state (not recording, not showing result)
-      // Use a long delay so it doesn't interfere with recording flow
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered && !isProcessingResult && !mainWindow.isFocused()) {
-          mainWindow.hide();
-        }
-      }, 3000);
-    }
+    // Window NEVER auto-hides on blur. Period.
+    // Only closes via explicit user action:
+    // 1. ESC key
+    // 2. Ctrl+Space (toggle-recording)
+    // 3. "Kapat" button (hide-window IPC)
+    // 4. Auto-paste flow
   });
 
   mainWindow.on("close", (e) => {
