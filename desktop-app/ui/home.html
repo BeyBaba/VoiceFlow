@@ -522,7 +522,7 @@
       </div>
 
       <!-- SECRET: API USAGE / COST TRACKING — Only visible to Super Users -->
-      <div class="page" id="page-s-apiusage" style="display:none">
+      <div class="page" id="page-s-apiusage">
         <div class="page-header"><h1 class="page-title">📊 API Maliyet Takibi</h1><p class="page-desc">Groq Whisper API kullanim ve maliyet analizi (Sadece Super User)</p></div>
         <div class="page-body">
           <!-- Summary Cards -->
@@ -1347,7 +1347,7 @@
           setTimeout(() => pmStart(), 1000);
           return;
         }
-      }, 10000); // Check every 10 seconds for faster recovery
+      }, 5000); // Check every 5 seconds for faster recovery (especially in background)
     }
 
     function pmStopWatchdog() {
