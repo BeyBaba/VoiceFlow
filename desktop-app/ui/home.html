@@ -474,7 +474,8 @@
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Konusma Dili</div><div class="card-hint">Varsayilan konusma tanima dili</div></div>
             <select class="card-select" id="sLang"><option value="tr">TR Turkce</option><option value="en">EN English</option><option value="de">DE Deutsch</option><option value="fr">FR Francais</option><option value="es">ES Espanol</option><option value="ja">JP Japanese</option><option value="ko">KR Korean</option><option value="zh">CN Chinese</option><option value="pt">PT Portugues</option><option value="it">IT Italiano</option><option value="ru">RU Russian</option><option value="ar">AR Arabic</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Windows ile baslat</div><div class="card-hint">Bilgisayar acildiginda otomatik baslat</div></div><label class="toggle"><input type="checkbox" id="sAutoStart" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik Guncelleme</div><div class="card-hint">Yeni versiyon ciktiginda otomatik kontrol et ve bildir</div></div><label class="toggle"><input type="checkbox" id="sAutoUpdate" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Guncelleme gelince haber ver</div><div class="card-hint">Yeni versiyon ciktiginda bildirim goster</div></div><label class="toggle"><input type="checkbox" id="sAutoUpdateNotify" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Otomatik Guncelle</div><div class="card-hint">Guncellemeyi otomatik indir ve kur</div></div><label class="toggle"><input type="checkbox" id="sAutoUpdate"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Kapatinca gizle</div><div class="card-hint">Pencere kapatildiginda sistem tepsisine kucult</div></div><label class="toggle"><input type="checkbox" id="sMinToTray" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Bildirimler</div><div class="card-hint">Transkripsiyon tamamlandiginda bildirim goster</div></div><label class="toggle"><input type="checkbox" id="sNotifications" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
         </div>
@@ -994,7 +995,7 @@
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
-    function loadAutoUpdate(){ document.getElementById("sAutoUpdate").checked = currentSettings.autoUpdateEnabled !== false; }
+    function loadAutoUpdate(){ document.getElementById("sAutoUpdate").checked = !!currentSettings.autoUpdateEnabled; document.getElementById("sAutoUpdateNotify").checked = currentSettings.autoUpdateNotify !== false; }
     async function loadAudioDevices(){
       try{
         const d=await navigator.mediaDevices.enumerateDevices(), sel=document.getElementById("sAudioDevice");
@@ -1087,6 +1088,7 @@
     function setupSettingsListeners(){
       on("sLang","change",v=>saveSetting("language",v));
       on("sAutoStart","change",v=>{window.voiceflow.setAutoStart(v);saveSetting("autoStartDisabledByUser",!v);showToast(v?"Otomatik baslama acik":"Kapali");});
+      on("sAutoUpdateNotify","change",v=>{saveSetting("autoUpdateNotify",v);showToast(v?"Guncelleme bildirimi acik":"Guncelleme bildirimi kapali");});
       on("sAutoUpdate","change",v=>{saveSetting("autoUpdateEnabled",v);saveSetting("autoUpdateAsked",true);showToast(v?"Otomatik guncelleme acik":"Otomatik guncelleme kapali");});
       on("sMinToTray","change",v=>saveSetting("minimizeToTray",v));
       on("sNotifications","change",v=>saveSetting("notifications",v));
@@ -1218,7 +1220,7 @@
 
             const dlResult = await window.voiceflow.voskModelDownload(lang);
             if (!dlResult.success) {
-              updatePowerModeUI("error");
+              updatePowerModeUI("error", "Ses modeli indirilemedi — " + (dlResult.error || "Bilinmeyen hata"));
               showToast("Model indirilemedi: " + (dlResult.error || "Bilinmeyen hata"));
               return;
             }
@@ -1238,7 +1240,7 @@
         // Step 2: Create recognizer with wake word grammar
         const wakeWords = getWakeWords();
         if (wakeWords.length === 0) {
-          updatePowerModeUI("error");
+          updatePowerModeUI("error", "En az 1 uyanma kelimesi gerekli");
           showToast("En az 1 uyanma kelimesi gerekli!");
           return;
         }
@@ -1369,7 +1371,8 @@
 
       } catch (err) {
         console.error("PowerMode start error:", err);
-        updatePowerModeUI("error");
+        const ismic = err.message && (err.message.includes("Permission") || err.message.includes("NotAllowed") || err.message.includes("getUserMedia"));
+        updatePowerModeUI("error", ismic ? "Mikrofon erisimi kontrol edin" : err.message);
         showToast("Guc Modu baslatilamadi: " + err.message);
       }
     }
@@ -1481,8 +1484,11 @@
     }
     function isRecordingActive() { return pmDictationActive; }
 
+    // Language display names for Vosk download status
+    const LANG_NAMES = {tr:"Turkce",en:"Ingilizce",de:"Almanca",fr:"Fransizca",es:"Ispanyolca",ja:"Japonca",ko:"Korece",zh:"Cince",pt:"Portekizce",it:"Italyanca",ru:"Rusca",ar:"Arapca"};
+
     // POWER MODE UI
-    function updatePowerModeUI(status) {
+    function updatePowerModeUI(status, customHint) {
       const icon = document.getElementById("pmStatusIcon");
       const text = document.getElementById("pmStatusText");
       const hint = document.getElementById("pmStatusHint");
@@ -1495,22 +1501,24 @@
       const dlProgress = document.getElementById("pmDownloadProgress");
       if (dlProgress) dlProgress.style.display = status === "downloading" ? "block" : "none";
 
+      const langName = LANG_NAMES[currentSettings.language || "tr"] || "Turkce";
       const states = {
-        loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
-        downloading: { icon: "⬇️", text: "Ses modeli indiriliyor...", hint: "Ilk kullanim icin gerekli (~45MB)", color: "#3B82F6", dash: "Indiriliyor" },
+        loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "Birkac saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
+        downloading: { icon: "⬇️", text: langName + " ses modeli indiriliyor...", hint: "Ilk kullanim icin gerekli (~45MB)", color: "#3B82F6", dash: "Indiriliyor" },
         listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor (yerel motor)", color: "#10B981", dash: "Aktif" },
         off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
-        error: { icon: "❌", text: "Hata olustu", hint: "Mikrofon erisimi kontrol edin", color: "#EF4444", dash: "Hata" },
+        error: { icon: "❌", text: "Hata olustu", hint: "", color: "#EF4444", dash: "Hata" },
       };
 
       const s = states[status] || states.off;
+      const hintText = customHint || s.hint;
       if (icon) icon.textContent = s.icon;
       if (text) { text.textContent = s.text; text.style.color = s.color; }
       if (hint) {
         if (status === "error" || status === "loading") {
-          hint.innerHTML = (s.hint ? s.hint + '<br>' : '') + '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>';
+          hint.innerHTML = (hintText ? hintText + '<br>' : '') + '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>';
         } else {
-          hint.textContent = s.hint;
+          hint.textContent = hintText;
         }
       }
       if (dash) { dash.textContent = s.dash; dash.style.color = s.color; }
@@ -1576,10 +1584,17 @@
       if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
       // Delete cached model and re-download
       const lang = currentSettings.language || "tr";
+      const langName = LANG_NAMES[lang] || "Turkce";
       try {
         await window.voiceflow.voskModelDelete(lang);
       } catch(e) { console.log("Model delete error:", e); }
-      showToast("Model yeniden indiriliyor...");
+      // Reset progress bar to 0 and show downloading state immediately
+      const bar = document.getElementById("pmDownloadBar");
+      const txt = document.getElementById("pmDownloadText");
+      if (bar) bar.style.width = "0%";
+      if (txt) txt.textContent = "%0";
+      updatePowerModeUI("downloading");
+      showToast(langName + " model yeniden indiriliyor...");
       pmStart();
     };
 
