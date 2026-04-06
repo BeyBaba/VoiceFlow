@@ -16,6 +16,14 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.3": [
+    "Ilk kurulumda login ekrani otomatik on planda aciliyor",
+    "Otomatik guncelleme dialog'u kaldirildi — sessizce acik, ayarlardan kapatilabilir",
+    "Login ekraninda pill bar (Ctrl+Space) artik hic olusturulmuyor",
+    "Vosk indirme hatasi dogru mesaj gosteriyor (mikrofon hatasi degil)",
+    "Vosk retry'da progress bar ve dil adi gosteriyor (Turkce/Ingilizce)",
+    "Guncelleme gelince haber ver + otomatik guncelle ayarlari eklendi",
+  ],
   "4.7.2": [
     "Tum ikonlar RGBA renkli — gradient teal-indigo dogru gorunuyor",
     "Login ekraninda dikte penceresi artik gorunmuyor",
@@ -977,7 +985,11 @@ ipcMain.handle("save-settings", (event, data) => {
   saveSettings(merged);
 
   // Show/hide pill based on settings
-  if (merged.setupComplete) {
+  if (merged.setupComplete && merged.isAuthenticated) {
+    // Create pill window if it doesn't exist yet (first time after setup completes)
+    if (!pillWindow || pillWindow.isDestroyed()) {
+      createPillWindow();
+    }
     if (merged.showPill === true) {
       showPill();
     } else {
@@ -1503,25 +1515,13 @@ async function checkLicenseOnStartup() {
 function setupAutoUpdater() {
   const settings = loadSettings();
 
-  // If user hasn't been asked about auto-update yet, ask now
+  // Silently enable auto-update on first run (no dialog — user can toggle in Settings)
   if (settings.autoUpdateAsked === undefined) {
-    dialog.showMessageBox({
-      type: "question",
-      title: "VoiceFlow - Otomatik Guncelleme",
-      message: "Otomatik guncelleme acilsin mi?",
-      detail: "VoiceFlow yeni versiyon ciktiginda otomatik kontrol edip size bildirim gosterebilir. Ayarlardan istediginiz zaman degistirebilirsiniz.",
-      buttons: ["Evet, Otomatik Guncelle", "Hayir, Ben Kendim Yaparim"],
-      defaultId: 0,
-      cancelId: 1,
-    }).then((result) => {
-      const s = loadSettings();
-      s.autoUpdateAsked = true;
-      s.autoUpdateEnabled = result.response === 0;
-      saveSettings(s);
-      if (s.autoUpdateEnabled) {
-        startAutoUpdateChecks();
-      }
-    });
+    const s = loadSettings();
+    s.autoUpdateAsked = true;
+    s.autoUpdateEnabled = true;
+    saveSettings(s);
+    startAutoUpdateChecks();
   } else if (settings.autoUpdateEnabled) {
     startAutoUpdateChecks();
   }
@@ -1662,7 +1662,11 @@ app.whenReady().then(async () => {
   });
 
   createMainWindow();
-  createPillWindow();
+  // Only create pill window if user is authenticated and setup is complete
+  const pillSettings = loadSettings();
+  if (pillSettings.setupComplete && pillSettings.isAuthenticated) {
+    createPillWindow();
+  }
   createTray();
   registerShortcuts();
 
@@ -1672,11 +1676,8 @@ app.whenReady().then(async () => {
   const isRegistered = globalShortcut.isRegistered(dictateKey);
   console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
-  // Only open home window if setup is complete — don't show during onboarding
-  const homeSettings = loadSettings();
-  if (homeSettings.setupComplete) {
-    createHomeWindow();
-  }
+  // Always open home window — shows login on first run, dashboard after setup
+  createHomeWindow();
 
   // Check license status from server (with timeout — don't block forever)
   try {
