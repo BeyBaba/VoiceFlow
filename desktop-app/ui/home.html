@@ -250,6 +250,19 @@
     </div>
 
     <div class="content">
+      <!-- WHAT'S NEW BANNER -->
+      <div id="whatsNewBanner" style="display:none;margin:12px 16px 0;padding:14px 18px;background:linear-gradient(135deg,rgba(79,70,229,0.12),rgba(15,118,110,0.12));border:1px solid rgba(79,70,229,0.25);border-radius:12px;cursor:pointer;position:relative;" onclick="showWhatsNewDetail()">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">&#127881;</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-1);" id="whatsNewTitle">Yeni guncelleme yuklendi!</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:2px;" id="whatsNewSummary"></div>
+          </div>
+          <span style="font-size:11px;color:var(--text-3);white-space:nowrap;">Detaylar &rarr;</span>
+        </div>
+        <button onclick="event.stopPropagation();dismissWhatsNew();" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:2px 6px;line-height:1;">&times;</button>
+      </div>
+
       <!-- HOME -->
       <div class="page active" id="page-home">
         <div class="page-header"><h1 class="page-title" id="greeting">Hos Geldiniz!</h1><p class="page-desc">Ctrl+Space ile herhangi bir uygulamada dikte etmeye baslayin.</p></div>
@@ -523,6 +536,12 @@
           <a href="#" class="about-link" id="aboutWebsite">🌐 Web Sitesi</a>
           <a href="#" class="about-link" id="aboutGroq" style="display:none">🔑 Groq Console</a>
           <div class="divider"></div>
+          <!-- CHANGELOG -->
+          <div class="card" style="padding:16px;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Degisiklik Gecmisi</div>
+            <div id="aboutChangelog" style="font-size:12px;color:var(--text-2);"></div>
+          </div>
+          <div class="divider"></div>
           <div class="card" style="border-color:rgba(239,68,68,0.15)"><div class="card-row"><div class="card-label-wrap"><div class="card-label" style="color:#EF4444">Ayarlari Sifirla</div><div class="card-hint">Tum ayarlari sifirla</div></div><button class="danger-btn" id="sResetBtn">Sifirla</button></div></div>
         </div>
       </div>
@@ -781,6 +800,63 @@
       if(currentSettings.apiKey){api.textContent="Aktif";api.className="status-card-value ok";}else{api.textContent="Eksik";api.className="status-card-value warn";}
       setGreeting(); loadHistory(); loadSettingsValues();
       document.getElementById("scratchpadText").value=currentSettings.scratchpadText||"";
+      // Check for "what's new" notification
+      checkWhatsNew();
+      // Load changelog in About page
+      loadAboutChangelog();
+    }
+
+    // ===== WHAT'S NEW NOTIFICATION =====
+    async function checkWhatsNew() {
+      try {
+        const changelog = await window.voiceflow.getChangelog();
+        if (!changelog || !changelog.changes || changelog.changes.length === 0) return;
+        const lastSeenVersion = currentSettings.lastSeenVersion || "";
+        if (lastSeenVersion === changelog.version) return; // Already seen
+        const banner = document.getElementById("whatsNewBanner");
+        if (!banner) return;
+        document.getElementById("whatsNewTitle").textContent = "VoiceFlow v" + changelog.version + " yuklendi!";
+        document.getElementById("whatsNewSummary").textContent = changelog.changes[0] + (changelog.changes.length > 1 ? " ve " + (changelog.changes.length - 1) + " degisiklik daha..." : "");
+        banner.style.display = "block";
+        // Store changelog data for detail view
+        banner._changelog = changelog;
+      } catch(e) { console.log("What's new check error:", e); }
+    }
+
+    function showWhatsNewDetail() {
+      const banner = document.getElementById("whatsNewBanner");
+      const changelog = banner?._changelog;
+      if (!changelog) return;
+      // Navigate to About page to show full changelog
+      const nav = document.querySelector('.nav-item[data-page="s-about"]');
+      if (nav) nav.click();
+      dismissWhatsNew();
+    }
+
+    function dismissWhatsNew() {
+      const banner = document.getElementById("whatsNewBanner");
+      if (banner) banner.style.display = "none";
+      // Mark as seen
+      window.voiceflow.getVersion().then(v => {
+        saveSetting("lastSeenVersion", v);
+      });
+    }
+
+    async function loadAboutChangelog() {
+      try {
+        const changelog = await window.voiceflow.getChangelog();
+        const container = document.getElementById("aboutChangelog");
+        if (!container || !changelog) return;
+        // Build changelog HTML — current + older versions
+        let html = "";
+        if (changelog.changes && changelog.changes.length > 0) {
+          html += '<div style="margin-bottom:12px;"><div style="font-weight:600;color:var(--text-1);margin-bottom:4px;">v' + changelog.version + ' (Guncel)</div>';
+          html += '<ul style="margin:0;padding-left:18px;list-style:disc;">';
+          changelog.changes.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
+          html += '</ul></div>';
+        }
+        container.innerHTML = html || '<div style="color:var(--text-3);">Degisiklik bilgisi yok</div>';
+      } catch(e) {}
     }
 
     function updateWordCount(){

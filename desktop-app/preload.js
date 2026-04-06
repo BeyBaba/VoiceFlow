@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld("voiceflow", {
     return await ipcRenderer.invoke("get-version");
   },
 
+  // Changelog
+  getChangelog: async () => {
+    return await ipcRenderer.invoke("get-changelog");
+  },
+
   // Auto-start
   getAutoStart: async () => {
     return await ipcRenderer.invoke("get-auto-start");
