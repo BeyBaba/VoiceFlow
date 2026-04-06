@@ -1,6 +1,6 @@
 {
   "name": "voiceflow-desktop",
-  "version": "4.3.5",
+  "version": "4.4.0",
   "description": "VoiceFlow - AI Sesli Dikte Uygulamasi",
   "main": "main.js",
   "scripts": {
@@ -61,6 +61,7 @@
     ]
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "vosk-browser": "^0.0.8"
   }
 }

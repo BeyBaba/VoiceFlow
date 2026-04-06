@@ -83,6 +83,16 @@ contextBridge.exposeInMainWorld("voiceflow", {
     ipcRenderer.on("dictation-state", (event, state) => callback(state));
   },
 
+  // Vosk Model Management
+  voskModelStatus: (lang) => ipcRenderer.invoke("vosk-model-status", lang),
+  voskModelDownload: (lang) => ipcRenderer.invoke("vosk-model-download", lang),
+  voskModelPath: (lang) => ipcRenderer.invoke("vosk-model-path", lang),
+  voskModelDelete: (lang) => ipcRenderer.invoke("vosk-model-delete", lang),
+  voskModelServerPort: () => ipcRenderer.invoke("vosk-model-server-port"),
+  onVoskDownloadProgress: (callback) => {
+    ipcRenderer.on("vosk-download-progress", (event, data) => callback(data));
+  },
+
   // Auto-update API
   checkForUpdates: async () => {
     return await ipcRenderer.invoke("check-for-updates");

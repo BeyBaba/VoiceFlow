@@ -365,6 +365,12 @@
             <div id="pmStatusIcon" style="font-size:32px;margin-bottom:6px">🔇</div>
             <div id="pmStatusText" style="font-size:13px;font-weight:600;color:var(--text-2)">Kapali</div>
             <div id="pmStatusHint" style="font-size:11px;color:var(--text-3);margin-top:4px"></div>
+            <div id="pmDownloadProgress" style="display:none;margin-top:10px">
+              <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden">
+                <div id="pmDownloadBar" style="width:0%;height:100%;background:linear-gradient(90deg,#3B82F6,#8B5CF6);transition:width 0.3s;border-radius:3px"></div>
+              </div>
+              <div id="pmDownloadText" style="font-size:11px;color:var(--text-3);margin-top:4px">%0</div>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -593,6 +599,7 @@
 
   <div id="toast" class="toast hidden"><span id="toastText"></span></div>
 
+  <script src="../node_modules/vosk-browser/dist/vosk.js"></script>
   <script>
     let currentSettings = {};
     let currentTheme = "light";
@@ -1063,262 +1070,176 @@
     let pmIsListening = false;
     let pmIsCapturing = false;
     let pmLastWakeTime = 0;
-    let pmSpeechDetected = false;
-    let pmSpeechStart = 0;
-    let pmRecorder = null;
-    let pmRecordChunks = [];
-    const PM_THRESHOLD = 35;  // Higher = less false triggers from background noise
     const PM_COOLDOWN = 5000;
-    const PM_MIN_SPEECH_MS = 800; // Minimum speech duration before sending to Groq
-    const PM_MIN_BLOB = 2000; // Minimum blob size (bytes) to avoid noise clips
-    const PM_MAX_REQUESTS_PER_MIN = 30; // Self-throttle: max API calls per minute (Super Users get unlimited)
-    let pmRequestTimestamps = []; // Track API call timestamps for rate limiting
+
+    // Vosk local wake word engine
+    let voskModel = null;
+    let voskRecognizer = null;
+    let voskReady = false;
 
     async function pmStart() {
       if (pmIsListening) return;
-      const apiKey = EMBEDDED_API_KEY;
-      if (!apiKey) {
-        showToast("API baglantisi kurulamadi!");
-        updatePowerModeUI("error");
-        const hint = document.getElementById("pmStatusHint");
-        if (hint) hint.textContent = "API baglantisi kurulamadi.";
-        return;
-      }
 
       try {
         updatePowerModeUI("loading");
+        const lang = currentSettings.language || "tr";
 
-        // Use selected audio device (same as main dictation window)
+        // Step 1: Load Vosk model (vosk-browser handles download + IndexedDB caching)
+        const VOSK_MODEL_URLS = {
+          tr: "https://alphacephei.com/vosk/models/vosk-model-small-tr-0.3.tar.gz",
+          en: "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.tar.gz",
+          de: "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.tar.gz",
+          fr: "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.tar.gz",
+          es: "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.tar.gz",
+          ja: "https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.tar.gz",
+          ko: "https://alphacephei.com/vosk/models/vosk-model-small-ko-0.22.tar.gz",
+          zh: "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.tar.gz",
+          pt: "https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.tar.gz",
+          it: "https://alphacephei.com/vosk/models/vosk-model-small-it-0.22.tar.gz",
+          ru: "https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.tar.gz",
+          ar: "https://alphacephei.com/vosk/models/vosk-model-small-ar-0.22.tar.gz",
+        };
+
+        if (!voskModel || voskModel._lang !== lang) {
+          if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
+          if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
+
+          const modelUrl = VOSK_MODEL_URLS[lang] || VOSK_MODEL_URLS["en"];
+          updatePowerModeUI("downloading");
+          const liveEl = document.getElementById("pmLiveText");
+          if (liveEl) { liveEl.textContent = "Ses motoru yukleniyor (~45MB, ilk sefer)..."; liveEl.style.color = "var(--accent)"; }
+          console.log("Loading Vosk model:", modelUrl);
+
+          voskModel = await Vosk.createModel(modelUrl);
+          voskModel._lang = lang;
+          console.log("Vosk model loaded for:", lang);
+        }
+
+        // Step 2: Create recognizer with wake word grammar
+        const wakeWords = getWakeWords();
+        if (wakeWords.length === 0) {
+          updatePowerModeUI("error");
+          showToast("En az 1 uyanma kelimesi gerekli!");
+          return;
+        }
+        const grammar = JSON.stringify([...wakeWords.map(w => w.toLowerCase()), "[unk]"]);
+        voskRecognizer = new voskModel.KaldiRecognizer(16000, grammar);
+        voskRecognizer.setWords(true);
+
+        // Step 3: Connect microphone
         const pmMicConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
           ? { deviceId: { exact: currentSettings.audioDevice } }
           : true;
         pmStream = await navigator.mediaDevices.getUserMedia({ audio: pmMicConstraints });
 
-        pmAudioCtx = new AudioContext();
+        pmAudioCtx = new AudioContext({ sampleRate: 16000 });
         if (pmAudioCtx.state === "suspended") await pmAudioCtx.resume();
         const source = pmAudioCtx.createMediaStreamSource(pmStream);
+
+        // Analyser for level meter display
         pmAnalyser = pmAudioCtx.createAnalyser();
         pmAnalyser.fftSize = 512;
         source.connect(pmAnalyser);
 
-        const dataArray = new Uint8Array(pmAnalyser.frequencyBinCount);
-        pmIsListening = true;
-        updatePowerModeUI("listening");
-        pmStartWatchdog(); // Start watchdog to keep Power Mode alive
+        // ScriptProcessor to feed audio data to Vosk
+        const processor = pmAudioCtx.createScriptProcessor(4096, 1, 1);
+        source.connect(processor);
+        processor.connect(pmAudioCtx.destination);
 
+        processor.onaudioprocess = (e) => {
+          if (!pmIsListening || pmIsCapturing) return;
+          try {
+            // acceptWaveformFloat takes Float32Array + sampleRate
+            const inputData = e.inputBuffer.getChannelData(0);
+            voskRecognizer.acceptWaveformFloat(inputData, 16000);
+          } catch(e) { /* ignore processing errors during pause/stop */ }
+        };
+
+        // Listen for Vosk recognition results
+        voskRecognizer.on("result", (msg) => {
+          const text = (msg.result?.text || "").trim();
+          if (!text || text === "[unk]" || !pmIsListening || pmIsCapturing) return;
+          console.log("Vosk heard:", text);
+
+          const liveEl = document.getElementById("pmLiveText");
+          const matchEl = document.getElementById("pmMatchIndicator");
+          if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
+
+          // Check against wake words
+          const currentWakeWords = getWakeWords();
+          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").trim();
+          const nText = norm(text);
+          const matchedWord = currentWakeWords.find(w => {
+            const nw = norm(w);
+            return nText.includes(nw) || nw.includes(nText) || fuzzyMatch(nText, nw);
+          });
+
+          if (matchedWord && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
+            pmLastWakeTime = Date.now();
+            if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
+            setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
+
+            pmPause();
+            window.voiceflow.wakeWordDetected();
+          } else if (!matchedWord && matchEl) {
+            matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
+          }
+        });
+
+        voskRecognizer.on("partialresult", (msg) => {
+          const partial = (msg.result?.partial || "").trim();
+          if (!partial || partial === "[unk]" || !pmIsListening) return;
+          const liveEl = document.getElementById("pmLiveText");
+          if (liveEl) { liveEl.textContent = partial + "..."; liveEl.style.color = "var(--text-3)"; }
+        });
+
+        // Level meter update interval
+        const dataArray = new Uint8Array(pmAnalyser.frequencyBinCount);
         pmCheckInterval = setInterval(() => {
-          // Auto-resume suspended AudioContext (Chromium suspends it on blur/minimize, or pmPause() suspends it)
           if (pmAudioCtx && pmAudioCtx.state === "suspended") {
             pmAudioCtx.resume();
             pmIsListening = true;
             updatePowerModeUI("listening");
             return;
           }
-          if (!pmAnalyser || !pmIsListening || pmIsCapturing) return;
+          if (!pmAnalyser || !pmIsListening) return;
           pmAnalyser.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
           const avg = sum / dataArray.length;
-
-          // Update level bar
           const bar = document.getElementById("pmLevelBar");
           const num = document.getElementById("pmLevelNum");
           if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
           if (num) num.textContent = Math.round(avg);
+        }, 100);
 
-          if (avg > PM_THRESHOLD) {
-            if (!pmSpeechDetected) {
-              pmSpeechDetected = true;
-              pmSpeechStart = Date.now();
-              // Start recording immediately when speech is detected
-              if (!pmRecorder && pmStream && !pmIsCapturing && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
-                try {
-                  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-                  pmRecorder = new MediaRecorder(pmStream, { mimeType });
-                  pmRecordChunks = [];
-                  pmRecorder.ondataavailable = (e) => { if (e.data.size > 0) pmRecordChunks.push(e.data); };
-                  pmRecorder.start(100);
-                } catch(e) { console.error("PM recorder start error:", e); pmRecorder = null; }
-              }
-            }
-          } else if (pmSpeechDetected) {
-            const duration = Date.now() - pmSpeechStart;
-            if (duration > PM_MIN_SPEECH_MS && duration < 5000) {
-              pmSpeechDetected = false;
-              // Stop recorder and send the captured clip
-              if (pmRecorder && pmRecorder.state === "recording") {
-                const rec = pmRecorder;
-                const chunks = pmRecordChunks;
-                pmRecorder = null;
-                pmRecordChunks = [];
-                rec.onstop = () => { pmCaptureAndCheck(chunks, rec.mimeType); };
-                rec.stop();
-              }
-            } else if (duration >= 5000) {
-              pmSpeechDetected = false;
-              // Discard too-long recording
-              if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; }
-            }
-            if (avg < 3) { pmSpeechDetected = false; if (pmRecorder && pmRecorder.state === "recording") { pmRecorder.stop(); pmRecorder = null; pmRecordChunks = []; } }
-          }
-        }, 50);
+        voskReady = true;
+        pmIsListening = true;
+        updatePowerModeUI("listening");
+        pmStartWatchdog();
 
       } catch (err) {
         console.error("PowerMode start error:", err);
         updatePowerModeUI("error");
-        showToast("Mikrofon erisimi yok!");
+        showToast("Guc Modu baslatilamadi: " + err.message);
       }
-    }
-
-    async function pmCaptureAndCheck(chunks, mimeType) {
-      if (pmIsCapturing || !pmIsListening) return;
-      const SUPER_USERS_CD = ["savasarac@gmail.com"];
-      const suCooldown = SUPER_USERS_CD.includes(currentSettings.userEmail) ? 3000 : PM_COOLDOWN;
-      if (Date.now() - pmLastWakeTime < suCooldown) return;
-
-      // Self-throttle: check requests per minute (Super Users bypass)
-      const now = Date.now();
-      pmRequestTimestamps = pmRequestTimestamps.filter(t => now - t < 60000);
-      const SUPER_USERS = ["savasarac@gmail.com"];
-      const isSU = SUPER_USERS.includes(currentSettings.userEmail);
-      if (!isSU && pmRequestTimestamps.length >= PM_MAX_REQUESTS_PER_MIN) {
-        console.log("PM self-throttle: " + pmRequestTimestamps.length + " requests in last minute, skipping");
-        return;
-      }
-      pmRequestTimestamps.push(now);
-
-      pmIsCapturing = true;
-
-      const liveEl = document.getElementById("pmLiveText");
-      if (liveEl) { liveEl.textContent = "Ses kontrol ediliyor..."; liveEl.style.color = "var(--text-2)"; }
-
-      try {
-        if (!mimeType) mimeType = "audio/webm;codecs=opus";
-        const blob = new Blob(chunks, { type: mimeType });
-        if (blob.size < PM_MIN_BLOB) { pmIsCapturing = false; console.log("PM clip too small:", blob.size); return; }
-
-        // Build wake word hint for Whisper prompt (improves transcription accuracy)
-        const pmWakeWords = [
-          document.getElementById("sWakeWord1")?.value?.trim(),
-          document.getElementById("sWakeWord2")?.value?.trim(),
-          document.getElementById("sWakeWord3")?.value?.trim()
-        ].filter(w => w && w.length >= 2);
-        const pmWakeHint = pmWakeWords.length > 0 ? pmWakeWords.join(", ") : "";
-
-        const buildFormData = () => {
-          const f = new FormData();
-          f.append("file", blob, "clip.webm");
-          f.append("model", "whisper-large-v3-turbo");
-          f.append("language", currentSettings.language || "tr");
-          f.append("temperature", "0");
-          f.append("response_format", "json");
-          if (pmWakeHint) {
-            f.append("prompt", "Uyanma kelimeleri: " + pmWakeHint + ". Bu kelimeleri tam olarak yazin, kisaltma yapmayin. Ornegin 'Prof.' degil 'Profesör' yazin.");
-          }
-          return f;
-        };
-
-        let resp = null;
-        const maxRetries = isSU ? 5 : 3;
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-          resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-            method: "POST",
-            headers: { "Authorization": "Bearer " + EMBEDDED_API_KEY },
-            body: buildFormData(),
-          });
-          if (resp.status === 429) {
-            const waitMs = isSU ? Math.pow(2, attempt) * 300 : Math.pow(2, attempt + 1) * 2000;
-            const liveEl2 = document.getElementById("pmLiveText");
-            if (liveEl2) liveEl2.textContent = isSU ? "Yeniden deneniyor..." : "Rate limit, " + Math.round(waitMs/1000) + "s bekleniyor...";
-            console.log("PowerMode 429, retry", attempt+1, "wait", waitMs + "ms", isSU ? "(SuperUser)" : "");
-            await new Promise(r => setTimeout(r, waitMs));
-            continue;
-          }
-          break;
-        }
-
-        if (resp && resp.ok) {
-          const result = await resp.json();
-          const text = (result.text || "").trim();
-          console.log("PowerMode heard:", text);
-
-          // Log API usage (estimate ~2 sec per PM clip)
-          if (typeof logApiUsage === "function") logApiUsage(2, "powermode");
-
-          // Filter out Whisper hallucinations
-          const hallucinations = [".", "..", "...", "bye", "bye bye", "thank you", "thanks", "you", "the", "a", "i", "he", "hi", "ok", "alt yazı", "altyazı", "altyazı m.k.", "altyazi m.k.", "abone", "subscribe", "like", "şey", "ee", "aa", "hm", "hmm", "uh", "um", "ah", "sessiz", "silence", "music", "müzik", "alkış", "applause"];
-          const cleanText = text.replace(/[.,!?;:'"·\-–—…\s]/g, "").toLowerCase();
-          const isHallucination = text.length <= 1 || cleanText.length <= 1 || hallucinations.includes(text.toLowerCase().trim()) || /^(.)\1{2,}$/.test(cleanText) || text.length > 100;
-          console.log("PM filter: text='" + text + "' clean='" + cleanText + "' hall=" + isHallucination);
-
-          if (text.length > 0 && !isHallucination) {
-            if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
-            const matchEl = document.getElementById("pmMatchIndicator");
-
-            // Check ALL wake words (multi-command support) with fuzzy Turkish matching
-            // Re-read wake words from inputs to ensure fresh values
-            const wakeWords = [
-              document.getElementById("sWakeWord1")?.value?.trim(),
-              document.getElementById("sWakeWord2")?.value?.trim(),
-              document.getElementById("sWakeWord3")?.value?.trim()
-            ].filter(w => w && w.length >= 2);
-            // Fallback to settings if inputs not available
-            const finalWakeWords = wakeWords.length > 0 ? wakeWords : (currentSettings.wakeWords || (currentSettings.wakeWord ? [currentSettings.wakeWord] : []));
-            const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/â/g,"a").replace(/î/g,"i").replace(/û/g,"u").trim();
-            const nText = norm(text);
-            console.log("PM wake check: text='" + text + "' words=" + JSON.stringify(finalWakeWords));
-            const matchedWord = finalWakeWords.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
-
-            if (matchedWord) {
-              pmLastWakeTime = Date.now();
-              if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-              if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">Uyanma kelimesi algilandi! Dikte basliyor...</span>';
-              setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } if (matchEl) matchEl.textContent = ""; }, 4000);
-
-              // Pause power mode and trigger recording
-              pmPause();
-              window.voiceflow.wakeWordDetected();
-            } else {
-              if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
-            }
-          }
-        } else if (resp) {
-          console.error("PowerMode Groq error:", resp.status);
-          const liveEl2 = document.getElementById("pmLiveText");
-          if (resp.status === 429 && liveEl2) {
-            if (isSU) {
-              liveEl2.textContent = "Yeniden deneniyor...";
-              liveEl2.style.color = "var(--text-3)";
-            } else {
-              liveEl2.textContent = "API rate limit — biraz bekleyin";
-              liveEl2.style.color = "#F59E0B";
-            }
-          } else if (liveEl2) {
-            liveEl2.textContent = "API hatasi: " + resp.status;
-            liveEl2.style.color = "#EF4444";
-          }
-        }
-      } catch (err) {
-        console.error("PowerMode Groq request error:", err);
-      }
-      pmIsCapturing = false;
     }
 
     function pmStop() {
       pmIsListening = false;
       pmIsCapturing = false;
-      pmStopWatchdog(); // Stop watchdog
-      if (pmRecorder && pmRecorder.state === "recording") { try { pmRecorder.stop(); } catch(e){} }
-      pmRecorder = null;
-      pmRecordChunks = [];
+      pmStopWatchdog();
       if (pmCheckInterval) { clearInterval(pmCheckInterval); pmCheckInterval = null; }
+      if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
+      // Keep voskModel loaded for quick restart (release only on language change)
       if (pmStream) { pmStream.getTracks().forEach(t => t.stop()); pmStream = null; }
       if (pmAudioCtx) { pmAudioCtx.close().catch(()=>{}); pmAudioCtx = null; }
       pmAnalyser = null;
       updatePowerModeUI("off");
     }
 
-    let pmPauseTime = 0; // Track when we paused (for watchdog grace period)
+    let pmPauseTime = 0;
     function pmPause() {
       if (pmAudioCtx && pmAudioCtx.state === "running") pmAudioCtx.suspend();
       pmIsListening = false;
@@ -1328,7 +1249,6 @@
 
     function pmResume() {
       console.log("pmResume called, ctx:", pmAudioCtx?.state, "stream:", pmStream?.active, "listening:", pmIsListening);
-      // If AudioContext is still alive, just resume
       if (pmAudioCtx && pmAudioCtx.state === "suspended" && pmStream && pmStream.active) {
         pmAudioCtx.resume();
         pmIsListening = true;
@@ -1423,9 +1343,14 @@
 
       if (card) card.style.display = "block";
 
+      // Hide/show download progress based on status
+      const dlProgress = document.getElementById("pmDownloadProgress");
+      if (dlProgress) dlProgress.style.display = status === "downloading" ? "block" : "none";
+
       const states = {
-        loading: { icon: "⏳", text: "Mikrofon hazirlaniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
-        listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor", color: "#10B981", dash: "Aktif" },
+        loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "Birkaç saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
+        downloading: { icon: "⬇️", text: "Ses modeli indiriliyor...", hint: "Ilk kullanim icin gerekli (~45MB)", color: "#3B82F6", dash: "Indiriliyor" },
+        listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor (yerel motor)", color: "#10B981", dash: "Aktif" },
         off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
         error: { icon: "❌", text: "Hata olustu", hint: "Mikrofon erisimi kontrol edin", color: "#EF4444", dash: "Hata" },
       };
@@ -1447,6 +1372,25 @@
       window.voiceflow.onPowerModeResume(() => {
         console.log("Power mode resume signal received");
         pmResume();
+      });
+    }
+
+    // Vosk model download progress
+    if (window.voiceflow.onVoskDownloadProgress) {
+      window.voiceflow.onVoskDownloadProgress((data) => {
+        const bar = document.getElementById("pmDownloadBar");
+        const text = document.getElementById("pmDownloadText");
+        const container = document.getElementById("pmDownloadProgress");
+        if (container) container.style.display = "block";
+        if (data.status === "extracting") {
+          if (bar) bar.style.width = "100%";
+          if (text) text.textContent = "Cikariliyor...";
+          return;
+        }
+        if (bar) bar.style.width = data.percent + "%";
+        const mbDown = Math.round(data.bytesDownloaded / 1024 / 1024);
+        const mbTotal = Math.round(data.totalBytes / 1024 / 1024);
+        if (text) text.textContent = "%" + Math.round(data.percent) + " (" + mbDown + "/" + mbTotal + " MB)";
       });
     }
 
