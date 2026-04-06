@@ -16,6 +16,11 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.6.1": [
+    "Dikte sirasinda pencere kapanma sorunu TAMAMEN duzeltildi (auto-hide timer fix)",
+    "Logo duzeltildi — website ile ayni gradient (teal-indigo, yuvarlak kose)",
+    "Hakkinda sayfasinda acilir/kapanir versiyon gecmisi eklendi",
+  ],
   "4.6.0": [
     "Yeni mavi mikrofon logosu — tum platformlarda",
     "Kayit sirasinda logo kirmiziya donuyor (tray + pencereler)",
@@ -58,6 +63,7 @@ let homeWindow = null;
 let tray = null;
 let isRecording = false;
 let isProcessingResult = false; // Prevents blur from hiding window during transcription/result display
+let resultAutoHideTimer = null; // Timer for auto-hiding result window
 let powerModeActive = false;
 let wakeWordTriggered = false; // Prevents blur from hiding window during wake word activation
 
@@ -660,6 +666,9 @@ function toggleRecording() {
     mainWindow.restore();
   }
 
+  // Cancel any pending auto-hide timer from previous result
+  if (resultAutoHideTimer) { clearTimeout(resultAutoHideTimer); resultAutoHideTimer = null; }
+
   // Prevent blur from hiding window during the entire toggle flow
   isProcessingResult = true;
 
@@ -891,15 +900,19 @@ ipcMain.on("show-result", (event, text) => {
   isRecording = false;
   updatePillState("result");
 
-  // Auto-hide result window after 4 seconds (unless autoPaste handles it)
-  setTimeout(() => {
+  // Cancel any previous auto-hide timer
+  if (resultAutoHideTimer) { clearTimeout(resultAutoHideTimer); resultAutoHideTimer = null; }
+
+  // Auto-hide result window after 5 seconds (cancelled if new recording starts)
+  resultAutoHideTimer = setTimeout(() => {
+    resultAutoHideTimer = null;
     isProcessingResult = false;
-    // Auto-hide main window after showing result
-    if (mainWindow && !mainWindow.isDestroyed() && !isRecording) {
+    // Only auto-hide if NOT recording and NOT processing
+    if (mainWindow && !mainWindow.isDestroyed() && !isRecording && !wakeWordTriggered) {
       mainWindow.hide();
       updatePillState("idle");
     }
-  }, 4000);
+  }, 5000);
 });
 
 ipcMain.on("hide-window", () => {
@@ -978,6 +991,7 @@ ipcMain.handle("get-changelog", () => {
   return {
     version: app.getVersion(),
     changes: CHANGELOG[app.getVersion()] || [],
+    allVersions: CHANGELOG,
   };
 });
 
@@ -1052,6 +1066,8 @@ ipcMain.on("recording-state", (event, state) => {
   // Keep window visible during recording and briefly after (processing/result)
   if (state) {
     isProcessingResult = true;
+    // Cancel any pending auto-hide from previous result
+    if (resultAutoHideTimer) { clearTimeout(resultAutoHideTimer); resultAutoHideTimer = null; }
   }
   updatePillState(state ? "recording" : "idle");
 
