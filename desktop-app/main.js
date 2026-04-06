@@ -1018,6 +1018,226 @@ ipcMain.handle("toggle-power-mode", (event, enabled) => {
   }
 });
 
+// ========== VOSK MODEL MANAGEMENT ==========
+const https = require("https");
+const { pipeline } = require("stream/promises");
+const { createWriteStream, createReadStream } = require("fs");
+
+const VOSK_MODELS = {
+  tr: "vosk-model-small-tr-0.3",
+  en: "vosk-model-small-en-us-0.15",
+  de: "vosk-model-small-de-0.15",
+  fr: "vosk-model-small-fr-0.22",
+  es: "vosk-model-small-es-0.42",
+  ja: "vosk-model-small-ja-0.22",
+  ko: "vosk-model-small-ko-0.22",
+  zh: "vosk-model-small-cn-0.22",
+  pt: "vosk-model-small-pt-0.3",
+  it: "vosk-model-small-it-0.22",
+  ru: "vosk-model-small-ru-0.22",
+  ar: "vosk-model-small-ar-0.22",
+};
+
+function getVoskModelsDir() {
+  return path.join(app.getPath("userData"), "vosk-models");
+}
+
+function getVoskModelDir(lang) {
+  const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+  return path.join(getVoskModelsDir(), modelName);
+}
+
+function isVoskModelDownloaded(lang) {
+  const modelDir = getVoskModelDir(lang);
+  // Check for key model files
+  try {
+    if (!fs.existsSync(modelDir)) return false;
+    const contents = fs.readdirSync(modelDir);
+    // Vosk models have am/ or graph/ directories or conf/mfcc.conf
+    return contents.length > 0 && (
+      contents.includes("am") ||
+      contents.includes("graph") ||
+      contents.includes("conf") ||
+      contents.includes("ivector") ||
+      contents.includes("README")
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Local HTTP server to serve Vosk model files to the WASM worker
+let voskModelServer = null;
+let voskModelServerPort = 0;
+
+function startVoskModelServer() {
+  return new Promise((resolve) => {
+    if (voskModelServer) { resolve(voskModelServerPort); return; }
+    voskModelServer = http.createServer((req, res) => {
+      // Serve model files from userData/vosk-models/
+      const safePath = decodeURIComponent(req.url).replace(/\.\./g, "");
+      const filePath = path.join(getVoskModelsDir(), safePath);
+      if (!fs.existsSync(filePath)) {
+        res.writeHead(404);
+        res.end("Not found");
+        return;
+      }
+      const stat = fs.statSync(filePath);
+      res.writeHead(200, {
+        "Content-Length": stat.size,
+        "Content-Type": "application/octet-stream",
+        "Access-Control-Allow-Origin": "*",
+      });
+      createReadStream(filePath).pipe(res);
+    });
+    voskModelServer.listen(0, "127.0.0.1", () => {
+      voskModelServerPort = voskModelServer.address().port;
+      console.log("Vosk model server running on port:", voskModelServerPort);
+      resolve(voskModelServerPort);
+    });
+  });
+}
+
+function downloadVoskModel(lang) {
+  return new Promise((resolve, reject) => {
+    const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+    const url = `https://alphacephei.com/vosk/models/${modelName}.zip`;
+    const modelsDir = getVoskModelsDir();
+    const zipPath = path.join(modelsDir, `${modelName}.zip`);
+    const modelDir = path.join(modelsDir, modelName);
+
+    if (!fs.existsSync(modelsDir)) {
+      fs.mkdirSync(modelsDir, { recursive: true });
+    }
+
+    console.log("Downloading Vosk model:", url);
+
+    const download = (downloadUrl, retryCount = 0) => {
+      const handler = (response) => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          const redirectUrl = response.headers.location;
+          console.log("Redirect to:", redirectUrl);
+          if (redirectUrl.startsWith("https")) {
+            https.get(redirectUrl, handler).on("error", handleError);
+          } else {
+            http.get(redirectUrl, handler).on("error", handleError);
+          }
+          return;
+        }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`Download failed: HTTP ${response.statusCode}`));
+          return;
+        }
+
+        const totalBytes = parseInt(response.headers["content-length"], 10) || 0;
+        let downloadedBytes = 0;
+        const file = createWriteStream(zipPath);
+
+        response.on("data", (chunk) => {
+          downloadedBytes += chunk.length;
+          const percent = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
+          if (homeWindow && !homeWindow.isDestroyed()) {
+            homeWindow.webContents.send("vosk-download-progress", {
+              lang,
+              percent: Math.round(percent * 10) / 10,
+              bytesDownloaded: downloadedBytes,
+              totalBytes,
+            });
+          }
+        });
+
+        response.pipe(file);
+
+        file.on("finish", () => {
+          file.close();
+          console.log("Download complete, extracting...");
+
+          if (homeWindow && !homeWindow.isDestroyed()) {
+            homeWindow.webContents.send("vosk-download-progress", {
+              lang, percent: 100, bytesDownloaded: totalBytes, totalBytes, status: "extracting"
+            });
+          }
+
+          const isWin = process.platform === "win32";
+          const extractCmd = isWin
+            ? `powershell -Command "Expand-Archive -Force -Path '${zipPath}' -DestinationPath '${modelsDir}'"`
+            : `unzip -o "${zipPath}" -d "${modelsDir}"`;
+
+          exec(extractCmd, { maxBuffer: 1024 * 1024 * 50 }, (err) => {
+            try { fs.unlinkSync(zipPath); } catch {}
+
+            if (err) {
+              console.error("Extraction error:", err);
+              reject(new Error("Extraction failed: " + err.message));
+              return;
+            }
+
+            console.log("Vosk model extracted to:", modelDir);
+            resolve({ success: true, path: modelDir });
+          });
+        });
+
+        file.on("error", (err) => {
+          try { fs.unlinkSync(zipPath); } catch {}
+          reject(err);
+        });
+      };
+
+      const handleError = (err) => {
+        if (retryCount < 3) {
+          console.log(`Download error, retrying (${retryCount + 1}/3)...`);
+          setTimeout(() => download(downloadUrl, retryCount + 1), 2000 * Math.pow(2, retryCount));
+        } else {
+          reject(err);
+        }
+      };
+
+      https.get(downloadUrl, handler).on("error", handleError);
+    };
+
+    download(url);
+  });
+}
+
+// Vosk Model IPC Handlers
+ipcMain.handle("vosk-model-status", (event, lang) => {
+  const downloaded = isVoskModelDownloaded(lang);
+  const modelDir = getVoskModelDir(lang);
+  return { downloaded, path: modelDir, lang, modelName: VOSK_MODELS[lang] || VOSK_MODELS["en"] };
+});
+
+ipcMain.handle("vosk-model-download", async (event, lang) => {
+  try {
+    const result = await downloadVoskModel(lang);
+    return { success: true, path: result.path };
+  } catch (err) {
+    console.error("Vosk model download error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("vosk-model-path", (event, lang) => {
+  return getVoskModelDir(lang);
+});
+
+ipcMain.handle("vosk-model-server-port", async () => {
+  const port = await startVoskModelServer();
+  return port;
+});
+
+ipcMain.handle("vosk-model-delete", (event, lang) => {
+  const modelDir = getVoskModelDir(lang);
+  try {
+    if (fs.existsSync(modelDir)) {
+      fs.rmSync(modelDir, { recursive: true, force: true });
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Change shortcut
 ipcMain.handle("change-shortcut", (event, newShortcut, shortcutId) => {
   try {
