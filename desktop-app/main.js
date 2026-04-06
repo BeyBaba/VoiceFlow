@@ -268,7 +268,7 @@ function createPillWindow() {
 function showPill() {
   if (pillWindow && !pillWindow.isDestroyed()) {
     const settings = loadSettings();
-    if (settings.showPill === true) {
+    if (settings.showPill === true && settings.setupComplete && settings.isAuthenticated) {
       pillWindow.show();
     }
   }
