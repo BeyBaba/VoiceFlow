@@ -323,15 +323,28 @@
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:12px;color:var(--text-3);min-width:16px">1.</span>
-                <input type="text" class="card-input" id="sWakeWord1" placeholder="Ornek: Yaz, Basla, Hey..." style="flex:1;text-align:center;font-weight:700;font-size:15px;padding:9px">
+                <input type="text" class="card-input" id="sWakeWord1" tabindex="1" placeholder="Ornek: Yaz, Basla, Hey..." style="flex:1;text-align:center;font-weight:700;font-size:15px;padding:9px">
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:12px;color:var(--text-3);min-width:16px">2.</span>
-                <input type="text" class="card-input" id="sWakeWord2" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+                <input type="text" class="card-input" id="sWakeWord2" tabindex="2" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:12px;color:var(--text-3);min-width:16px">3.</span>
-                <input type="text" class="card-input" id="sWakeWord3" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+                <input type="text" class="card-input" id="sWakeWord3" tabindex="3" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
+              </div>
+            </div>
+          </div>
+
+          <!-- Microphone Selector -->
+          <div class="card" style="padding:16px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">🎙️</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Mikrofon</div>
+                <select class="card-select" id="pmMicSelect" style="width:100%;padding:8px 10px;border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text-1);border:1px solid var(--border)">
+                  <option value="default">Varsayilan Mikrofon</option>
+                </select>
               </div>
             </div>
           </div>
@@ -382,7 +395,10 @@
               <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden">
                 <div id="pmDownloadBar" style="width:0%;height:100%;background:linear-gradient(90deg,#3B82F6,#8B5CF6);transition:width 0.3s;border-radius:3px"></div>
               </div>
-              <div id="pmDownloadText" style="font-size:11px;color:var(--text-3);margin-top:4px">%0</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                <div id="pmDownloadText" style="font-size:11px;color:var(--text-3)">%0</div>
+                <button id="pmDownloadRetry" onclick="pmRetryDownload()" style="display:none;font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-weight:600">Yeniden Dene</button>
+              </div>
             </div>
           </div>
 
@@ -1507,16 +1523,29 @@
       });
     }
 
-    // Vosk model download progress
+    // Vosk model download progress + stuck detection
+    let pmDownloadLastUpdate = 0;
+    let pmDownloadStuckTimer = null;
     if (window.voiceflow.onVoskDownloadProgress) {
       window.voiceflow.onVoskDownloadProgress((data) => {
         const bar = document.getElementById("pmDownloadBar");
         const text = document.getElementById("pmDownloadText");
         const container = document.getElementById("pmDownloadProgress");
+        const retryBtn = document.getElementById("pmDownloadRetry");
         if (container) container.style.display = "block";
+        if (retryBtn) retryBtn.style.display = "none"; // Hide retry while progress is active
+        pmDownloadLastUpdate = Date.now();
+        // Reset stuck timer
+        if (pmDownloadStuckTimer) clearTimeout(pmDownloadStuckTimer);
+        pmDownloadStuckTimer = setTimeout(() => {
+          // 30 seconds without progress update = stuck
+          if (retryBtn) retryBtn.style.display = "inline-block";
+          if (text) text.textContent += " — Takılmış olabilir";
+        }, 30000);
         if (data.status === "extracting") {
           if (bar) bar.style.width = "100%";
           if (text) text.textContent = "Cikariliyor...";
+          if (pmDownloadStuckTimer) clearTimeout(pmDownloadStuckTimer);
           return;
         }
         if (bar) bar.style.width = data.percent + "%";
@@ -1525,6 +1554,23 @@
         if (text) text.textContent = "%" + Math.round(data.percent) + " (" + mbDown + "/" + mbTotal + " MB)";
       });
     }
+
+    // Retry download function
+    window.pmRetryDownload = async function() {
+      const retryBtn = document.getElementById("pmDownloadRetry");
+      if (retryBtn) retryBtn.style.display = "none";
+      if (pmDownloadStuckTimer) clearTimeout(pmDownloadStuckTimer);
+      // Reset Vosk state
+      if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
+      if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
+      // Delete cached model and re-download
+      const lang = currentSettings.language || "tr";
+      try {
+        await window.voiceflow.voskModelDelete(lang);
+      } catch(e) { console.log("Model delete error:", e); }
+      showToast("Model yeniden indiriliyor...");
+      pmStart();
+    };
 
     // Auto-resume power mode when window regains visibility or focus
     document.addEventListener("visibilitychange", () => {
@@ -1571,12 +1617,45 @@
       pmTestPassed = false;
       document.getElementById("pmActivateSection").style.display = "none";
     }
-    // Save on blur for each input
-    ["sWakeWord1","sWakeWord2","sWakeWord3"].forEach(id => {
+    // Save on blur for each input + TAB navigation
+    const wakeWordIds = ["sWakeWord1","sWakeWord2","sWakeWord3"];
+    wakeWordIds.forEach((id, idx) => {
       document.getElementById(id).addEventListener("blur", saveWakeWords);
       document.getElementById(id).addEventListener("keydown", function(e) {
         if (e.key === "Enter") { this.blur(); document.getElementById("pmTestBtn").click(); }
+        if (e.key === "Tab" && !e.shiftKey && idx < wakeWordIds.length - 1) {
+          e.preventDefault();
+          document.getElementById(wakeWordIds[idx + 1]).focus();
+        }
+        if (e.key === "Tab" && e.shiftKey && idx > 0) {
+          e.preventDefault();
+          document.getElementById(wakeWordIds[idx - 1]).focus();
+        }
       });
+    });
+
+    // Populate Power Mode microphone dropdown
+    async function loadPmMicrophones() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const sel = document.getElementById("pmMicSelect");
+        if (!sel) return;
+        sel.innerHTML = '<option value="default">Varsayilan Mikrofon</option>';
+        devices.filter(d => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications").forEach(d => {
+          const o = document.createElement("option");
+          o.value = d.deviceId;
+          o.textContent = d.label || "Mikrofon";
+          sel.appendChild(o);
+        });
+        if (currentSettings.audioDevice) sel.value = currentSettings.audioDevice;
+      } catch(e) { console.log("Mic enumerate error:", e); }
+    }
+    loadPmMicrophones();
+    document.getElementById("pmMicSelect").addEventListener("change", function() {
+      saveSetting("audioDevice", this.value);
+      // Also update the Ses Ayarlari page selector
+      const sAudio = document.getElementById("sAudioDevice");
+      if (sAudio) sAudio.value = this.value;
     });
 
     // TEST BUTTON — starts mic test for wake word
