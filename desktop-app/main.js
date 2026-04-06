@@ -5,6 +5,39 @@ const { exec } = require("child_process");
 const http = require("http");
 const { autoUpdater } = require("electron-updater");
 
+// ========== GLOBAL ERROR HANDLERS ==========
+// Prevent app from crashing on uncaught errors (e.g. autoUpdater in dev mode)
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err.message);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+
+// ========== CHANGELOG ==========
+const CHANGELOG = {
+  "4.5.0": [
+    "Yerel ses tanima motoru (Vosk) eklendi — internet gerektirmez",
+    "Uyanma kelimesi artik yerel olarak algilaniyor (API yok)",
+    "12 dil icin otomatik model indirme destegi",
+    "Uygulama cokme sorunu duzeltildi",
+    "Yeni versiyon bildirimi eklendi",
+  ],
+  "4.4.1": [
+    "Vosk model indirme ilerleme cubugu eklendi",
+    "Model indirme main process uzerinden yapiliyor",
+  ],
+  "4.4.0": [
+    "Vosk yerel ses tanima entegrasyonu",
+    "Power Mode artik API gerektirmiyor",
+  ],
+  "4.3.5": [
+    "Super User icin rate limit mesajlari iyilestirildi",
+    "API Maliyet sayfasi duzeltildi",
+    "Taskbar ikonu duzeltildi",
+  ],
+};
+
 let mainWindow = null;
 let pillWindow = null;
 let settingsWindow = null;
@@ -912,6 +945,14 @@ ipcMain.handle("get-version", () => {
   return app.getVersion();
 });
 
+// Changelog — what's new in this version
+ipcMain.handle("get-changelog", () => {
+  return {
+    version: app.getVersion(),
+    changes: CHANGELOG[app.getVersion()] || [],
+  };
+});
+
 // Auto-start
 ipcMain.handle("get-auto-start", () => {
   try {
@@ -1449,17 +1490,31 @@ function setupAutoUpdater() {
 }
 
 function startAutoUpdateChecks() {
-  // Check after 5 seconds, then every 2 hours
+  // Skip auto-update checks in dev mode — no app-update.yml exists
+  if (!app.isPackaged) {
+    console.log("Skipping auto-update checks (dev mode)");
+    return;
+  }
+
+  // Check after 10 seconds, then every 2 hours
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.log("Update check failed:", err.message);
-    });
-  }, 5000);
+    try {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log("Update check failed:", err.message);
+      });
+    } catch (err) {
+      console.log("Update check error:", err.message);
+    }
+  }, 10000);
 
   setInterval(() => {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.log("Update check failed:", err.message);
-    });
+    try {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log("Update check failed:", err.message);
+      });
+    } catch (err) {
+      console.log("Update check error:", err.message);
+    }
   }, 2 * 60 * 60 * 1000);
 }
 
@@ -1473,6 +1528,9 @@ function notifyAllWindows(channel, data) {
 
 // IPC: manual update check from UI
 ipcMain.handle("check-for-updates", async () => {
+  if (!app.isPackaged) {
+    return { available: false, error: "Dev mode — update check disabled" };
+  }
   try {
     const result = await autoUpdater.checkForUpdates();
     return { available: !!result?.updateInfo, version: result?.updateInfo?.version };
@@ -1563,7 +1621,11 @@ app.whenReady().then(async () => {
   }
 
   // ===== AUTO-UPDATE =====
-  setupAutoUpdater();
+  try {
+    setupAutoUpdater();
+  } catch (err) {
+    console.error("Auto-updater setup failed:", err.message);
+  }
 
   console.log("VoiceFlow started successfully!");
   console.log("Settings path:", getSettingsPath());
