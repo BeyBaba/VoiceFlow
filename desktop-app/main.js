@@ -16,6 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.6.0": [
+    "Yeni mavi mikrofon logosu — tum platformlarda",
+    "Kayit sirasinda logo kirmiziya donuyor (tray + pencereler)",
+    "Guc Modu hassasiyet ayari eklendi (1-5 arasi slider)",
+    "Uyanma kelimesi eslestirmesi siklestirildi (Vosk guven skoru kontrolu)",
+    "Dikte sirasinda pencere kapanma sorunu tamamen duzeltildi",
+  ],
   "4.5.1": [
     "Dikte sirasinda pencerenin kapanma sorunu duzeltildi",
     "Sonuc ekrani artik 4 saniye sonra otomatik kapaniyor",
@@ -653,6 +660,9 @@ function toggleRecording() {
     mainWindow.restore();
   }
 
+  // Prevent blur from hiding window during the entire toggle flow
+  isProcessingResult = true;
+
   const wasHidden = !mainWindow.isVisible();
   if (wasHidden) {
     mainWindow.setPosition(newX, newY);
@@ -1023,16 +1033,17 @@ ipcMain.on("power-mode-heard", (event, text, isPartial) => {
 ipcMain.on("wake-word-detected", () => {
   console.log("Wake word detected! isRecording:", isRecording);
 
-  // Set flag to prevent blur handler from hiding window during activation
+  // Set ALL flags to prevent blur handler from hiding window during activation
   wakeWordTriggered = true;
+  isProcessingResult = true;
 
   // Toggle recording — wake word starts/stops dictation
   toggleRecording();
 
-  // Clear the flag after recording has had time to start (longer to prevent blur race condition)
+  // Clear the wake word flag after recording has had time to start
   setTimeout(() => {
     wakeWordTriggered = false;
-  }, 4000);
+  }, 6000);
 });
 
 // Resume power mode when recording finishes
@@ -1043,6 +1054,18 @@ ipcMain.on("recording-state", (event, state) => {
     isProcessingResult = true;
   }
   updatePillState(state ? "recording" : "idle");
+
+  // Switch icon: red while recording, blue when idle
+  const iconFile = state ? "icon-red.ico" : "icon.ico";
+  const iconPath = path.join(__dirname, "assets", iconFile);
+  if (fs.existsSync(iconPath)) {
+    const icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setIcon(icon);
+      if (homeWindow && !homeWindow.isDestroyed()) homeWindow.setIcon(icon);
+      if (tray) tray.setImage(icon.resize({ width: 16, height: 16 }));
+    }
+  }
 
   // Escape tusu: kayit sirasinda Escape = kaydi durdur + isle + yapistir (Ctrl+Space gibi)
   if (state) {
