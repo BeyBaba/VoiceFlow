@@ -1048,22 +1048,9 @@ function getVoskModelDir(lang) {
 }
 
 function isVoskModelDownloaded(lang) {
-  const modelDir = getVoskModelDir(lang);
-  // Check for key model files
-  try {
-    if (!fs.existsSync(modelDir)) return false;
-    const contents = fs.readdirSync(modelDir);
-    // Vosk models have am/ or graph/ directories or conf/mfcc.conf
-    return contents.length > 0 && (
-      contents.includes("am") ||
-      contents.includes("graph") ||
-      contents.includes("conf") ||
-      contents.includes("ivector") ||
-      contents.includes("README")
-    );
-  } catch {
-    return false;
-  }
+  const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+  const tarGzPath = path.join(getVoskModelsDir(), `${modelName}.tar.gz`);
+  return fs.existsSync(tarGzPath);
 }
 
 // Local HTTP server to serve Vosk model files to the WASM worker
@@ -1101,13 +1088,21 @@ function startVoskModelServer() {
 function downloadVoskModel(lang) {
   return new Promise((resolve, reject) => {
     const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+    // Download tar.gz for vosk-browser compatibility
     const url = `https://alphacephei.com/vosk/models/${modelName}.zip`;
     const modelsDir = getVoskModelsDir();
+    const tarGzPath = path.join(modelsDir, `${modelName}.tar.gz`);
     const zipPath = path.join(modelsDir, `${modelName}.zip`);
-    const modelDir = path.join(modelsDir, modelName);
 
     if (!fs.existsSync(modelsDir)) {
       fs.mkdirSync(modelsDir, { recursive: true });
+    }
+
+    // If tar.gz already exists, skip download
+    if (fs.existsSync(tarGzPath)) {
+      console.log("Vosk model tar.gz already exists:", tarGzPath);
+      resolve({ success: true, path: tarGzPath });
+      return;
     }
 
     console.log("Downloading Vosk model:", url);
@@ -1159,6 +1154,7 @@ function downloadVoskModel(lang) {
             });
           }
 
+          // Extract ZIP then create tar.gz for vosk-browser
           const isWin = process.platform === "win32";
           const extractCmd = isWin
             ? `powershell -Command "Expand-Archive -Force -Path '${zipPath}' -DestinationPath '${modelsDir}'"`
@@ -1173,8 +1169,29 @@ function downloadVoskModel(lang) {
               return;
             }
 
-            console.log("Vosk model extracted to:", modelDir);
-            resolve({ success: true, path: modelDir });
+            // Create tar.gz from extracted directory for vosk-browser WASM worker
+            const modelDir = path.join(modelsDir, modelName);
+            if (homeWindow && !homeWindow.isDestroyed()) {
+              homeWindow.webContents.send("vosk-download-progress", {
+                lang, percent: 100, bytesDownloaded: totalBytes, totalBytes, status: "packaging"
+              });
+            }
+
+            const tarCmd = isWin
+              ? `powershell -Command "cd '${modelsDir}'; tar -czf '${tarGzPath}' '${modelName}'"`
+              : `cd "${modelsDir}" && tar -czf "${tarGzPath}" "${modelName}"`;
+
+            exec(tarCmd, { maxBuffer: 1024 * 1024 * 50 }, (tarErr) => {
+              if (tarErr) {
+                console.error("Tar.gz creation error:", tarErr);
+                // Fallback: model dir exists even without tar.gz
+                resolve({ success: true, path: modelDir, noTarGz: true });
+                return;
+              }
+
+              console.log("Vosk model tar.gz created:", tarGzPath);
+              resolve({ success: true, path: tarGzPath });
+            });
           });
         });
 
@@ -1224,6 +1241,12 @@ ipcMain.handle("vosk-model-path", (event, lang) => {
 ipcMain.handle("vosk-model-server-port", async () => {
   const port = await startVoskModelServer();
   return port;
+});
+
+ipcMain.handle("vosk-model-serve-url", async (event, lang) => {
+  const port = await startVoskModelServer();
+  const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+  return `http://127.0.0.1:${port}/${modelName}.tar.gz`;
 });
 
 ipcMain.handle("vosk-model-delete", (event, lang) => {

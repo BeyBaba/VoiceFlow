@@ -89,6 +89,7 @@ contextBridge.exposeInMainWorld("voiceflow", {
   voskModelPath: (lang) => ipcRenderer.invoke("vosk-model-path", lang),
   voskModelDelete: (lang) => ipcRenderer.invoke("vosk-model-delete", lang),
   voskModelServerPort: () => ipcRenderer.invoke("vosk-model-server-port"),
+  voskModelServeUrl: (lang) => ipcRenderer.invoke("vosk-model-serve-url", lang),
   onVoskDownloadProgress: (callback) => {
     ipcRenderer.on("vosk-download-progress", (event, data) => callback(data));
   },

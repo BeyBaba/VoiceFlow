@@ -1084,31 +1084,31 @@
         updatePowerModeUI("loading");
         const lang = currentSettings.language || "tr";
 
-        // Step 1: Load Vosk model (vosk-browser handles download + IndexedDB caching)
-        const VOSK_MODEL_URLS = {
-          tr: "https://alphacephei.com/vosk/models/vosk-model-small-tr-0.3.tar.gz",
-          en: "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.tar.gz",
-          de: "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.tar.gz",
-          fr: "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.tar.gz",
-          es: "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.tar.gz",
-          ja: "https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.tar.gz",
-          ko: "https://alphacephei.com/vosk/models/vosk-model-small-ko-0.22.tar.gz",
-          zh: "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.tar.gz",
-          pt: "https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.tar.gz",
-          it: "https://alphacephei.com/vosk/models/vosk-model-small-it-0.22.tar.gz",
-          ru: "https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.tar.gz",
-          ar: "https://alphacephei.com/vosk/models/vosk-model-small-ar-0.22.tar.gz",
-        };
-
+        // Step 1: Download model via main process if needed, then load via local server
         if (!voskModel || voskModel._lang !== lang) {
           if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
           if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
 
-          const modelUrl = VOSK_MODEL_URLS[lang] || VOSK_MODEL_URLS["en"];
-          updatePowerModeUI("downloading");
-          const liveEl = document.getElementById("pmLiveText");
-          if (liveEl) { liveEl.textContent = "Ses motoru yukleniyor (~45MB, ilk sefer)..."; liveEl.style.color = "var(--accent)"; }
-          console.log("Loading Vosk model:", modelUrl);
+          // Check if model is already downloaded
+          const modelStatus = await window.voiceflow.voskModelStatus(lang);
+          if (!modelStatus.downloaded) {
+            updatePowerModeUI("downloading");
+            const liveEl = document.getElementById("pmLiveText");
+            if (liveEl) { liveEl.textContent = "Ses modeli indiriliyor (~45MB)..."; liveEl.style.color = "var(--accent)"; }
+
+            const dlResult = await window.voiceflow.voskModelDownload(lang);
+            if (!dlResult.success) {
+              updatePowerModeUI("error");
+              showToast("Model indirilemedi: " + (dlResult.error || "Bilinmeyen hata"));
+              return;
+            }
+          }
+
+          // Get localhost URL for the tar.gz file
+          const modelUrl = await window.voiceflow.voskModelServeUrl(lang);
+          const liveEl2 = document.getElementById("pmLiveText");
+          if (liveEl2) { liveEl2.textContent = "Ses motoru yukleniyor..."; liveEl2.style.color = "var(--text-2)"; }
+          console.log("Loading Vosk model from:", modelUrl);
 
           voskModel = await Vosk.createModel(modelUrl);
           voskModel._lang = lang;
