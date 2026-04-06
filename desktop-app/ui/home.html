@@ -211,7 +211,7 @@
   <div id="dashboardView">
     <div class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon" style="background:#4A90D9;border-radius:8px;"><svg viewBox="0 0 512 512" width="20" height="20"><circle cx="256" cy="256" r="256" fill="#4A90D9"/><g fill="white"><rect x="205" y="120" width="102" height="180" rx="51" ry="51"/><path d="M168 280 A88 88 0 0 0 344 280" fill="none" stroke="white" stroke-width="24" stroke-linecap="round"/><rect x="244" y="355" width="24" height="60"/><rect x="200" y="405" width="112" height="24" rx="12"/></g></svg></div>
+        <div class="brand-icon" style="background:linear-gradient(135deg,#0F766E,#4F46E5);border-radius:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
         <span class="brand-name">VoiceFlow</span>
         <span class="brand-badge" id="planBadge">Free</span>
       </div>
@@ -859,14 +859,27 @@
         const changelog = await window.voiceflow.getChangelog();
         const container = document.getElementById("aboutChangelog");
         if (!container || !changelog) return;
-        // Build changelog HTML — current + older versions
+        const allVersions = changelog.allVersions || {};
+        const versions = Object.keys(allVersions).sort((a, b) => {
+          const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+          for (let i = 0; i < 3; i++) { if ((pa[i]||0) !== (pb[i]||0)) return (pb[i]||0) - (pa[i]||0); }
+          return 0;
+        });
         let html = "";
-        if (changelog.changes && changelog.changes.length > 0) {
-          html += '<div style="margin-bottom:12px;"><div style="font-weight:600;color:var(--text-1);margin-bottom:4px;">v' + changelog.version + ' (Guncel)</div>';
-          html += '<ul style="margin:0;padding-left:18px;list-style:disc;">';
-          changelog.changes.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
-          html += '</ul></div>';
-        }
+        versions.forEach((ver, idx) => {
+          const changes = allVersions[ver] || [];
+          const isCurrent = ver === changelog.version;
+          const isOpen = idx === 0; // Only current version open by default
+          html += '<details style="margin-bottom:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;"' + (isOpen ? ' open' : '') + '>';
+          html += '<summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:12px;color:var(--text-1);background:var(--bg-input);user-select:none;display:flex;align-items:center;gap:8px;">';
+          html += '<span style="font-size:10px;color:var(--text-3);">&#9654;</span> v' + esc(ver);
+          if (isCurrent) html += ' <span style="font-size:10px;background:var(--accent);color:white;padding:1px 6px;border-radius:4px;">Guncel</span>';
+          html += '</summary>';
+          html += '<div style="padding:8px 14px 12px;">';
+          html += '<ul style="margin:0;padding-left:16px;list-style:disc;font-size:12px;color:var(--text-2);">';
+          changes.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
+          html += '</ul></div></details>';
+        });
         container.innerHTML = html || '<div style="color:var(--text-3);">Degisiklik bilgisi yok</div>';
       } catch(e) {}
     }
