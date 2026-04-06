@@ -16,6 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.2": [
+    "Tum ikonlar RGBA renkli — gradient teal-indigo dogru gorunuyor",
+    "Login ekraninda dikte penceresi artik gorunmuyor",
+    "Vosk model yukleme takildiysa 'Yeniden Dene' butonu",
+    "Hassasiyet varsayilan seviye 2 (Dusuk) olarak basliyor",
+    "Kurulum 'Bu bilgisayari kullanan herkes' secili geliyor",
+  ],
   "4.7.1": [
     "Setup ekrani ilk kurulumda otomatik on planda aciliyor",
     "Pill bar (Ctrl+Space bar) varsayilan olarak gizli",
@@ -188,20 +195,10 @@ function createMainWindow() {
   });
 
   mainWindow.webContents.on("did-finish-load", () => {
+    // Only show main dictation window if user is authenticated AND setup is complete
+    // During first run / login, ONLY homeWindow is shown — mainWindow stays hidden
     const s = loadSettings();
-    if (!s.setupComplete || !s.isAuthenticated) {
-      // First run / not logged in — show setup wizard in front of everything
-      mainWindow.show();
-      mainWindow.focus();
-      mainWindow.moveTop();
-      mainWindow.setAlwaysOnTop(true);
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.setAlwaysOnTop(true); // Keep on top during setup
-        }
-      }, 500);
-    } else {
-      // Normal use — show dictation window
+    if (s.isAuthenticated && s.setupComplete) {
       mainWindow.show();
       mainWindow.focus();
     }
@@ -1275,17 +1272,34 @@ function downloadVoskModel(lang) {
           }
 
           // Extract ZIP then create tar.gz for vosk-browser
+          // Verify zip file exists and has data before extracting
+          if (!fs.existsSync(zipPath)) {
+            reject(new Error("ZIP dosyasi bulunamadi: " + zipPath));
+            return;
+          }
+          const zipSize = fs.statSync(zipPath).size;
+          if (totalBytes > 0 && zipSize < totalBytes * 0.95) {
+            console.error(`ZIP incomplete: ${zipSize} bytes vs expected ${totalBytes}`);
+            try { fs.unlinkSync(zipPath); } catch {}
+            reject(new Error("Indirme tamamlanamadi. Lutfen tekrar deneyin."));
+            return;
+          }
+
           const isWin = process.platform === "win32";
+          // Use double quotes for PowerShell paths to handle spaces
           const extractCmd = isWin
-            ? `powershell -Command "Expand-Archive -Force -Path '${zipPath}' -DestinationPath '${modelsDir}'"`
+            ? `powershell -NoProfile -Command "Expand-Archive -Force -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${modelsDir.replace(/'/g, "''")}'"`
             : `unzip -o "${zipPath}" -d "${modelsDir}"`;
 
-          exec(extractCmd, { maxBuffer: 1024 * 1024 * 50 }, (err) => {
-            try { fs.unlinkSync(zipPath); } catch {}
+          exec(extractCmd, { maxBuffer: 1024 * 1024 * 50, timeout: 120000 }, (err) => {
+            // Only delete zip on SUCCESS — keep it for retry on failure
+            if (!err) { try { fs.unlinkSync(zipPath); } catch {} }
 
             if (err) {
               console.error("Extraction error:", err);
-              reject(new Error("Extraction failed: " + err.message));
+              // Delete corrupt zip so retry downloads fresh
+              try { fs.unlinkSync(zipPath); } catch {}
+              reject(new Error("ZIP cikarma hatasi. Lutfen 'Yeniden Dene' butonuna basin."));
               return;
             }
 
