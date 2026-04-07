@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, screen, clipboard, shell, dialog, powerSaveBlocker, Notification } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
@@ -461,8 +461,14 @@ function createHomeWindow(navigateTo) {
   // Don't destroy on close — hide instead (keeps Power Mode mic alive)
   homeWindow.on("close", (e) => {
     if (!app.isQuitting) {
-      e.preventDefault();
-      homeWindow.hide();
+      const settings = loadSettings();
+      if (settings.minimizeToTray !== false) {
+        // Minimize to tray — hide window, keep app running
+        e.preventDefault();
+        homeWindow.hide();
+      }
+      // If minimizeToTray is false, let the window close normally
+      // App stays alive via tray icon
     }
   });
 }
@@ -988,7 +994,18 @@ ipcMain.on("show-result", (event, text) => {
   isProcessingResult = false;
   updatePillState("result");
   // Window stays visible until user closes it (ESC, Ctrl+Space, Kapat button, or auto-paste)
-  // No auto-hide timer — the blur handler will handle hiding after 3s if user doesn't interact
+
+  // Send desktop notification if enabled
+  const settings = loadSettings();
+  if (settings.notifications !== false && text && Notification.isSupported()) {
+    const truncated = text.length > 80 ? text.substring(0, 80) + "..." : text;
+    new Notification({
+      title: "VoiceFlow",
+      body: truncated,
+      icon: path.join(__dirname, "assets", "icon.ico"),
+      silent: true,
+    }).show();
+  }
 });
 
 ipcMain.on("hide-window", () => {

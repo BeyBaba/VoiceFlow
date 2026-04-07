@@ -1,14 +1,31 @@
-# VoiceFlow - Claude Code Kurallari
+# VoiceFlow - Claude Code Kurallari (v2.12 uyumlu)
+
+## SESSION BASLANGIC
+- Her yeni session'da "Global CLAUDE.md v2.12 aktif" bildir
+- Her session'da evrensel kurallari cek: `curl -s https://raw.githubusercontent.com/BeyBaba/BSA-Starter/main/GLOBAL_CLAUDE_MD.md`
+- Erisilemezse kullaniciyi bildir, session'a devam et ama uyar
 
 ## KRITIK (Asla ihlal etme)
 1. **Otomatik PR + Merge** - Claude otomatik PR olusturur ve merge eder. Kullaniciya "merge edeyim mi?" diye SORMA — direkt yap. Sadece sonucu bildir: "PR #X olusturuldu ve merge edildi"
 2. **main/master korumasi** - main'e direkt push YASAK. Her zaman claude/ branch → PR → merge akisi
-3. **PR zorunlulugu** - main'e direkt push yok, PR uzerinden merge
+3. **PR zorunlulugu** - main'e direkt push yok, PR uzerinden merge. Proje kurali "sormadan merge yapma" diyorsa SOR.
 4. **Test sonrasi push** - Syntax/bracket kontrolu yapilmadan push yapma
 5. **Gizli dosya korumasi** - .env, .env.local, .env.*.local, credentials, API key ASLA commit edilmez. .gitignore'da mutlaka olmali.
-6. **Placeholder yasak** - Kullaniciya verilen komutlarda ASLA placeholder birakma ({VERSION}, {OZET} gibi). Her seferinde gercek degerleri DOLDURULMUS olarak ver.
+6. **Placeholder yasak** - Kullaniciya verilen komutlarda ASLA placeholder birakma ({VERSION}, {OZET} gibi). Her seferinde gercek degerleri DOLDURULMUS olarak ver. Istisna: shell variable (${PROJE_ADI}).
 7. **Kullaniciya komut verirken PowerShell formati** - Kullaniciya terminal komutu verilecekse HER ZAMAN Windows PowerShell formati kullan. Ornek: `rm -rf` degil `Remove-Item -Recurse`. Claude kendi ortaminda (WSL/Linux) bash kullanabilir ama kullaniciya verilen komutlar PowerShell olmali.
 8. **Token guvenligi** - Token'i ASLA chat'e yazdirma, dosyaya yazma, CLAUDE.md'ye yazma. Token gerektiginde kullaniciya terminalde calistirmasi icin komut ver.
+
+## DURUSTLUK ONCELIKLI GELISTIRME
+- Electron'da teknik olarak YAPILAMAYAN ozellik ASLA arayuze eklenmez. Kullaniciyi yaniltma.
+- Her ozellik eklendiginde "Bu gercekten calisiyor mu?" sorusuna kanitla (test/log/ekran goruntusu) cevap ver.
+- Kod yazildi ama aktif edilmediyse acikca bildir: "DIKKAT: Bu modul yazildi ama aktif degil, aktivasyon icin su adimlar lazim..."
+- ASLA "bitti" deme, eger ozellik test edilip calistigi dogrulanmadiysa.
+- Platform kisiti varsa EN BASTA soyle, sonraya birakma.
+- Arayuzde toggle/buton/gosterge varsa, arkasinda gercek calisan kod OLMALIDIR. Sadece UI olan ozellik YASAKTIR.
+- Ozellik tamamlandiginda su formatla rapor ver:
+  - CALISIYOR: [ozellik adi] — [test kaniti]
+  - YAZILDI AMA AKTIF DEGIL: [ozellik adi] — [aktivasyon adimlari]
+  - BU PLATFORMDA IMKANSIZ: [ozellik adi] — [neden + hangi platformda yapilabilir]
 
 ## Kullanici Calisma Ortami
 - Varsayilan proje yolu: `D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow`
@@ -40,7 +57,7 @@
 
 ## Projeler Arasi Ogrenme
 - Bir projede cozulen sorun diger projelerde de gecerli olabilir
-- Bilinen projeler: ADHD Killer, VoiceFlow, GhostX, BILSAV PWA
+- Bilinen projeler: ADHD Killer, VoiceFlow, GhostX, BILSAV PWA, EasyRide
 - "Bu sorunu [diger proje]'de soyle cozmustuk, burada da uygulayalim mi?" diye sor
 
 ## PROJE YAPISI
@@ -50,11 +67,12 @@
    - Desktop: manifest.json ile kurulabilir
    - iOS'ta "Ana Ekrana Ekle" CALISMALI
    - PNG/SVG ikonlar her platform icin hazir (192x192, 512x512)
+   - skipWaiting, cache temizleme, guncelleme bildirimi zorunlu
 9. **Mobil uyumluluk** - Responsive, 768px breakpoint, sidebar tam ekran gecisi
 10. **Haptic feedback** - Tum butonlarda navigator.vibrate()
 11. **Mobil-first** - viewport meta, zoom engelleme, device-width. Ekran boyutuna otomatik uyum. Telefon/tablet/desktop farkli gosterim.
 12. **Adaptive UI** - Mobilde native gibi (tam ekran, gesture, bottom nav). Web'de web gibi (sidebar, hover, genis layout). Platform algila, farkli UX sun.
-13. **i18n-ready** - UI string'leri dil dosyasindan (tr.json, en.json). Hardcoded metin yok. Yeni dil = yeni JSON
+13. **i18n-ready** - UI string'leri dil dosyasindan (tr.json, en.json). Hardcoded metin yok. Yeni dil = yeni JSON. Varsayilan TR.
 14. **.gitignore zorunlu** - node_modules/, .next/, .env, .env.local, .env.*.local, dist/, build/, .DS_Store, *.log, coverage/
 
 ## VERSIYON VE DEPLOY
@@ -70,7 +88,7 @@
 
 ## Vercel + SQLite YASAK
 - Vercel serverless ortaminda SQLite CALISMAZ (/tmp her cold start'ta sifirlanir)
-- Vercel + SQLite ❌ / Vercel + execSync ❌ / Vercel + lokal dosya DB ❌
+- Vercel + SQLite / Vercel + execSync / Vercel + lokal dosya DB YASAK
 - ZORUNLU: Vercel + Supabase (PostgreSQL)
 - Mevcut Supabase Org: savasarac@gmail.com's Org (giddtvgowtnloabwsvin)
 - Bolge tercihi: eu-west-2 (Turkiye'ye yakin)
@@ -103,6 +121,10 @@
 - Ses/voice isi → /voice-ai-development kullan
 - Chrome extension → /chrome-extension-developer kullan
 - PWA isi → /progressive-web-app kullan
+- Supabase → /postgres-best-practices kullan
+- Git → /git-pushing kullan
+- n8n → /n8n-workflow-patterns kullan
+- LLM → /llm-app-patterns kullan
 
 ## META
 23. **Kural senkronizasyonu** - Kural degisirse sor: "Global CLAUDE.md'ye ekleyeyim mi?"
@@ -114,9 +136,14 @@
 - Super user her zaman `lifetime` plan'a sahiptir
 - Bu kural TUM projelerde gecerlidir
 - Yeni proje olusturulurken auth/payment kodunda super user kontrolu EKLENMELI
-- Super user listesi: src/lib/auth.ts icinde SUPER_USERS array'inde tanimli
+- Super user listesi: desktop-app/ui/home.html icinde SUPER_USERS array'inde tanimli
 
 ## Onemli Kurallar
 - Otokopi (auto-copy) ASLA kapatilamaz — her zaman acik kalmali
 - Power Mode ve Auto-paste sadece Pro/Trial kullanicilara acik
 - 3.1.3 exe backup'i her zaman koru (dist klasorunde)
+
+## Yedek Kurali
+- ZIP yedek yolu: /mnt/g/Drive'im/AAA_Projeler/Aa Projeler Backup/
+- Git tag + ZIP secenegi sun
+- Tag 403 hatasi → token scope uyar
