@@ -374,7 +374,7 @@
           </div>
 
           <!-- Step 3: Activate (shown after successful test) -->
-          <div class="card" style="padding:20px;display:none" id="pmActivateSection">
+          <div class="card" style="padding:20px" id="pmActivateSection">
             <div style="font-size:14px;font-weight:700;margin-bottom:4px">3. Guc Modunu Etkinlestir</div>
             <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Test basarili! Simdi guc modunu aktif edebilirsiniz:</div>
             <div class="card-row" style="padding:0">
@@ -400,6 +400,7 @@
                 <button id="pmDownloadRetry" onclick="pmRetryDownload()" style="display:none;font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-weight:600">Yeniden Dene</button>
               </div>
             </div>
+            <button id="pmStopBtn" onclick="pmStopFromUI()" style="display:none;margin-top:12px;padding:8px 20px;border:1px solid rgba(239,68,68,0.4);border-radius:8px;background:rgba(239,68,68,0.08);color:#EF4444;cursor:pointer;font-size:12px;font-weight:600;width:100%">Guc Modunu Kapat</button>
           </div>
 
           <!-- Sensitivity slider -->
@@ -538,7 +539,7 @@
         <div class="page-header"><h1 class="page-title">Gorunum</h1><p class="page-desc">Arayuz ayarlari</p></div>
         <div class="page-body">
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Tema</div><div class="card-hint">Uygulama gorunumunu secin</div></div><select class="card-select" id="sTheme"><option value="light">Acik Mod</option><option value="dark">Karanlik Mod</option></select></div></div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Alt cubugu goster</div><div class="card-hint">Ekranin altinda VoiceFlow cubugu</div></div><label class="toggle"><input type="checkbox" id="sShowPill" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Alt cubugu goster</div><div class="card-hint">Ekranin altinda VoiceFlow cubugu</div></div><label class="toggle"><input type="checkbox" id="sShowPill"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Alt cubuk konumu</div><div class="card-hint">Cubugun ekrandaki konumu</div></div><select class="card-select" id="sPillPosition"><option value="center">Orta</option><option value="right">Sag</option><option value="left">Sol</option></select></div></div>
         </div>
       </div>
@@ -1430,6 +1431,17 @@
       updatePowerModeUI("off");
     }
 
+    // Stop Power Mode from UI button
+    function pmStopFromUI() {
+      pmStop();
+      document.getElementById("sPowerMode").checked = false;
+      saveSetting("powerMode", false);
+      window.voiceflow.togglePowerMode(false);
+      document.getElementById("pmActivateHint").textContent = "Kapali";
+      showToast("Guc Modu kapatildi");
+    }
+    window.pmStopFromUI = pmStopFromUI;
+
     let pmPauseTime = 0;
     function pmPause() {
       if (pmAudioCtx && pmAudioCtx.state === "running") pmAudioCtx.suspend();
@@ -1567,6 +1579,12 @@
       if (dlProgress) {
         dlProgress.style.display = (status === "downloading") ? "block" : "none";
       }
+
+      // Show stop button when power mode is active (listening, loading, downloading)
+      const stopBtn = document.getElementById("pmStopBtn");
+      if (stopBtn) {
+        stopBtn.style.display = (status === "listening" || status === "loading" || status === "downloading" || status === "error") ? "block" : "none";
+      }
     }
 
     // Listen for power mode updates from main process
@@ -1681,7 +1699,6 @@
       saveSetting("wakeWord", words[0] || ""); // backwards compat
       // Reset test state when words change
       pmTestPassed = false;
-      document.getElementById("pmActivateSection").style.display = "none";
     }
     // Save on blur for each input + TAB navigation
     const wakeWordIds = ["sWakeWord1","sWakeWord2","sWakeWord3"];
@@ -1955,8 +1972,6 @@
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
             if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
-
-            document.getElementById("pmActivateSection").style.display = "block";
 
             setTimeout(() => {
               pmStopTest();
