@@ -16,6 +16,14 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.6": [
+    "Vosk model indirme hatasi duzeltildi — file.close() race condition fix",
+    "Transkripsiyon gecmisi kapali iken gecmis kaydedilmiyor",
+    "Otomatik yapistir varsayilan ACIK",
+    "Maksimum kayit suresi varsayilan 5 dakika",
+    "AI Modeli varsayilan Whisper v3 Turbo",
+    "Program her zaman Ana Sayfa'dan basliyor",
+  ],
   "4.7.5": [
     "Dikte cubugu suruklenince pozisyonunu hatirliyor — bir sonraki acilista ayni yerde",
     "Pill bar startup'da hic olusturulmuyor — sadece ayarlardan acilinca yaratiliyor",
@@ -344,10 +352,8 @@ function createHomeWindow(navigateTo) {
   if (homeWindow && !homeWindow.isDestroyed()) {
     homeWindow.show();
     homeWindow.focus();
-    // Navigate to specific page if requested
-    if (navigateTo) {
-      homeWindow.webContents.send("show-page", navigateTo);
-    }
+    // Navigate to specific page, or reset to home page if no target
+    homeWindow.webContents.send("show-page", navigateTo || "home");
     return;
   }
 
@@ -1313,21 +1319,21 @@ function downloadVoskModel(lang) {
         response.pipe(file);
 
         file.on("finish", () => {
-          file.close();
-          console.log("Download complete, extracting...");
+          // Wait for file descriptor to close before checking existence (fixes race condition)
+          file.close(() => {
+            console.log("Download complete, file closed. Extracting...");
 
-          if (homeWindow && !homeWindow.isDestroyed()) {
-            homeWindow.webContents.send("vosk-download-progress", {
-              lang, percent: 100, bytesDownloaded: totalBytes, totalBytes, status: "extracting"
-            });
-          }
+            if (homeWindow && !homeWindow.isDestroyed()) {
+              homeWindow.webContents.send("vosk-download-progress", {
+                lang, percent: 100, bytesDownloaded: totalBytes, totalBytes, status: "extracting"
+              });
+            }
 
-          // Extract ZIP then create tar.gz for vosk-browser
-          // Verify zip file exists and has data before extracting
-          if (!fs.existsSync(zipPath)) {
-            reject(new Error("ZIP dosyasi bulunamadi: " + zipPath));
-            return;
-          }
+            // Verify zip file exists and has data before extracting
+            if (!fs.existsSync(zipPath)) {
+              reject(new Error("ZIP dosyasi bulunamadi: " + zipPath));
+              return;
+            }
           const zipSize = fs.statSync(zipPath).size;
           if (totalBytes > 0 && zipSize < totalBytes * 0.95) {
             console.error(`ZIP incomplete: ${zipSize} bytes vs expected ${totalBytes}`);
@@ -1378,7 +1384,8 @@ function downloadVoskModel(lang) {
               resolve({ success: true, path: tarGzPath });
             });
           });
-        });
+          }); // close file.close callback
+        }); // close file.on("finish")
 
         file.on("error", (err) => {
           try { fs.unlinkSync(zipPath); } catch {}

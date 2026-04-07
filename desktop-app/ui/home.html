@@ -516,7 +516,7 @@
         <div class="page-body">
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Giris Cihazi</div><div class="card-hint">Kullanilacak mikrofon</div></div><select class="card-select" id="sAudioDevice"><option value="default">Varsayilan Mikrofon</option></select></div></div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Ses Formati</div><div class="card-hint">Kayit icin kullanilacak format</div></div><select class="card-select" id="sAudioFormat"><option value="webm">WebM/Opus</option><option value="wav">WAV</option></select></div></div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Maksimum Kayit Suresi</div><div class="card-hint">Kaydin otomatik duracagi sure</div></div><select class="card-select" id="sMaxRecTime"><option value="60">1 dk</option><option value="120" selected>2 dk</option><option value="300">5 dk</option><option value="600">10 dk</option><option value="0">Sinirsiz</option></select></div></div>
+          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Maksimum Kayit Suresi</div><div class="card-hint">Kaydin otomatik duracagi sure</div></div><select class="card-select" id="sMaxRecTime"><option value="60">1 dk</option><option value="120">2 dk</option><option value="300" selected>5 dk</option><option value="600">10 dk</option><option value="0">Sinirsiz</option></select></div></div>
         </div>
       </div>
 
@@ -971,7 +971,7 @@
       // Ensure embedded API key is saved
       if(!s.apiKey) saveSetting("apiKey", EMBEDDED_API_KEY);
       updateApiKeyUI();
-      if(s.aiModel)document.getElementById("sModel").value=s.aiModel;
+      document.getElementById("sModel").value=s.aiModel||"whisper-large-v3-turbo";
       if(s.temperature!==undefined)document.getElementById("sTemperature").value=String(s.temperature);
       if(s.audioFormat)document.getElementById("sAudioFormat").value=s.audioFormat;
       if(s.maxRecTime!==undefined)document.getElementById("sMaxRecTime").value=String(s.maxRecTime);
@@ -979,7 +979,7 @@
       document.getElementById("sAutoPunctuation").checked=s.autoPunctuation!==false;
       document.getElementById("sAutoCapitalize").checked=s.autoCapitalize!==false;
       document.getElementById("sAutoCopy").checked=s.autoCopy!==false;
-      document.getElementById("sAutoPaste").checked=!!s.autoPaste;
+      document.getElementById("sAutoPaste").checked=s.autoPaste!==false;
       if(s.theme)document.getElementById("sTheme").value=s.theme;
       document.getElementById("sShowPill").checked=!!s.showPill;
       if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
