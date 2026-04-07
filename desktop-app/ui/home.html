@@ -1250,7 +1250,10 @@
           if (liveEl2) { liveEl2.textContent = "Ses motoru yukleniyor..."; liveEl2.style.color = "var(--text-2)"; }
           console.log("Loading Vosk model from:", modelUrl);
 
-          voskModel = await Vosk.createModel(modelUrl);
+          // Timeout for model loading — 30 seconds
+          const modelLoadPromise = Vosk.createModel(modelUrl);
+          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (30sn)")), 30000));
+          voskModel = await Promise.race([modelLoadPromise, modelTimeoutPromise]);
           voskModel._lang = lang;
           console.log("Vosk model loaded for:", lang);
         }
@@ -1413,8 +1416,15 @@
       } catch (err) {
         console.error("PowerMode start error:", err);
         const ismic = err.message && (err.message.includes("Permission") || err.message.includes("NotAllowed") || err.message.includes("getUserMedia"));
-        updatePowerModeUI("error", ismic ? "Mikrofon erisimi kontrol edin" : err.message);
-        showToast("Guc Modu baslatilamadi: " + err.message);
+        const isTimeout = err.message && (err.message.includes("zaman asimi") || err.message.includes("timeout"));
+        const isNetwork = err.message && (err.message.includes("network") || err.message.includes("ECONNREFUSED") || err.message.includes("ENOTFOUND") || err.message.includes("fetch"));
+        let hint = err.message;
+        if (ismic) hint = "Mikrofon erisimi kontrol edin";
+        else if (isTimeout) hint = err.message + ". Internet yavas olabilir.";
+        else if (isNetwork) hint = "Internet baglantisi yok veya sunucu erisilemez.";
+        hint += '<br><span style="font-size:10px;color:var(--text-3);margin-top:4px;display:inline-block">Not: Guc Modu calismasa bile Ctrl+Space ile dikte yapabilirsiniz.</span>';
+        updatePowerModeUI("error", hint);
+        showToast("Guc Modu baslatilamadi");
       }
     }
 
