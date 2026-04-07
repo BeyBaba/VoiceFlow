@@ -16,6 +16,11 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.5": [
+    "Dikte cubugu suruklenince pozisyonunu hatirliyor — bir sonraki acilista ayni yerde",
+    "Pill bar startup'da hic olusturulmuyor — sadece ayarlardan acilinca yaratiliyor",
+    "Guc Modu stabil acik — premium/Super User kontrolu duzeltildi",
+  ],
   "4.7.4": [
     "Setup wizard ilk kurulumda on planda aciliyor — setup bitmeden ana ekran gelmiyor",
     "Pill bar varsayilan KAPALI — sadece ayarlardan acilabilir",
@@ -154,13 +159,18 @@ function createMainWindow() {
   const winWidth = isFirstRun ? 420 : 380;
   const winHeight = isFirstRun ? 560 : 120;
 
-  // Center on first run, top-right otherwise
-  const winX = isFirstRun
-    ? Math.round((screenWidth - winWidth) / 2)
-    : screenWidth - 400;
-  const winY = isFirstRun
-    ? Math.round((screenHeight - winHeight) / 2)
-    : 120;
+  // Use saved position if available, otherwise center on first run / top-right on normal
+  let winX, winY;
+  if (!isFirstRun && settings.mainWindowX !== undefined && settings.mainWindowY !== undefined) {
+    winX = settings.mainWindowX;
+    winY = settings.mainWindowY;
+  } else if (isFirstRun) {
+    winX = Math.round((screenWidth - winWidth) / 2);
+    winY = Math.round((screenHeight - winHeight) / 2);
+  } else {
+    winX = screenWidth - 400;
+    winY = 120;
+  }
 
   mainWindow = new BrowserWindow({
     width: winWidth,
@@ -192,6 +202,17 @@ function createMainWindow() {
 
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
     console.error("Failed to load:", errorCode, errorDescription);
+  });
+
+  // Save position when user drags the window
+  mainWindow.on("moved", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [x, y] = mainWindow.getPosition();
+      const s = loadSettings();
+      s.mainWindowX = x;
+      s.mainWindowY = y;
+      saveSettings(s);
+    }
   });
 
   mainWindow.on("blur", () => {
@@ -1680,11 +1701,8 @@ app.whenReady().then(async () => {
   });
 
   createMainWindow();
-  // Only create pill window if user is authenticated and setup is complete
-  const pillSettings = loadSettings();
-  if (pillSettings.setupComplete && pillSettings.isAuthenticated) {
-    createPillWindow();
-  }
+  // Pill window only created on-demand when user enables showPill in settings
+  // Never created at startup — saves resources and prevents unwanted pill bar
   createTray();
   registerShortcuts();
 
@@ -1711,7 +1729,7 @@ app.whenReady().then(async () => {
 
   // Auto-start power mode if enabled
   const startSettings = loadSettings();
-  if (startSettings.powerMode) {
+  if (startSettings.powerMode !== false) {
     powerModeActive = true;
   }
 

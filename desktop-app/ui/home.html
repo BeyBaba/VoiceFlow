@@ -1026,8 +1026,10 @@
     function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
     const EMBEDDED_API_KEY = "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";
 
+    const SUPER_USERS = ["savasarac@gmail.com"];
     function isPremiumAvailableHome(){
       const s=currentSettings;
+      if(SUPER_USERS.includes(s.email)) return true;
       if(s.isPro) return true;
       if(s.trialActive && s.trialDaysLeft>0) return true;
       if(s.trialEndDate) return new Date(s.trialEndDate)>new Date();
