@@ -1006,7 +1006,7 @@
       document.getElementById("sKeepHistory").checked=!!s.keepHistory;
       loadAutoStart(); loadAutoUpdate(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
-      document.getElementById("sPowerMode").checked=s.powerMode!==false;
+      document.getElementById("sPowerMode").checked=s.powerMode===true;
       // Disable premium features if trial expired
       const premiumOk=isPremiumAvailableHome();
       document.getElementById("sPowerMode").disabled=!premiumOk;
@@ -1025,7 +1025,7 @@
       document.getElementById("sPowerSensitivity").value = sens;
       document.getElementById("sensitivityLabel").textContent = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"][sens];
       document.getElementById("sPowerAutoStart").checked=s.powerAutoStart!==false;
-      if(s.powerMode!==false) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
+      if(s.powerMode===true) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -1290,10 +1290,16 @@
           if (liveEl2) { liveEl2.textContent = "Ses motoru yukleniyor..."; liveEl2.style.color = "var(--text-2)"; }
           console.log("Loading Vosk model from:", modelUrl);
 
-          // Timeout for model loading — 120 seconds (WASM loading can be slow)
+          // Show error state if loading takes too long (20s = likely stuck)
+          const loadingStuckTimer = setTimeout(() => {
+            updatePowerModeUI("error", "Ses motoru yuklenemedi — model dosyasi bozuk olabilir. Modeli silip yeniden indirin.");
+          }, 20000);
+
+          // Timeout for model loading — 60 seconds (reduced from 120s, if stuck no point waiting)
           const modelLoadPromise = Vosk.createModel(modelUrl);
-          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (2dk). Model dosyasi bozuk olabilir — Yeniden Dene butonuna basin.")), 120000));
+          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (1dk). Model dosyasi bozuk olabilir — Yeniden Dene butonuna basin.")), 60000));
           voskModel = await Promise.race([modelLoadPromise, modelTimeoutPromise]);
+          clearTimeout(loadingStuckTimer);
           voskModel._lang = lang;
           console.log("Vosk model loaded for:", lang);
         }
@@ -1645,7 +1651,7 @@
           const modelName = VOSK_MODELS_URL[currentSettings.language || "tr"] || VOSK_MODELS_URL["tr"];
           hint.innerHTML = (hintText ? hintText + '<br>' : '') +
             '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>' +
-            (status === "error" ? '<br><a href="#" onclick="window.voiceflow.openExternal(\'https://alphacephei.com/vosk/models\');return false;" style="margin-top:6px;display:inline-block;font-size:10px;color:var(--text-3);text-decoration:underline">Modeli elle indir →</a>' : '');
+            '<br><a href="#" onclick="window.voiceflow.openExternal(\'https://alphacephei.com/vosk/models/' + modelName + '.zip\');return false;" style="margin-top:10px;display:inline-block;font-size:14px;padding:8px 18px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;color:#3B82F6;text-decoration:none;font-weight:600">⬇️ Modeli elle indir (' + modelName + '.zip)</a>';
         } else {
           hint.textContent = hintText;
         }
@@ -1735,9 +1741,19 @@
 
     // Auto-resume power mode when window regains visibility or focus
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && pmIsListening && pmAudioCtx && pmAudioCtx.state === "suspended") {
+      if (!document.hidden && pmAudioCtx && pmAudioCtx.state === "suspended") {
         console.log("Visibility restored — resuming power mode AudioContext");
         pmAudioCtx.resume();
+        pmIsListening = true;
+        updatePowerModeUI("listening");
+      }
+    });
+    window.addEventListener("focus", () => {
+      if (pmAudioCtx && pmAudioCtx.state === "suspended") {
+        console.log("Window focus — resuming power mode AudioContext");
+        pmAudioCtx.resume();
+        pmIsListening = true;
+        updatePowerModeUI("listening");
       }
     });
     window.addEventListener("focus", () => {
@@ -2049,6 +2065,24 @@
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
             if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
+
+            // Auto-detect and save the working microphone
+            if (pmTestStream) {
+              const workingTrack = pmTestStream.getAudioTracks()[0];
+              if (workingTrack && workingTrack.getSettings) {
+                const trackDeviceId = workingTrack.getSettings().deviceId;
+                if (trackDeviceId && trackDeviceId !== "default") {
+                  console.log("Auto-setting working mic:", workingTrack.label, "id:", trackDeviceId);
+                  saveSetting("audioDevice", trackDeviceId);
+                  // Update both dropdowns
+                  const pmSel = document.getElementById("pmMicSelect");
+                  const sSel = document.getElementById("sAudioDevice");
+                  if (pmSel) pmSel.value = trackDeviceId;
+                  if (sSel) sSel.value = trackDeviceId;
+                  showToast("Calisan mikrofon ayarlandi: " + (workingTrack.label || "Mikrofon"));
+                }
+              }
+            }
 
             setTimeout(() => {
               pmStopTest();
