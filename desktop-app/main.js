@@ -19,6 +19,8 @@ const CHANGELOG = {
   "4.7.7": [
     "Guc Modu'na 'Kapat' butonu eklendi — durum kartindan tek tikla kapatilabilir",
     "Guc Modu toggle'i her zaman gorunur — test sonrasi bekleme kaldirildi",
+    "Vosk model indirme 90sn timeout + model yukleme 30sn timeout eklendi",
+    "Vosk hata mesajlari iyilestirildi — 'Ctrl+Space ile dikte yapabilirsiniz' notu",
     "Alt cubuk (pill bar) varsayilan olarak KAPALI (HTML uyumlulugu duzeltildi)",
     "Tum butonlar ve toggle'lar dogrulandi — hepsi calisiyor",
   ],
@@ -1287,6 +1289,11 @@ function downloadVoskModel(lang) {
 
     console.log("Downloading Vosk model:", url);
 
+    // Overall download timeout — 90 seconds
+    const downloadTimer = setTimeout(() => {
+      reject(new Error("Indirme zaman asimina ugradi (90sn). Internet baglantinizi kontrol edin."));
+    }, 90000);
+
     const download = (downloadUrl, retryCount = 0) => {
       const handler = (response) => {
         if (response.statusCode === 301 || response.statusCode === 302) {
@@ -1382,11 +1389,13 @@ function downloadVoskModel(lang) {
               if (tarErr) {
                 console.error("Tar.gz creation error:", tarErr);
                 // Fallback: model dir exists even without tar.gz
+                clearTimeout(downloadTimer);
                 resolve({ success: true, path: modelDir, noTarGz: true });
                 return;
               }
 
               console.log("Vosk model tar.gz created:", tarGzPath);
+              clearTimeout(downloadTimer);
               resolve({ success: true, path: tarGzPath });
             });
           });
