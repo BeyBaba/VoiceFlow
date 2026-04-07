@@ -16,6 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.8": [
+    "CLAUDE.md v2.12 uyumlu guncellendi — durustluk kurali eklendi",
+    "Kapatinca gizle ayari artik CALISIYOR — minimizeToTray kontrol ediliyor",
+    "Bildirimler artik CALISIYOR — transkripsiyon bitince masaustu bildirimi",
+    "Kullanim istatistikleri toggle'i devre disi — henuz aktif degil (yakinda)",
+    "3 sahte toggle duzeltildi — tum butonlarin arkasinda gercek kod var",
+  ],
   "4.7.7": [
     "Guc Modu'na 'Kapat' butonu eklendi — durum kartindan tek tikla kapatilabilir",
     "Guc Modu toggle'i her zaman gorunur — test sonrasi bekleme kaldirildi",
