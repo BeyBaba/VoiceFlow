@@ -16,6 +16,15 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.8.1": [
+    "Manuel indir linki artik DOGRUDAN model ZIP'ine yonlendiriyor (ana sayfa degil)",
+    "Manuel indir butonu buyutuldu ve loading/error durumlarinda gosteriliyor",
+    "Guc Modu varsayilan KAPALI — kullanici kendisi actiginda indirme baslar",
+    "Mikrofon testi basarili olunca calisan mikrofon otomatik ayarlaniyor",
+    "Arka planda ses motoru donunca 20sn sonra hata gosteriliyor (2dk beklemek yerine)",
+    "Wake word tetiklendiginde mainWindow yoksa otomatik olusturuluyor",
+    "Pencere focus/visibility geri gelince AudioContext otomatik resume ediliyor",
+  ],
   "4.8.0": [
     "Vosk model indirme IPTAL edilebilir — Iptal butonu + Guc Modu Kapat'ta otomatik iptal",
     "Download timeout 90sn→3dk, model yukleme timeout 30sn→2dk",
@@ -1152,14 +1161,26 @@ ipcMain.on("power-mode-heard", (event, text, isPartial) => {
 });
 
 ipcMain.on("wake-word-detected", () => {
-  console.log("Wake word detected! isRecording:", isRecording);
+  console.log("Wake word detected! isRecording:", isRecording, "mainWindow:", !!mainWindow);
 
   // Set ALL flags to prevent blur handler from hiding window during activation
   wakeWordTriggered = true;
   isProcessingResult = true;
 
-  // Toggle recording — wake word starts/stops dictation
-  toggleRecording();
+  // Ensure main window exists before toggling
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    console.log("Wake word: mainWindow missing, creating it first...");
+    createMainWindow();
+    // Wait for window to be ready before toggling recording
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        toggleRecording();
+      }
+    }, 1500);
+  } else {
+    // Toggle recording — wake word starts/stops dictation
+    toggleRecording();
+  }
 
   // Clear the wake word flag after recording has had time to start
   setTimeout(() => {
@@ -1818,7 +1839,7 @@ app.whenReady().then(async () => {
 
   // Auto-start power mode if enabled
   const startSettings = loadSettings();
-  if (startSettings.powerMode !== false) {
+  if (startSettings.powerMode === true) {
     powerModeActive = true;
   }
 
