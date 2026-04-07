@@ -16,12 +16,15 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
-  "4.7.8": [
-    "CLAUDE.md v2.12 uyumlu guncellendi — durustluk kurali eklendi",
-    "Kapatinca gizle ayari artik CALISIYOR — minimizeToTray kontrol ediliyor",
+  "4.8.0": [
+    "Vosk model indirme IPTAL edilebilir — Iptal butonu + Guc Modu Kapat'ta otomatik iptal",
+    "Download timeout 90sn→3dk, model yukleme timeout 30sn→2dk",
+    "Hata durumunda 'Modeli elle indir' linki eklendi",
+    "Bildirim tercihi — ilk acilista banner ile soruluyor",
+    "Kapatinca gizle ayari artik CALISIYOR",
     "Bildirimler artik CALISIYOR — transkripsiyon bitince masaustu bildirimi",
-    "Kullanim istatistikleri toggle'i devre disi — henuz aktif degil (yakinda)",
-    "3 sahte toggle duzeltildi — tum butonlarin arkasinda gercek kod var",
+    "Kullanim istatistikleri toggle'i devre disi (henuz aktif degil)",
+    "CLAUDE.md v2.12 uyumlu guncellendi",
   ],
   "4.7.7": [
     "Guc Modu'na 'Kapat' butonu eklendi — durum kartindan tek tikla kapatilabilir",
@@ -1259,6 +1262,9 @@ function isVoskModelDownloaded(lang) {
   return fs.existsSync(tarGzPath);
 }
 
+// Active download tracking — allows cancellation
+let activeVoskDownload = null; // { request, file, lang, aborted }
+
 // Local HTTP server to serve Vosk model files to the WASM worker
 let voskModelServer = null;
 let voskModelServerPort = 0;
@@ -1313,12 +1319,21 @@ function downloadVoskModel(lang) {
 
     console.log("Downloading Vosk model:", url);
 
-    // Overall download timeout — 90 seconds
+    // Overall download timeout — 180 seconds (3 min for slow connections)
     const downloadTimer = setTimeout(() => {
-      reject(new Error("Indirme zaman asimina ugradi (90sn). Internet baglantinizi kontrol edin."));
-    }, 90000);
+      if (activeVoskDownload) activeVoskDownload.aborted = true;
+      reject(new Error("Indirme zaman asimina ugradi (3dk). Internet baglantinizi kontrol edin."));
+    }, 180000);
+
+    // Track this download so it can be cancelled
+    activeVoskDownload = { request: null, file: null, lang, aborted: false };
 
     const download = (downloadUrl, retryCount = 0) => {
+      if (activeVoskDownload && activeVoskDownload.aborted) {
+        clearTimeout(downloadTimer);
+        reject(new Error("Indirme iptal edildi"));
+        return;
+      }
       const handler = (response) => {
         if (response.statusCode === 301 || response.statusCode === 302) {
           const redirectUrl = response.headers.location;
@@ -1339,6 +1354,9 @@ function downloadVoskModel(lang) {
         const totalBytes = parseInt(response.headers["content-length"], 10) || 0;
         let downloadedBytes = 0;
         const file = createWriteStream(zipPath);
+
+        // Track file stream for abort
+        if (activeVoskDownload) activeVoskDownload.file = file;
 
         response.on("data", (chunk) => {
           downloadedBytes += chunk.length;
@@ -1441,7 +1459,8 @@ function downloadVoskModel(lang) {
         }
       };
 
-      https.get(downloadUrl, handler).on("error", handleError);
+      const req = https.get(downloadUrl, handler).on("error", handleError);
+      if (activeVoskDownload) activeVoskDownload.request = req;
     };
 
     download(url);
@@ -1458,11 +1477,35 @@ ipcMain.handle("vosk-model-status", (event, lang) => {
 ipcMain.handle("vosk-model-download", async (event, lang) => {
   try {
     const result = await downloadVoskModel(lang);
+    activeVoskDownload = null;
     return { success: true, path: result.path };
   } catch (err) {
     console.error("Vosk model download error:", err);
+    activeVoskDownload = null;
     return { success: false, error: err.message };
   }
+});
+
+// Abort active Vosk download
+ipcMain.handle("vosk-download-abort", () => {
+  if (activeVoskDownload) {
+    console.log("Aborting Vosk download...");
+    activeVoskDownload.aborted = true;
+    if (activeVoskDownload.request) {
+      try { activeVoskDownload.request.destroy(); } catch(e) {}
+    }
+    if (activeVoskDownload.file) {
+      try { activeVoskDownload.file.close(); } catch(e) {}
+    }
+    // Delete partial zip
+    const lang = activeVoskDownload.lang || "tr";
+    const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+    const zipPath = path.join(getVoskModelsDir(), `${modelName}.zip`);
+    try { if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath); } catch(e) {}
+    activeVoskDownload = null;
+    return { success: true };
+  }
+  return { success: false, reason: "no active download" };
 });
 
 ipcMain.handle("vosk-model-path", (event, lang) => {
