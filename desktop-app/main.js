@@ -16,6 +16,12 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.8.3": [
+    "Otomatik mikrofon ayarlama KALDIRILDI — kullanici kendisi secer",
+    "Model import sonrasi basari mesaji ve status guncelleme iyilestirildi",
+    "Vosk WASM yukleme timeout arttirildi (45sn hint + 60sn timeout)",
+    "Yukleme sirasinda 'WASM derleniyor, biraz bekleyin' bilgisi eklendi",
+  ],
   "4.8.2": [
     "Guc Modu toggle/text senkronizasyonu duzeltildi — artik tutarli",
     "Iptal butonu CALISIYOR — indirmeyi gercekten durduruyor",

@@ -52,8 +52,6 @@ let seconds = 0;
 let cachedSettings = null;
 let currentOnboardingStep = 0;
 let micTestStream = null;
-let setupDetectedMicId = null;
-let setupDetectedMicLabel = null;
 let micTestAnalyser = null;
 let micTestAnimFrame = null;
 let selectedLang = "tr";
@@ -343,22 +341,10 @@ const obMicBtn = document.getElementById("obMicBtn");
 if (obMicBtn) {
   obMicBtn.addEventListener("click", () => {
     if (obMicBtn.classList.contains("listening")) {
-      // Save working microphone device before stopping
-      if (micTestStream) {
-        const track = micTestStream.getAudioTracks()[0];
-        if (track && track.getSettings) {
-          const devId = track.getSettings().deviceId;
-          if (devId && devId !== "default") {
-            setupDetectedMicId = devId;
-            setupDetectedMicLabel = track.label || "Mikrofon";
-            console.log("Setup detected working mic:", setupDetectedMicLabel, devId);
-          }
-        }
-      }
       stopMicTest();
       obMicBtn.classList.remove("listening");
       obMicBtn.classList.add("success");
-      document.getElementById("obMicStatus").textContent = "Mikrofon calisiyor!" + (setupDetectedMicLabel ? " (" + setupDetectedMicLabel + ")" : "");
+      document.getElementById("obMicStatus").textContent = "Mikrofon calisiyor!";
       document.getElementById("obMicStatus").className = "ob-mic-status ok";
       // Enable next button after successful mic test
       const nextBtn = document.getElementById("obMicNext");
@@ -438,7 +424,7 @@ function createConfetti() {
 
 // Finish onboarding
 async function finishOnboarding() {
-  const setupSettings = {
+  cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
     apiKey: EMBEDDED_API_KEY,
     autoPaste: true,
@@ -450,15 +436,7 @@ async function finishOnboarding() {
     setupComplete: true,
     powerMode: false,
     powerAutoStart: false,
-  };
-
-  // Save working microphone detected during setup
-  if (setupDetectedMicId) {
-    setupSettings.audioDevice = setupDetectedMicId;
-    console.log("Saving setup mic:", setupDetectedMicLabel, setupDetectedMicId);
-  }
-
-  cachedSettings = await window.voiceflow.saveSettings(setupSettings);
+  });
 
   showView("idle");
   window.voiceflow.resizeWindow(380, 100);

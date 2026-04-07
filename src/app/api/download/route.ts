@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Versiyon: desktop-app/package.json ile senkron tutulmalı
-const CURRENT_VERSION = "4.8.2";
+const CURRENT_VERSION = "4.8.3";
 
 // Vercel serverless function timeout — 60 saniye (Pro plan'da 300sn)
 export const maxDuration = 60;

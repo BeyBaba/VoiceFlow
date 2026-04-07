@@ -1290,15 +1290,20 @@
           if (liveEl2) { liveEl2.textContent = "Ses motoru yukleniyor..."; liveEl2.style.color = "var(--text-2)"; }
           console.log("Loading Vosk model from:", modelUrl);
 
-          // Show error state if loading takes too long (20s = likely stuck)
+          // Show progress hint if loading takes a while
+          const loadingHintTimer = setTimeout(() => {
+            const liveEl3 = document.getElementById("pmLiveText");
+            if (liveEl3) liveEl3.textContent = "Ses motoru yukleniyor... (WASM derleniyor, biraz bekleyin)";
+          }, 10000);
           const loadingStuckTimer = setTimeout(() => {
-            updatePowerModeUI("error", "Ses motoru yuklenemedi — model dosyasi bozuk olabilir. Modeli silip yeniden indirin.");
-          }, 20000);
+            updatePowerModeUI("error", "Ses motoru yuklenemedi. Vosk WASM modeli yuklenemiyor. Lutfen 'Yeniden Dene' butonuna basin veya programi yeniden baslatin.");
+          }, 45000);
 
-          // Timeout for model loading — 60 seconds (reduced from 120s, if stuck no point waiting)
+          // Timeout for model loading — 60 seconds
           const modelLoadPromise = Vosk.createModel(modelUrl);
-          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (1dk). Model dosyasi bozuk olabilir — Yeniden Dene butonuna basin.")), 60000));
+          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (1dk). Programi yeniden baslatin veya 'Yeniden Dene' butonuna basin.")), 60000));
           voskModel = await Promise.race([modelLoadPromise, modelTimeoutPromise]);
+          clearTimeout(loadingHintTimer);
           clearTimeout(loadingStuckTimer);
           voskModel._lang = lang;
           console.log("Vosk model loaded for:", lang);
@@ -1528,15 +1533,30 @@
     // Import manually downloaded model ZIP via file picker
     async function pmImportModel() {
       try {
+        const langName = LANG_NAMES[currentSettings.language || "tr"] || "Turkce";
         const result = await window.voiceflow.importVoskModel(currentSettings.language || "tr");
         if (result && result.success) {
-          showToast("Model basariyla yuklendi! Guc Modu baslatiliyor...");
+          // Show success in status area
+          const icon = document.getElementById("pmStatusIcon");
+          const text = document.getElementById("pmStatusText");
+          const hint = document.getElementById("pmStatusHint");
+          const card = document.getElementById("powerModeStatusCard");
+          if (card) card.style.display = "block";
+          if (icon) icon.textContent = "✅";
+          if (text) { text.textContent = langName + " ses modeli yuklendi!"; text.style.color = "#10B981"; }
+          if (hint) hint.textContent = "Ses motoru baslatiliyor... Lutfen bekleyin.";
+          showToast(langName + " model yuklendi! Ses motoru baslatiliyor...");
+
           // Reset Vosk state and restart
           if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
           if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
           document.getElementById("sPowerMode").checked = true;
           saveSetting("powerMode", true);
           window.voiceflow.togglePowerMode(true);
+          document.getElementById("pmActivateHint").textContent = "Aktif — yukleniyor";
+          // Hide download progress if visible
+          const dlProgress = document.getElementById("pmDownloadProgress");
+          if (dlProgress) dlProgress.style.display = "none";
           pmStart();
         } else if (result && result.cancelled) {
           // User cancelled file picker — do nothing
@@ -2094,24 +2114,6 @@
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
             if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
-
-            // Auto-detect and save the working microphone
-            if (pmTestStream) {
-              const workingTrack = pmTestStream.getAudioTracks()[0];
-              if (workingTrack && workingTrack.getSettings) {
-                const trackDeviceId = workingTrack.getSettings().deviceId;
-                if (trackDeviceId && trackDeviceId !== "default") {
-                  console.log("Auto-setting working mic:", workingTrack.label, "id:", trackDeviceId);
-                  saveSetting("audioDevice", trackDeviceId);
-                  // Update both dropdowns
-                  const pmSel = document.getElementById("pmMicSelect");
-                  const sSel = document.getElementById("sAudioDevice");
-                  if (pmSel) pmSel.value = trackDeviceId;
-                  if (sSel) sSel.value = trackDeviceId;
-                  showToast("Calisan mikrofon ayarlandi: " + (workingTrack.label || "Mikrofon"));
-                }
-              }
-            }
 
             setTimeout(() => {
               pmStopTest();
