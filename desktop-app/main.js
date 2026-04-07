@@ -16,6 +16,15 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.8.2": [
+    "Guc Modu toggle/text senkronizasyonu duzeltildi — artik tutarli",
+    "Iptal butonu CALISIYOR — indirmeyi gercekten durduruyor",
+    "Setup'ta calisan mikrofon otomatik algilaniyor ve kaydediliyor",
+    "Setup sonrasi Guc Modu varsayilan KAPALI (toggle OFF + text Kapali)",
+    "Setup sonrasi ana ekran otomatik onde aciliyor",
+    "Manuel indirilen modeli ZIP'ten yukleme butonu eklendi (dosya secici)",
+    "Uygulama baslatildiginda Guc Modu sadece powerAutoStart=true ise basliyor",
+  ],
   "4.8.1": [
     "Manuel indir linki artik DOGRUDAN model ZIP'ine yonlendiriyor (ana sayfa degil)",
     "Manuel indir butonu buyutuldu ve loading/error durumlarinda gosteriliyor",
@@ -1084,9 +1093,15 @@ ipcMain.handle("save-settings", (event, data) => {
     } else {
       hidePill();
     }
-    // Open home window after onboarding completes
+    // Open home window after onboarding completes — force to front
     if (!homeWindow || homeWindow.isDestroyed()) {
       createHomeWindow();
+    } else {
+      homeWindow.show();
+      homeWindow.focus();
+      homeWindow.moveTop();
+      homeWindow.setAlwaysOnTop(true);
+      setTimeout(() => { if (homeWindow && !homeWindow.isDestroyed()) homeWindow.setAlwaysOnTop(false); }, 1000);
     }
   }
 
@@ -1529,6 +1544,64 @@ ipcMain.handle("vosk-download-abort", () => {
   return { success: false, reason: "no active download" };
 });
 
+// Import manually downloaded Vosk model ZIP
+ipcMain.handle("import-vosk-model", async (event, lang) => {
+  try {
+    const result = await dialog.showOpenDialog(homeWindow || mainWindow, {
+      title: "Vosk Model ZIP Dosyasini Secin",
+      filters: [{ name: "ZIP", extensions: ["zip"] }],
+      properties: ["openFile"],
+    });
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, cancelled: true };
+    }
+    const zipPath = result.filePaths[0];
+    const modelName = VOSK_MODELS[lang] || VOSK_MODELS["en"];
+    const modelsDir = getVoskModelsDir();
+    const tarGzPath = path.join(modelsDir, `${modelName}.tar.gz`);
+
+    if (!fs.existsSync(modelsDir)) {
+      fs.mkdirSync(modelsDir, { recursive: true });
+    }
+
+    // Delete old model if exists
+    const modelDir = path.join(modelsDir, modelName);
+    if (fs.existsSync(modelDir)) fs.rmSync(modelDir, { recursive: true, force: true });
+    if (fs.existsSync(tarGzPath)) fs.unlinkSync(tarGzPath);
+
+    // Extract ZIP
+    const isWin = process.platform === "win32";
+    const extractCmd = isWin
+      ? `powershell -NoProfile -Command "Expand-Archive -Force -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${modelsDir.replace(/'/g, "''")}'"`
+      : `unzip -o "${zipPath}" -d "${modelsDir}"`;
+
+    await new Promise((resolve, reject) => {
+      exec(extractCmd, { maxBuffer: 1024 * 1024 * 50, timeout: 120000 }, (err) => {
+        if (err) reject(new Error("ZIP cikarma hatasi: " + err.message));
+        else resolve();
+      });
+    });
+
+    // Create tar.gz for vosk-browser
+    const tarCmd = isWin
+      ? `powershell -Command "cd '${modelsDir}'; tar -czf '${tarGzPath}' '${modelName}'"`
+      : `cd "${modelsDir}" && tar -czf "${tarGzPath}" "${modelName}"`;
+
+    await new Promise((resolve, reject) => {
+      exec(tarCmd, { maxBuffer: 1024 * 1024 * 50 }, (err) => {
+        if (err) reject(new Error("tar.gz olusturma hatasi: " + err.message));
+        else resolve();
+      });
+    });
+
+    console.log("Vosk model imported successfully:", tarGzPath);
+    return { success: true, path: tarGzPath };
+  } catch (err) {
+    console.error("Vosk model import error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("vosk-model-path", (event, lang) => {
   return getVoskModelDir(lang);
 });
@@ -1837,9 +1910,9 @@ app.whenReady().then(async () => {
     console.log("License check skipped:", err.message);
   }
 
-  // Auto-start power mode if enabled
+  // Auto-start power mode if enabled AND powerAutoStart is explicitly true
   const startSettings = loadSettings();
-  if (startSettings.powerMode === true) {
+  if (startSettings.powerMode === true && startSettings.powerAutoStart === true) {
     powerModeActive = true;
   }
 
