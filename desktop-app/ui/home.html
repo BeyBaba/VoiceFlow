@@ -263,6 +263,21 @@
         <button onclick="event.stopPropagation();dismissWhatsNew();" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:2px 6px;line-height:1;">&times;</button>
       </div>
 
+      <!-- NOTIFICATION PREFERENCE BANNER -->
+      <div id="notifBanner" style="display:none;margin:12px 16px 0;padding:14px 18px;background:linear-gradient(135deg,rgba(15,118,110,0.08),rgba(59,130,246,0.08));border:1px solid rgba(15,118,110,0.2);border-radius:12px;position:relative;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">&#128276;</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-1);">Masaustu bildirimleri acilsin mi?</div>
+            <div style="font-size:11px;color:var(--text-2);margin-top:2px;">Dikte tamamlandiginda bildirim alirsiniz.</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="enableNotifications()" style="padding:6px 14px;border:none;border-radius:8px;background:var(--accent);color:white;font-size:12px;font-weight:600;cursor:pointer">Ac</button>
+            <button onclick="dismissNotifBanner()" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-2);font-size:12px;font-weight:600;cursor:pointer">Hayir</button>
+          </div>
+        </div>
+      </div>
+
       <!-- HOME -->
       <div class="page active" id="page-home">
         <div class="page-header"><h1 class="page-title" id="greeting">Hos Geldiniz!</h1><p class="page-desc">Ctrl+Space ile herhangi bir uygulamada dikte etmeye baslayin.</p></div>
@@ -397,7 +412,10 @@
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
                 <div id="pmDownloadText" style="font-size:11px;color:var(--text-3)">%0</div>
-                <button id="pmDownloadRetry" onclick="pmRetryDownload()" style="display:none;font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-weight:600">Yeniden Dene</button>
+                <div style="display:flex;gap:6px">
+                  <button id="pmDownloadCancel" onclick="pmCancelDownload()" style="font-size:11px;padding:3px 10px;border:1px solid rgba(239,68,68,0.4);border-radius:6px;background:transparent;color:#EF4444;cursor:pointer;font-weight:600">Iptal</button>
+                  <button id="pmDownloadRetry" onclick="pmRetryDownload()" style="display:none;font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-weight:600">Yeniden Dene</button>
+                </div>
               </div>
             </div>
             <button id="pmStopBtn" onclick="pmStopFromUI()" style="display:none;margin-top:12px;padding:8px 20px;border:1px solid rgba(239,68,68,0.4);border-radius:8px;background:rgba(239,68,68,0.08);color:#EF4444;cursor:pointer;font-size:12px;font-weight:600;width:100%">Guc Modunu Kapat</button>
@@ -1139,6 +1157,28 @@
     }
     setupSettingsListeners();
 
+    // Notification preference banner — show once after first setup
+    function checkNotifBanner() {
+      const s = currentSettings;
+      if (!s.notifBannerDismissed && s.setupComplete) {
+        document.getElementById("notifBanner").style.display = "block";
+      }
+    }
+    function enableNotifications() {
+      saveSetting("notifications", true);
+      saveSetting("notifBannerDismissed", true);
+      document.getElementById("sNotifications").checked = true;
+      document.getElementById("notifBanner").style.display = "none";
+      showToast("Bildirimler acildi!");
+    }
+    function dismissNotifBanner() {
+      saveSetting("notifBannerDismissed", true);
+      document.getElementById("notifBanner").style.display = "none";
+    }
+    window.enableNotifications = enableNotifications;
+    window.dismissNotifBanner = dismissNotifBanner;
+    setTimeout(checkNotifBanner, 500);
+
     // POWER MODE — runs directly in this window (no hidden window needed)
 
     // Fuzzy Turkish matching helpers (global scope for both test + power mode)
@@ -1250,9 +1290,9 @@
           if (liveEl2) { liveEl2.textContent = "Ses motoru yukleniyor..."; liveEl2.style.color = "var(--text-2)"; }
           console.log("Loading Vosk model from:", modelUrl);
 
-          // Timeout for model loading — 30 seconds
+          // Timeout for model loading — 120 seconds (WASM loading can be slow)
           const modelLoadPromise = Vosk.createModel(modelUrl);
-          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (30sn)")), 30000));
+          const modelTimeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("Ses motoru yukleme zaman asimi (2dk). Model dosyasi bozuk olabilir — Yeniden Dene butonuna basin.")), 120000));
           voskModel = await Promise.race([modelLoadPromise, modelTimeoutPromise]);
           voskModel._lang = lang;
           console.log("Vosk model loaded for:", lang);
@@ -1438,19 +1478,42 @@
       if (pmStream) { pmStream.getTracks().forEach(t => t.stop()); pmStream = null; }
       if (pmAudioCtx) { pmAudioCtx.close().catch(()=>{}); pmAudioCtx = null; }
       pmAnalyser = null;
+      // Hide download progress
+      const dlProgress = document.getElementById("pmDownloadProgress");
+      if (dlProgress) dlProgress.style.display = "none";
       updatePowerModeUI("off");
     }
 
-    // Stop Power Mode from UI button
+    // Stop Power Mode from UI button — also aborts active download
     function pmStopFromUI() {
       pmStop();
+      // Abort active Vosk download if running
+      if (window.voiceflow.voskDownloadAbort) {
+        window.voiceflow.voskDownloadAbort();
+      }
       document.getElementById("sPowerMode").checked = false;
       saveSetting("powerMode", false);
       window.voiceflow.togglePowerMode(false);
       document.getElementById("pmActivateHint").textContent = "Kapali";
+      // Hide download progress
+      const dlProgress = document.getElementById("pmDownloadProgress");
+      if (dlProgress) dlProgress.style.display = "none";
       showToast("Guc Modu kapatildi");
     }
     window.pmStopFromUI = pmStopFromUI;
+
+    // Cancel download only (without turning off power mode setting)
+    function pmCancelDownload() {
+      if (window.voiceflow.voskDownloadAbort) {
+        window.voiceflow.voskDownloadAbort();
+      }
+      pmStop();
+      const dlProgress = document.getElementById("pmDownloadProgress");
+      if (dlProgress) dlProgress.style.display = "none";
+      updatePowerModeUI("off");
+      showToast("Indirme iptal edildi");
+    }
+    window.pmCancelDownload = pmCancelDownload;
 
     let pmPauseTime = 0;
     function pmPause() {
@@ -1548,6 +1611,7 @@
 
     // Language display names for Vosk download status
     const LANG_NAMES = {tr:"Turkce",en:"Ingilizce",de:"Almanca",fr:"Fransizca",es:"Ispanyolca",ja:"Japonca",ko:"Korece",zh:"Cince",pt:"Portekizce",it:"Italyanca",ru:"Rusca",ar:"Arapca"};
+    const VOSK_MODELS_URL = {tr:"vosk-model-small-tr-0.3",en:"vosk-model-small-en-us-0.15",de:"vosk-model-small-de-0.15",fr:"vosk-model-small-fr-0.22",es:"vosk-model-small-es-0.42"};
 
     // POWER MODE UI
     function updatePowerModeUI(status, customHint) {
@@ -1578,7 +1642,10 @@
       if (text) { text.textContent = s.text; text.style.color = s.color; }
       if (hint) {
         if (status === "error" || status === "loading") {
-          hint.innerHTML = (hintText ? hintText + '<br>' : '') + '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>';
+          const modelName = VOSK_MODELS_URL[currentSettings.language || "tr"] || VOSK_MODELS_URL["tr"];
+          hint.innerHTML = (hintText ? hintText + '<br>' : '') +
+            '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>' +
+            (status === "error" ? '<br><a href="#" onclick="window.voiceflow.openExternal(\'https://alphacephei.com/vosk/models\');return false;" style="margin-top:6px;display:inline-block;font-size:10px;color:var(--text-3);text-decoration:underline">Modeli elle indir →</a>' : '');
         } else {
           hint.textContent = hintText;
         }
