@@ -1024,8 +1024,8 @@
       const sens = s.powerSensitivity || 2;
       document.getElementById("sPowerSensitivity").value = sens;
       document.getElementById("sensitivityLabel").textContent = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"][sens];
-      document.getElementById("sPowerAutoStart").checked=s.powerAutoStart!==false;
-      if(s.powerMode===true) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
+      document.getElementById("sPowerAutoStart").checked=s.powerAutoStart===true;
+      if(s.powerMode===true && s.powerAutoStart===true) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else { document.getElementById("sPowerMode").checked = false; updatePowerModeUI("off"); }
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -1508,18 +1508,46 @@
     }
     window.pmStopFromUI = pmStopFromUI;
 
-    // Cancel download only (without turning off power mode setting)
+    // Cancel download — turn off power mode completely
     function pmCancelDownload() {
       if (window.voiceflow.voskDownloadAbort) {
         window.voiceflow.voskDownloadAbort();
       }
       pmStop();
+      document.getElementById("sPowerMode").checked = false;
+      saveSetting("powerMode", false);
+      window.voiceflow.togglePowerMode(false);
+      document.getElementById("pmActivateHint").textContent = "Kapali";
       const dlProgress = document.getElementById("pmDownloadProgress");
       if (dlProgress) dlProgress.style.display = "none";
       updatePowerModeUI("off");
       showToast("Indirme iptal edildi");
     }
     window.pmCancelDownload = pmCancelDownload;
+
+    // Import manually downloaded model ZIP via file picker
+    async function pmImportModel() {
+      try {
+        const result = await window.voiceflow.importVoskModel(currentSettings.language || "tr");
+        if (result && result.success) {
+          showToast("Model basariyla yuklendi! Guc Modu baslatiliyor...");
+          // Reset Vosk state and restart
+          if (voskRecognizer) { try { voskRecognizer.remove(); } catch(e){} voskRecognizer = null; }
+          if (voskModel) { try { voskModel.terminate(); } catch(e){} voskModel = null; }
+          document.getElementById("sPowerMode").checked = true;
+          saveSetting("powerMode", true);
+          window.voiceflow.togglePowerMode(true);
+          pmStart();
+        } else if (result && result.cancelled) {
+          // User cancelled file picker — do nothing
+        } else {
+          showToast("Model yukleme hatasi: " + (result?.error || "Bilinmeyen hata"));
+        }
+      } catch(e) {
+        showToast("Hata: " + e.message);
+      }
+    }
+    window.pmImportModel = pmImportModel;
 
     let pmPauseTime = 0;
     function pmPause() {
@@ -1651,7 +1679,8 @@
           const modelName = VOSK_MODELS_URL[currentSettings.language || "tr"] || VOSK_MODELS_URL["tr"];
           hint.innerHTML = (hintText ? hintText + '<br>' : '') +
             '<button onclick="pmRetryDownload()" style="margin-top:8px;padding:6px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">Yeniden Dene</button>' +
-            '<br><a href="#" onclick="window.voiceflow.openExternal(\'https://alphacephei.com/vosk/models/' + modelName + '.zip\');return false;" style="margin-top:10px;display:inline-block;font-size:14px;padding:8px 18px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;color:#3B82F6;text-decoration:none;font-weight:600">⬇️ Modeli elle indir (' + modelName + '.zip)</a>';
+            '<br><a href="#" onclick="window.voiceflow.openExternal(\'https://alphacephei.com/vosk/models/' + modelName + '.zip\');return false;" style="margin-top:10px;display:inline-block;font-size:14px;padding:8px 18px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;color:#3B82F6;text-decoration:none;font-weight:600">⬇️ Modeli elle indir (' + modelName + '.zip)</a>' +
+            '<br><button onclick="pmImportModel()" style="margin-top:8px;display:inline-block;font-size:13px;padding:8px 18px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#10B981;cursor:pointer;font-weight:600">📂 Indirilen ZIP dosyasini yukle</button>';
         } else {
           hint.textContent = hintText;
         }
