@@ -567,8 +567,10 @@
           <div class="divider"></div>
           <!-- CHANGELOG -->
           <div class="card" style="padding:16px;">
-            <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Degisiklik Gecmisi</div>
-            <div id="aboutChangelog" style="font-size:12px;color:var(--text-2);"></div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Son Guncelleme</div>
+            <div id="aboutCurrentVersion" style="font-size:12px;color:var(--text-2);"></div>
+            <button id="aboutShowAllVersions" onclick="document.getElementById('aboutAllVersions').style.display=document.getElementById('aboutAllVersions').style.display==='none'?'block':'none'; this.textContent=document.getElementById('aboutAllVersions').style.display==='none'?'Gelisim Sureci →':'Gizle ↑'" style="margin-top:12px;padding:8px 16px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;width:100%">Gelisim Sureci →</button>
+            <div id="aboutAllVersions" style="display:none;margin-top:12px;font-size:12px;color:var(--text-2);"></div>
           </div>
           <div class="divider"></div>
           <div class="card" style="border-color:rgba(239,68,68,0.15)"><div class="card-row"><div class="card-label-wrap"><div class="card-label" style="color:#EF4444">Ayarlari Sifirla</div><div class="card-hint">Tum ayarlari sifirla</div></div><button class="danger-btn" id="sResetBtn">Sifirla</button></div></div>
@@ -874,30 +876,43 @@
     async function loadAboutChangelog() {
       try {
         const changelog = await window.voiceflow.getChangelog();
-        const container = document.getElementById("aboutChangelog");
-        if (!container || !changelog) return;
+        if (!changelog) return;
         const allVersions = changelog.allVersions || {};
         const versions = Object.keys(allVersions).sort((a, b) => {
           const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
           for (let i = 0; i < 3; i++) { if ((pa[i]||0) !== (pb[i]||0)) return (pb[i]||0) - (pa[i]||0); }
           return 0;
         });
-        let html = "";
-        versions.forEach((ver, idx) => {
-          const changes = allVersions[ver] || [];
-          const isCurrent = ver === changelog.version;
-          const isOpen = idx === 0; // Only current version open by default
-          html += '<details style="margin-bottom:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;"' + (isOpen ? ' open' : '') + '>';
-          html += '<summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:12px;color:var(--text-1);background:var(--bg-input);user-select:none;display:flex;align-items:center;gap:8px;">';
-          html += '<span style="font-size:10px;color:var(--text-3);">&#9654;</span> v' + esc(ver);
-          if (isCurrent) html += ' <span style="font-size:10px;background:var(--accent);color:white;padding:1px 6px;border-radius:4px;">Guncel</span>';
-          html += '</summary>';
-          html += '<div style="padding:8px 14px 12px;">';
-          html += '<ul style="margin:0;padding-left:16px;list-style:disc;font-size:12px;color:var(--text-2);">';
-          changes.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
-          html += '</ul></div></details>';
-        });
-        container.innerHTML = html || '<div style="color:var(--text-3);">Degisiklik bilgisi yok</div>';
+
+        // Current version — always visible
+        const currentContainer = document.getElementById("aboutCurrentVersion");
+        if (currentContainer && versions.length > 0) {
+          const curVer = versions[0];
+          const curChanges = allVersions[curVer] || [];
+          let html = '<div style="font-weight:600;margin-bottom:6px;color:var(--text-1);">v' + esc(curVer) + ' <span style="font-size:10px;background:var(--accent);color:white;padding:1px 6px;border-radius:4px;">Guncel</span></div>';
+          html += '<ul style="margin:0;padding-left:16px;list-style:disc;">';
+          curChanges.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
+          html += '</ul>';
+          currentContainer.innerHTML = html;
+        }
+
+        // All versions — hidden behind "Gelisim Sureci" button
+        const allContainer = document.getElementById("aboutAllVersions");
+        if (allContainer && versions.length > 1) {
+          let html = '';
+          versions.slice(1).forEach(ver => {
+            const changes = allVersions[ver] || [];
+            html += '<details style="margin-bottom:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;">';
+            html += '<summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:12px;color:var(--text-1);background:var(--bg-input);user-select:none;display:flex;align-items:center;gap:8px;">';
+            html += '<span style="font-size:10px;color:var(--text-3);">&#9654;</span> v' + esc(ver);
+            html += '</summary>';
+            html += '<div style="padding:8px 14px 12px;">';
+            html += '<ul style="margin:0;padding-left:16px;list-style:disc;font-size:12px;color:var(--text-2);">';
+            changes.forEach(c => { html += '<li style="margin-bottom:3px;">' + esc(c) + '</li>'; });
+            html += '</ul></div></details>';
+          });
+          allContainer.innerHTML = html;
+        }
       } catch(e) {}
     }
 
@@ -966,13 +981,13 @@
       document.getElementById("sAutoCopy").checked=s.autoCopy!==false;
       document.getElementById("sAutoPaste").checked=!!s.autoPaste;
       if(s.theme)document.getElementById("sTheme").value=s.theme;
-      document.getElementById("sShowPill").checked=s.showPill!==false;
+      document.getElementById("sShowPill").checked=!!s.showPill;
       if(s.pillPosition)document.getElementById("sPillPosition").value=s.pillPosition;
       document.getElementById("sSendStats").checked=!!s.sendStats;
       document.getElementById("sKeepHistory").checked=!!s.keepHistory;
       loadAutoStart(); loadAutoUpdate(); loadAudioDevices(); loadShortcutDisplays();
       // Power mode
-      document.getElementById("sPowerMode").checked=!!s.powerMode;
+      document.getElementById("sPowerMode").checked=s.powerMode!==false;
       // Disable premium features if trial expired
       const premiumOk=isPremiumAvailableHome();
       document.getElementById("sPowerMode").disabled=!premiumOk;
@@ -991,7 +1006,7 @@
       document.getElementById("sPowerSensitivity").value = sens;
       document.getElementById("sensitivityLabel").textContent = ["", "Cok Dusuk (1/5)", "Dusuk (2/5)", "Orta (3/5)", "Yuksek (4/5)", "Cok Yuksek (5/5)"][sens];
       document.getElementById("sPowerAutoStart").checked=s.powerAutoStart!==false;
-      if(s.powerMode) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
+      if(s.powerMode!==false) { window.voiceflow.togglePowerMode(true); setTimeout(() => pmStart(), 500); } else updatePowerModeUI("off");
     }
 
     async function loadAutoStart(){ try{ document.getElementById("sAutoStart").checked=await window.voiceflow.getAutoStart(); }catch(e){} }
@@ -1237,15 +1252,16 @@
           console.log("Vosk model loaded for:", lang);
         }
 
-        // Step 2: Create recognizer with wake word grammar
+        // Step 2: Create recognizer in FREE-FORM mode (no grammar constraint)
+        // Grammar mode forces ALL audio into grammar words with artificially high confidence
+        // Free-form mode gives realistic confidence scores — wake words matched post-recognition
         const wakeWords = getWakeWords();
         if (wakeWords.length === 0) {
           updatePowerModeUI("error", "En az 1 uyanma kelimesi gerekli");
           showToast("En az 1 uyanma kelimesi gerekli!");
           return;
         }
-        const grammar = JSON.stringify([...wakeWords.map(w => w.toLowerCase()), "[unk]"]);
-        voskRecognizer = new voskModel.KaldiRecognizer(16000, grammar);
+        voskRecognizer = new voskModel.KaldiRecognizer(16000);
         voskRecognizer.setWords(true);
 
         // Step 3: Connect microphone
@@ -1277,52 +1293,72 @@
           } catch(e) { /* ignore processing errors during pause/stop */ }
         };
 
-        // Listen for Vosk recognition results
+        // Listen for Vosk recognition results (FREE-FORM mode)
+        // In free-form mode, Vosk returns actual speech text with realistic confidence
+        // We search for wake words within the recognized text
         voskRecognizer.on("result", (msg) => {
           const text = (msg.result?.text || "").trim();
-          if (!text || text === "[unk]" || !pmIsListening || pmIsCapturing) return;
+          if (!text || !pmIsListening || pmIsCapturing) return;
 
-          // Get confidence from Vosk word-level results
+          // Get word-level results with confidence
           const wordResults = msg.result?.result || [];
-          const avgConf = wordResults.length > 0
-            ? wordResults.reduce((sum, w) => sum + (w.conf || 0), 0) / wordResults.length
-            : 0;
 
-          // Sensitivity-based confidence threshold (RAISED for stricter matching)
-          // 1=Cok Dusuk (0.99), 2=Dusuk (0.95), 3=Orta (0.90), 4=Yuksek (0.80), 5=Cok Yuksek (0.60)
+          // Free-form confidence thresholds (realistic scores: 0.3-0.9)
+          // 1=Cok Dusuk (0.85), 2=Dusuk (0.70), 3=Orta (0.55), 4=Yuksek (0.40), 5=Cok Yuksek (0.25)
           const sensitivity = currentSettings.powerSensitivity || 2;
-          const confThresholds = [0, 0.99, 0.95, 0.90, 0.80, 0.60];
+          const confThresholds = [0, 0.85, 0.70, 0.55, 0.40, 0.25];
           const confThreshold = confThresholds[sensitivity];
-
-          console.log("Vosk heard:", text, "conf:", avgConf.toFixed(2), "threshold:", confThreshold);
 
           const liveEl = document.getElementById("pmLiveText");
           const matchEl = document.getElementById("pmMatchIndicator");
           if (liveEl) { liveEl.textContent = text; liveEl.style.color = "var(--text-1)"; }
 
-          // Reject low-confidence results
-          if (avgConf < confThreshold) {
-            if (matchEl) matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '" (guven: %' + Math.round(avgConf*100) + ')</span>';
-            return;
-          }
-
-          // Check against wake words — VERY strict matching
-          // No includes() — only exact match or Levenshtein distance 1
+          // Search for wake words in the recognized text
           const currentWakeWords = getWakeWords();
           const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").trim();
-          const nText = norm(text);
-          const matchedWord = currentWakeWords.find(w => {
-            const nw = norm(w);
-            // Exact match ONLY (no includes/contains)
-            if (nText === nw) return true;
-            // Phonetic exact match (Turkish chars)
-            const pText = phoneticNorm(nText);
-            const pW = phoneticNorm(nw);
-            if (pText === pW) return true;
-            // Very tight Levenshtein: max 1 char difference, text length must be very close
-            if (Math.abs(pText.length - pW.length) <= 1 && levenshtein(pText, pW) <= 1) return true;
-            return false;
-          });
+          const textWords = norm(text).split(/\s+/);
+
+          let matchedWord = null;
+          let matchConf = 0;
+
+          for (const wakeWord of currentWakeWords) {
+            const nw = norm(wakeWord);
+            const wakeWordParts = nw.split(/\s+/);
+
+            // Check each word in the recognized text against wake word(s)
+            for (let i = 0; i <= textWords.length - wakeWordParts.length; i++) {
+              const segment = textWords.slice(i, i + wakeWordParts.length).join(" ");
+              const pSegment = phoneticNorm(segment);
+              const pW = phoneticNorm(nw);
+
+              let isMatch = false;
+              if (segment === nw) isMatch = true;
+              else if (pSegment === pW) isMatch = true;
+              else if (Math.abs(pSegment.length - pW.length) <= 1 && levenshtein(pSegment, pW) <= 1) isMatch = true;
+
+              if (isMatch) {
+                // Get confidence for the matching word(s) from Vosk results
+                let segConf = 0;
+                if (wordResults.length > 0) {
+                  const matchingWords = wordResults.filter(wr => {
+                    const nwr = norm(wr.word || "");
+                    return textWords.indexOf(nwr) >= i && textWords.indexOf(nwr) < i + wakeWordParts.length;
+                  });
+                  segConf = matchingWords.length > 0
+                    ? matchingWords.reduce((sum, w) => sum + (w.conf || 0), 0) / matchingWords.length
+                    : 0.5; // Default if word-level data missing
+                }
+                if (segConf >= confThreshold) {
+                  matchedWord = wakeWord;
+                  matchConf = segConf;
+                  break;
+                }
+              }
+            }
+            if (matchedWord) break;
+          }
+
+          console.log("Vosk heard:", text, "matched:", matchedWord, "conf:", matchConf.toFixed(2), "threshold:", confThreshold);
 
           if (matchedWord && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
             pmLastWakeTime = Date.now();
@@ -1332,8 +1368,10 @@
 
             pmPause();
             window.voiceflow.wakeWordDetected();
-          } else if (!matchedWord && matchEl) {
-            matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
+          } else if (matchEl) {
+            if (text && text !== "[unk]") {
+              matchEl.innerHTML = '<span style="color:var(--text-3)">Duyulan: "' + esc(text) + '"</span>';
+            }
           }
         });
 

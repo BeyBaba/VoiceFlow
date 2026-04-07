@@ -432,8 +432,9 @@ async function finishOnboarding() {
     removeFiller: true,
     autoPunctuation: true,
     autoCapitalize: true,
-    showPill: true,
+    showPill: false,
     setupComplete: true,
+    powerMode: true,
   });
 
   showView("idle");

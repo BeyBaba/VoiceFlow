@@ -16,6 +16,14 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.4": [
+    "Setup wizard ilk kurulumda on planda aciliyor — setup bitmeden ana ekran gelmiyor",
+    "Pill bar varsayilan KAPALI — sadece ayarlardan acilabilir",
+    "Guc Modu varsayilan ACIK geliyor",
+    "Vosk free-form tanima — grammar mode kaldirildi, gercek confidence skorlari",
+    "Wake word hassasiyeti ciddi olarak iyilestirildi — sahte tetiklenmeler engellendi",
+    "Changelog: sadece guncel versiyon gorunuyor + Gelisim Sureci butonu",
+  ],
   "4.7.3": [
     "Ilk kurulumda login ekrani otomatik on planda aciliyor",
     "Otomatik guncelleme dialog'u kaldirildi — sessizce acik, ayarlardan kapatilabilir",
@@ -203,10 +211,20 @@ function createMainWindow() {
   });
 
   mainWindow.webContents.on("did-finish-load", () => {
-    // Only show main dictation window if user is authenticated AND setup is complete
-    // During first run / login, ONLY homeWindow is shown — mainWindow stays hidden
     const s = loadSettings();
-    if (s.isAuthenticated && s.setupComplete) {
+    if (!s.setupComplete) {
+      // First run — show setup wizard in foreground
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.moveTop();
+      mainWindow.setAlwaysOnTop(true);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setAlwaysOnTop(false);
+          mainWindow.focus();
+        }
+      }, 500);
+    } else if (s.isAuthenticated) {
       mainWindow.show();
       mainWindow.focus();
     }
@@ -986,11 +1004,11 @@ ipcMain.handle("save-settings", (event, data) => {
 
   // Show/hide pill based on settings
   if (merged.setupComplete && merged.isAuthenticated) {
-    // Create pill window if it doesn't exist yet (first time after setup completes)
-    if (!pillWindow || pillWindow.isDestroyed()) {
-      createPillWindow();
-    }
     if (merged.showPill === true) {
+      // Create pill window on demand only when user enables it
+      if (!pillWindow || pillWindow.isDestroyed()) {
+        createPillWindow();
+      }
       showPill();
     } else {
       hidePill();
@@ -1676,8 +1694,11 @@ app.whenReady().then(async () => {
   const isRegistered = globalShortcut.isRegistered(dictateKey);
   console.log(`[STARTUP] Shortcut '${dictateKey}' registered: ${isRegistered}`);
 
-  // Always open home window — shows login on first run, dashboard after setup
-  createHomeWindow();
+  // Only open home window after setup is complete — during first run, mainWindow shows setup wizard
+  const homeSettings = loadSettings();
+  if (homeSettings.setupComplete) {
+    createHomeWindow();
+  }
 
   // Check license status from server (with timeout — don't block forever)
   try {
