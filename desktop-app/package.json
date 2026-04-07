@@ -1,6 +1,6 @@
 {
   "name": "voiceflow-desktop",
-  "version": "4.7.5",
+  "version": "4.7.6",
   "description": "VoiceFlow - AI Sesli Dikte Uygulamasi",
   "main": "main.js",
   "scripts": {

@@ -427,7 +427,7 @@ async function finishOnboarding() {
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
     apiKey: EMBEDDED_API_KEY,
-    autoPaste: false,
+    autoPaste: true,
     autoCopy: true,
     removeFiller: true,
     autoPunctuation: true,
@@ -726,6 +726,9 @@ async function transcribe(audioBlob) {
 async function saveToHistory(text) {
   try {
     const settings = await window.voiceflow.getSettings();
+    // Respect keepHistory setting — if OFF, don't save
+    if (!settings.keepHistory) return;
+
     const history = settings.transcriptHistory || [];
 
     // Add new entry at the beginning
@@ -812,7 +815,7 @@ function startTimer() {
     timerEl.textContent = `${m}:${s.toString().padStart(2, "0")}`;
 
     // Auto-stop if max recording time is set
-    const maxTime = cachedSettings.maxRecTime || 120;
+    const maxTime = cachedSettings.maxRecTime || 300;
     if (maxTime > 0 && seconds >= maxTime) {
       stopRecording();
     }
