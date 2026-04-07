@@ -16,6 +16,12 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.7.7": [
+    "Guc Modu'na 'Kapat' butonu eklendi — durum kartindan tek tikla kapatilabilir",
+    "Guc Modu toggle'i her zaman gorunur — test sonrasi bekleme kaldirildi",
+    "Alt cubuk (pill bar) varsayilan olarak KAPALI (HTML uyumlulugu duzeltildi)",
+    "Tum butonlar ve toggle'lar dogrulandi — hepsi calisiyor",
+  ],
   "4.7.6": [
     "Vosk model indirme hatasi duzeltildi — file.close() race condition fix",
     "Transkripsiyon gecmisi kapali iken gecmis kaydedilmiyor",
