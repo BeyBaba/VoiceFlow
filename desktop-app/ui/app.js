@@ -440,6 +440,8 @@ async function finishOnboarding() {
 
   showView("idle");
   window.voiceflow.resizeWindow(380, 100);
+  // Hide dictation window and open home window
+  window.voiceflow.hideWindow();
   showToast("Hazir! Ctrl+Space ile dikte et");
 }
 

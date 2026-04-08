@@ -1360,10 +1360,10 @@
           // Get word-level results with confidence
           const wordResults = msg.result?.result || [];
 
-          // Free-form confidence thresholds (realistic scores: 0.3-0.9)
-          // 1=Cok Dusuk (0.85), 2=Dusuk (0.70), 3=Orta (0.55), 4=Yuksek (0.40), 5=Cok Yuksek (0.25)
+          // Free-form confidence thresholds (Vosk Turkce modeli dusuk confidence verir)
+          // 1=Cok Dusuk (0.70), 2=Dusuk (0.50), 3=Orta (0.35), 4=Yuksek (0.20), 5=Cok Yuksek (0.10)
           const sensitivity = currentSettings.powerSensitivity || 2;
-          const confThresholds = [0, 0.85, 0.70, 0.55, 0.40, 0.25];
+          const confThresholds = [0, 0.70, 0.50, 0.35, 0.20, 0.10];
           const confThreshold = confThresholds[sensitivity];
 
           const liveEl = document.getElementById("pmLiveText");
@@ -1683,11 +1683,11 @@
 
       const langName = LANG_NAMES[currentSettings.language || "tr"] || "Turkce";
       const states = {
-        loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "Birkac saniye icinde hazir olacak", color: "#F59E0B", dash: "Hazirlaniyor" },
+        loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "WASM motoru derleniyor, bu ilk seferde 30-60 saniye surebilir", color: "#F59E0B", dash: "Hazirlaniyor" },
         downloading: { icon: "⬇️", text: langName + " ses modeli indiriliyor...", hint: "Ilk kullanim icin gerekli (~45MB)", color: "#3B82F6", dash: "Indiriliyor" },
-        listening: { icon: "👂", text: "Dinliyor — \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin!", hint: "Arka planda sessizce bekliyor (yerel motor)", color: "#10B981", dash: "Aktif" },
-        off: { icon: "🔇", text: "Kapali", hint: "", color: "var(--text-3)", dash: "Kapali" },
-        error: { icon: "❌", text: "Hata olustu", hint: "", color: "#EF4444", dash: "Hata" },
+        listening: { icon: "✅", text: "Hazir! \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin — dikte otomatik baslar", hint: langName + " yerel ses motoru aktif — arka planda dinliyor. Uyanma kelimesini duyunca dikte baslar.", color: "#10B981", dash: "Aktif" },
+        off: { icon: "🔇", text: "Kapali", hint: "Guc Modunu acmak icin toggle'i aktif edin", color: "var(--text-3)", dash: "Kapali" },
+        error: { icon: "❌", text: "Motor yuklenemedi", hint: "", color: "#EF4444", dash: "Hata" },
       };
 
       const s = states[status] || states.off;
