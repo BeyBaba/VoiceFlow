@@ -16,6 +16,13 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.8.4": [
+    "Setup sonrasi dikte penceresi gizleniyor, ana ekran onde aciliyor",
+    "Dikte kapaninca ana ekran artik one gelmiyor",
+    "Dikte penceresi pozisyon hatirliyor — nereye cekersen orda kalir",
+    "Guc modu status alani cok daha aciklayici — motor durumu net gosteriliyor",
+    "Wake word hassasiyet esikleri dusuruldu — Vosk Turkce modeli icin optimize",
+  ],
   "4.8.3": [
     "Otomatik mikrofon ayarlama KALDIRILDI — kullanici kendisi secer",
     "Model import sonrasi basari mesaji ve status guncelleme iyilestirildi",
@@ -780,13 +787,14 @@ function stopPowerMode() {
 function toggleRecording() {
   if (!mainWindow) return;
 
-  // Position main window above the pill (bottom center)
+  // Use saved position if available, otherwise center
+  const settings = loadSettings();
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = display.workAreaSize;
   const mainBounds = mainWindow.getBounds();
 
-  const newX = Math.round((screenWidth - mainBounds.width) / 2);
-  const newY = screenHeight - 52 - mainBounds.height - 12;
+  const newX = (settings.mainWindowX !== undefined) ? settings.mainWindowX : Math.round((screenWidth - mainBounds.width) / 2);
+  const newY = (settings.mainWindowY !== undefined) ? settings.mainWindowY : screenHeight - 52 - mainBounds.height - 12;
 
   // Restore if minimized
   if (mainWindow.isMinimized()) {
@@ -991,6 +999,10 @@ function autoPasteToApp() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.hide();
   }
+  // Prevent home window from stealing focus when main window hides
+  if (homeWindow && !homeWindow.isDestroyed() && !homeWindow.isMinimized()) {
+    homeWindow.blur();
+  }
   updatePillState("idle");
 
   const settings = loadSettings();
@@ -1046,6 +1058,10 @@ ipcMain.on("hide-window", () => {
   isRecording = false;
   isProcessingResult = false;
   if (mainWindow) mainWindow.hide();
+  // Prevent home window from stealing focus
+  if (homeWindow && !homeWindow.isDestroyed() && homeWindow.isVisible()) {
+    homeWindow.blur();
+  }
   updatePillState("idle");
 });
 
