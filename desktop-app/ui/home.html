@@ -1257,6 +1257,18 @@
     let voskRecognizer = null;
     let voskReady = false;
 
+    // Groq fallback wake word listener (used when Vosk WASM fails)
+    let groqFallbackActive = false;
+    let groqFallbackStream = null;
+    let groqFallbackCtx = null;
+    let groqFallbackAnalyser = null;
+    let groqFallbackInterval = null;
+    let groqFallbackRecorder = null;
+    let groqFallbackChunks = [];
+    let groqFallbackSpeechDetected = false;
+    let groqFallbackSpeechStart = 0;
+    let groqFallbackLastApi = 0;
+
     async function pmStart() {
       if (pmIsListening) return;
 
@@ -1467,15 +1479,17 @@
       } catch (err) {
         console.error("PowerMode start error:", err);
         const ismic = err.message && (err.message.includes("Permission") || err.message.includes("NotAllowed") || err.message.includes("getUserMedia"));
-        const isTimeout = err.message && (err.message.includes("zaman asimi") || err.message.includes("timeout"));
-        const isNetwork = err.message && (err.message.includes("network") || err.message.includes("ECONNREFUSED") || err.message.includes("ENOTFOUND") || err.message.includes("fetch"));
-        let hint = err.message;
-        if (ismic) hint = "Mikrofon erisimi kontrol edin";
-        else if (isTimeout) hint = err.message + ". Internet yavas olabilir.";
-        else if (isNetwork) hint = "Internet baglantisi yok veya sunucu erisilemez.";
-        hint += '<br><span style="font-size:10px;color:var(--text-3);margin-top:4px;display:inline-block">Not: Guc Modu calismasa bile Ctrl+Space ile dikte yapabilirsiniz.</span>';
-        updatePowerModeUI("error", hint);
-        showToast("Guc Modu baslatilamadi");
+
+        if (ismic) {
+          // Mic error — can't fallback either
+          updatePowerModeUI("error", "Mikrofon erisimi kontrol edin");
+          showToast("Mikrofon erisimi yok");
+        } else {
+          // Vosk WASM failed — auto-start Groq fallback listener
+          console.log("Vosk failed, starting Groq fallback wake word listener...");
+          showToast("Yerel motor yuklenemedi, bulut dinleyici baslatiliyor...");
+          setTimeout(() => groqFallbackStart(), 500);
+        }
       }
     }
 
@@ -1492,7 +1506,198 @@
       // Hide download progress
       const dlProgress = document.getElementById("pmDownloadProgress");
       if (dlProgress) dlProgress.style.display = "none";
+      // Also stop Groq fallback
+      groqFallbackStop();
       updatePowerModeUI("off");
+    }
+
+    // ========== GROQ FALLBACK WAKE WORD LISTENER ==========
+    // When Vosk WASM fails, this uses Groq API to continuously listen for wake words
+    async function groqFallbackStart() {
+      if (groqFallbackActive) return;
+      console.log("Starting Groq fallback wake word listener...");
+      groqFallbackActive = true;
+      groqFallbackSpeechDetected = false;
+      groqFallbackSpeechStart = 0;
+      groqFallbackRecorder = null;
+      groqFallbackChunks = [];
+
+      try {
+        const micConstraints = (currentSettings.audioDevice && currentSettings.audioDevice !== "default")
+          ? { deviceId: { exact: currentSettings.audioDevice } }
+          : true;
+        groqFallbackStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints });
+        groqFallbackCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (groqFallbackCtx.state === "suspended") await groqFallbackCtx.resume();
+        const source = groqFallbackCtx.createMediaStreamSource(groqFallbackStream);
+        groqFallbackAnalyser = groqFallbackCtx.createAnalyser();
+        groqFallbackAnalyser.fftSize = 256;
+        source.connect(groqFallbackAnalyser);
+
+        const dataArray = new Uint8Array(groqFallbackAnalyser.frequencyBinCount);
+
+        // Update UI — show as listening
+        updatePowerModeUI("listening");
+        const liveEl = document.getElementById("pmLiveText");
+        if (liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+
+        groqFallbackInterval = setInterval(() => {
+          if (!groqFallbackAnalyser || !groqFallbackActive) return;
+          groqFallbackAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length;
+
+          // Level meter
+          const bar = document.getElementById("pmLevelBar");
+          if (bar) bar.style.width = Math.min(100, avg * 2.5) + "%";
+
+          if (avg > 25) {
+            if (!groqFallbackSpeechDetected) {
+              groqFallbackSpeechDetected = true;
+              groqFallbackSpeechStart = Date.now();
+              if (!groqFallbackRecorder && groqFallbackStream) {
+                try {
+                  const mt = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+                  groqFallbackRecorder = new MediaRecorder(groqFallbackStream, { mimeType: mt });
+                  groqFallbackChunks = [];
+                  groqFallbackRecorder.ondataavailable = (e) => { if (e.data.size > 0) groqFallbackChunks.push(e.data); };
+                  groqFallbackRecorder.start(100);
+                } catch(e) { groqFallbackRecorder = null; }
+              }
+            }
+          } else if (groqFallbackSpeechDetected) {
+            const dur = Date.now() - groqFallbackSpeechStart;
+            if (dur > 500 && dur < 6000) {
+              groqFallbackSpeechDetected = false;
+              if (groqFallbackRecorder && groqFallbackRecorder.state === "recording") {
+                const rec = groqFallbackRecorder;
+                const chunks = [...groqFallbackChunks];
+                groqFallbackRecorder = null;
+                groqFallbackChunks = [];
+                rec.onstop = () => { groqFallbackProcess(chunks, rec.mimeType); };
+                try { rec.stop(); } catch(e) {}
+              }
+            } else if (dur >= 6000) {
+              groqFallbackSpeechDetected = false;
+              if (groqFallbackRecorder && groqFallbackRecorder.state === "recording") { try { groqFallbackRecorder.stop(); } catch(e){} groqFallbackRecorder = null; groqFallbackChunks = []; }
+            }
+            if (avg < 2) { groqFallbackSpeechDetected = false; if (groqFallbackRecorder && groqFallbackRecorder.state === "recording") { try { groqFallbackRecorder.stop(); } catch(e){} groqFallbackRecorder = null; groqFallbackChunks = []; } }
+          }
+        }, 50);
+
+      } catch (err) {
+        console.error("Groq fallback start error:", err);
+        groqFallbackActive = false;
+        updatePowerModeUI("error", "Bulut dinleyici baslatilamadi: " + err.message);
+      }
+    }
+
+    async function groqFallbackProcess(chunks, mimeType) {
+      if (!groqFallbackActive) return;
+      if (Date.now() - groqFallbackLastApi < 2000) return;
+      groqFallbackLastApi = Date.now();
+
+      const liveEl = document.getElementById("pmLiveText");
+      if (liveEl) { liveEl.textContent = "Ses kontrol ediliyor..."; liveEl.style.color = "#F59E0B"; }
+
+      try {
+        if (!mimeType) mimeType = "audio/webm;codecs=opus";
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < 200) {
+          if (liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+          return;
+        }
+
+        const apiKey = EMBEDDED_API_KEY;
+        if (!apiKey) return;
+
+        const wakeWordsArr = getWakeWords();
+        const fd = new FormData();
+        fd.append("file", blob, "wake.webm");
+        fd.append("model", "whisper-large-v3-turbo");
+        fd.append("language", currentSettings.language || "tr");
+        fd.append("temperature", "0");
+        fd.append("response_format", "json");
+        fd.append("prompt", "Uyanma kelimeleri: " + wakeWordsArr.join(", ") + ". Bu kelimeleri tam olarak yazin, kisaltma yapmayin.");
+
+        const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + apiKey },
+          body: fd,
+        });
+
+        if (resp.ok) {
+          const result = await resp.json();
+          const text = (result.text || "").trim();
+          console.log("Groq fallback heard:", text);
+          if (typeof logApiUsage === "function") logApiUsage(3, "groq-fallback");
+
+          if (!text) {
+            if (liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+            return;
+          }
+
+          if (liveEl) { liveEl.textContent = 'Duyulan: "' + text + '"'; liveEl.style.color = "var(--text-1)"; }
+
+          const norm = (s) => s.toLowerCase().replace(/[.,!?;:'"·\-–—]/g,"").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ç/g,"c").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ı/g,"i").trim();
+          const nText = norm(text);
+          const matchedWord = wakeWordsArr.find(w => w.length >= 2 && fuzzyMatch(nText, norm(w)));
+
+          if (matchedWord && (Date.now() - pmLastWakeTime >= PM_COOLDOWN)) {
+            pmLastWakeTime = Date.now();
+            const matchEl = document.getElementById("pmMatchIndicator");
+            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981">"' + esc(matchedWord) + '" algilandi! Dikte basliyor...</span>';
+            if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
+            setTimeout(() => { if (liveEl) { liveEl.style.borderColor = ""; liveEl.style.background = ""; } }, 4000);
+
+            // Pause listening while dictation runs
+            groqFallbackPause();
+            window.voiceflow.wakeWordDetected();
+          } else {
+            setTimeout(() => {
+              if (groqFallbackActive && liveEl) {
+                liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin";
+                liveEl.style.color = "var(--text-2)";
+              }
+            }, 2000);
+          }
+        } else if (resp.status === 429) {
+          if (liveEl) { liveEl.textContent = "Rate limit, biraz bekleniyor..."; liveEl.style.color = "#F59E0B"; }
+          await new Promise(r => setTimeout(r, 3000));
+          if (groqFallbackActive && liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+        }
+      } catch (err) {
+        console.error("Groq fallback error:", err);
+        if (liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+      }
+    }
+
+    function groqFallbackPause() {
+      if (groqFallbackRecorder && groqFallbackRecorder.state === "recording") { try { groqFallbackRecorder.stop(); } catch(e){} }
+      groqFallbackRecorder = null;
+      groqFallbackChunks = [];
+      groqFallbackSpeechDetected = false;
+    }
+
+    function groqFallbackResume() {
+      if (!groqFallbackActive) return;
+      groqFallbackSpeechDetected = false;
+      groqFallbackRecorder = null;
+      groqFallbackChunks = [];
+      const liveEl = document.getElementById("pmLiveText");
+      if (liveEl) { liveEl.textContent = "Bulut dinleyici aktif — uyanma kelimesini soyleyin"; liveEl.style.color = "var(--text-2)"; }
+    }
+
+    function groqFallbackStop() {
+      groqFallbackActive = false;
+      if (groqFallbackInterval) { clearInterval(groqFallbackInterval); groqFallbackInterval = null; }
+      if (groqFallbackRecorder && groqFallbackRecorder.state === "recording") { try { groqFallbackRecorder.stop(); } catch(e){} }
+      groqFallbackRecorder = null;
+      groqFallbackChunks = [];
+      if (groqFallbackStream) { groqFallbackStream.getTracks().forEach(t => t.stop()); groqFallbackStream = null; }
+      if (groqFallbackCtx) { groqFallbackCtx.close().catch(()=>{}); groqFallbackCtx = null; }
+      groqFallbackAnalyser = null;
     }
 
     // Stop Power Mode from UI button — also aborts active download
@@ -1578,7 +1783,13 @@
     }
 
     function pmResume() {
-      console.log("pmResume called, ctx:", pmAudioCtx?.state, "stream:", pmStream?.active, "listening:", pmIsListening);
+      console.log("pmResume called, ctx:", pmAudioCtx?.state, "stream:", pmStream?.active, "listening:", pmIsListening, "groqFallback:", groqFallbackActive);
+      // If Groq fallback is active, resume that instead
+      if (groqFallbackActive) {
+        groqFallbackResume();
+        updatePowerModeUI("listening");
+        return;
+      }
       if (pmAudioCtx && pmAudioCtx.state === "suspended" && pmStream && pmStream.active) {
         pmAudioCtx.resume();
         pmIsListening = true;
@@ -1685,7 +1896,7 @@
       const states = {
         loading: { icon: "⏳", text: "Ses motoru yukleniyor...", hint: "WASM motoru derleniyor, bu ilk seferde 30-60 saniye surebilir", color: "#F59E0B", dash: "Hazirlaniyor" },
         downloading: { icon: "⬇️", text: langName + " ses modeli indiriliyor...", hint: "Ilk kullanim icin gerekli (~45MB)", color: "#3B82F6", dash: "Indiriliyor" },
-        listening: { icon: "✅", text: "Hazir! \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin — dikte otomatik baslar", hint: langName + " yerel ses motoru aktif — arka planda dinliyor. Uyanma kelimesini duyunca dikte baslar.", color: "#10B981", dash: "Aktif" },
+        listening: { icon: "✅", text: "Hazir! \"" + ((currentSettings.wakeWords || [currentSettings.wakeWord]).filter(Boolean).join('" / "') || "?") + "\" deyin — dikte otomatik baslar", hint: (groqFallbackActive ? "Bulut dinleyici aktif (Groq) — uyanma kelimesini duyunca dikte baslar." : langName + " yerel ses motoru aktif — arka planda dinliyor. Uyanma kelimesini duyunca dikte baslar."), color: "#10B981", dash: "Aktif" },
         off: { icon: "🔇", text: "Kapali", hint: "Guc Modunu acmak icin toggle'i aktif edin", color: "var(--text-3)", dash: "Kapali" },
         error: { icon: "❌", text: "Motor yuklenemedi", hint: "", color: "#EF4444", dash: "Hata" },
       };
@@ -2113,15 +2324,26 @@
             // SUCCESS
             pmTestPassed = true;
             if (liveEl) { liveEl.style.borderColor = "#10B981"; liveEl.style.background = "rgba(16,185,129,0.1)"; }
-            if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
 
-            setTimeout(() => {
+            // If power mode is ON, trigger dictation like Ctrl+Space
+            if (currentSettings.powerMode === true) {
+              if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Dikte basliyor...</span>';
               pmStopTest();
               const btn = document.getElementById("pmTestBtn");
               btn.textContent = "✅ Test Basarili — Tekrar Dene";
               btn.style.borderColor = "#10B981";
               btn.style.background = "rgba(16,185,129,0.08)";
-            }, 2500);
+              window.voiceflow.wakeWordDetected();
+            } else {
+              if (matchEl) matchEl.innerHTML = '✅ <span style="color:#10B981;font-size:15px">"' + esc(matchedWord) + '" algilandi! Test basarili!</span>';
+              setTimeout(() => {
+                pmStopTest();
+                const btn = document.getElementById("pmTestBtn");
+                btn.textContent = "✅ Test Basarili — Tekrar Dene";
+                btn.style.borderColor = "#10B981";
+                btn.style.background = "rgba(16,185,129,0.08)";
+              }, 2500);
+            }
           } else {
             const wordsStr = wakeWords.map(w => '"' + w + '"').join(" veya ");
             if (matchEl) matchEl.innerHTML = '<span style="color:#F59E0B">⚠️ Duyulan: "' + esc(text) + '" — kelime eslesmiyor, tekrar deneyin</span>';
