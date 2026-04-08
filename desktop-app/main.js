@@ -16,6 +16,12 @@ process.on("unhandledRejection", (reason) => {
 
 // ========== CHANGELOG ==========
 const CHANGELOG = {
+  "4.8.5": [
+    "Vosk motor yuklenemediginde otomatik Groq bulut dinleyici devreye giriyor",
+    "Wake word testi basarili olunca guc modu ON ise dikte otomatik basliyor",
+    "Setup tamamlaninca home penceresi otomatik aciliyor (minimize degil)",
+    "Groq fallback: uyanma kelimesi algılandığında Ctrl+Space gibi dikte tetikleniyor",
+  ],
   "4.8.4": [
     "Setup sonrasi dikte penceresi gizleniyor, ana ekran onde aciliyor",
     "Dikte kapaninca ana ekran artik one gelmiyor",
