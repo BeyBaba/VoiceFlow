@@ -6,39 +6,41 @@
 - Erisilemezse kullaniciyi bildir, session'a devam et ama uyar
 
 ## KRITIK (Asla ihlal etme)
-1. **Otomatik PR + Merge** - Claude otomatik PR olusturur ve merge eder. Kullaniciya "merge edeyim mi?" diye SORMA — direkt yap. Sadece sonucu bildir: "PR #X olusturuldu ve merge edildi"
-2. **main/master korumasi** - main'e direkt push YASAK. Her zaman claude/ branch → PR → merge akisi
+1. **Otomatik PR** - Claude otomatik PR olusturur ama asla onaysız merge etmez. Kullaniciya "merge edeyim mi?" diye SORAR — Kullanıcı YAP derse ancak yapabilir. Sadece sonucu bildir: "PR #X olusturuldu Kullanıcı izni ile  merge edildi yada sonraya bırakıldı Devam Ediyorum"
+2. **main/master korumasi** - main'e direkt push YASAK. Her zaman claude/ branch → PR → merge akişı şeklinde DEVAM EDİLİR. Merge ancak Kullanıcının izni alındıktan sonra olur.
 3. **PR zorunlulugu** - main'e direkt push yok, PR uzerinden merge. Proje kurali "sormadan merge yapma" diyorsa SOR.
 4. **Test sonrasi push** - Syntax/bracket kontrolu yapilmadan push yapma
 5. **Gizli dosya korumasi** - .env, .env.local, .env.*.local, credentials, API key ASLA commit edilmez. .gitignore'da mutlaka olmali.
 6. **Placeholder yasak** - Kullaniciya verilen komutlarda ASLA placeholder birakma ({VERSION}, {OZET} gibi). Her seferinde gercek degerleri DOLDURULMUS olarak ver. Istisna: shell variable (${PROJE_ADI}).
 7. **Kullaniciya komut verirken PowerShell formati** - Kullaniciya terminal komutu verilecekse HER ZAMAN Windows PowerShell formati kullan. Ornek: `rm -rf` degil `Remove-Item -Recurse`. Claude kendi ortaminda (WSL/Linux) bash kullanabilir ama kullaniciya verilen komutlar PowerShell olmali.
-8. **Token guvenligi** - Token'i ASLA chat'e yazdirma, dosyaya yazma, CLAUDE.md'ye yazma. Token gerektiginde kullaniciya terminalde calistirmasi icin komut ver.
+8. **Token guvenligi Önemli** - Ama; Token gerektiginde kullaniciya terminalde calistirmasi icin komut ver ama kullanıcı verdiğin komut başarılı olmazsa Kullanıcı chat'e yazabilir. Sen dosyaya yazma, CLAUDE.md'ye yazma.
+9. **PR dan sonra otomatik Merge** kuralı diğer projelerin kendi yerel claude.md lerinde varsa Global kurallara göre artık geçersizdir. ÇAkışma olarak bile algılama ve diğer projelerin yerel claude.md lerinden sil.
 
 ## DURUSTLUK ONCELIKLI GELISTIRME
 - Electron'da teknik olarak YAPILAMAYAN ozellik ASLA arayuze eklenmez. Kullaniciyi yaniltma.
 - Her ozellik eklendiginde "Bu gercekten calisiyor mu?" sorusuna kanitla (test/log/ekran goruntusu) cevap ver.
 - Kod yazildi ama aktif edilmediyse acikca bildir: "DIKKAT: Bu modul yazildi ama aktif degil, aktivasyon icin su adimlar lazim..."
 - ASLA "bitti" deme, eger ozellik test edilip calistigi dogrulanmadiysa.
-- Platform kisiti varsa EN BASTA soyle, sonraya birakma.
-- Arayuzde toggle/buton/gosterge varsa, arkasinda gercek calisan kod OLMALIDIR. Sadece UI olan ozellik YASAKTIR.
+- Platform kisiti varsa EN BASTA kullanıcıya söyle Kullanıcı PWA seviyor, sonraya birakma.
+- Arayuzde toggle/buton/gosterge varsa, arkasinda gercek calisan kod OLMALIDIR. Sadece UI olan ozellik YASAKTIR. Buna dikkat et ve kontrollerini de yap.
 - Ozellik tamamlandiginda su formatla rapor ver:
   - CALISIYOR: [ozellik adi] — [test kaniti]
   - YAZILDI AMA AKTIF DEGIL: [ozellik adi] — [aktivasyon adimlari]
   - BU PLATFORMDA IMKANSIZ: [ozellik adi] — [neden + hangi platformda yapilabilir]
 
 ## Kullanici Calisma Ortami
-- Varsayilan proje yolu: `D:\CLAUDE DEKTOP WORKSPACE\VoiceFlow`
+- Varsayilan proje yolu: `D:\CLAUDE DEKTOP WORKSPACE\"PROJE ADI"`
 - Terminal: PowerShell (WSL degil)
 - Build ve komutlar icin her zaman bu yolu kullan
-- Claude Code (WSL/Linux) ortaminda bash kullanilir, kullaniciya komut verilirken PowerShell
-
+- Claude Code (WSL/Linux) ortaminda bash kullanilir, kullaniciya verilirken PowerShell için code ver, hatta sen halletmeye çalış zorunda olmadıkça komut bile verme sen yap hallet. 
+  
 ## Kullanici Iletisim Stili
 - Kullanici hizli ve kisa yazar, yazim hatalari olabilir
 - Sesli mesajdan cevrilmis metin olabilir, cumleler yarim kalabilir
 - Emin degilsen TAHMIN ETME, sor: "Sunu mu demek istedin: ...?"
 - Yarim cumleyi kendi kafana gore tamamlama
 - Turkce-Ingilizce karisik yazabilir, bu normal
+- Her zaman nazik ol ve kullanıcaya Şampiyon PAşam Kral Usta Büyük Usta şeklinde hitap et.
 
 ## Ekran Goruntusu Kurali
 - Kullanici ekran goruntusu gonderdiginde:
@@ -50,14 +52,14 @@
 ## Guvenlik — Kod Degisikligi Kurali
 - 3 veya daha fazla dosyada degisiklik yapilacaksa:
   1. Once degisecek dosyalarin listesini goster
-  2. Her dosyada NE degisecegini kisaca acikla
+  2. Her dosyada NE degisecegini ve ne etki edeceğini kisaca acikla
   3. Kullanicidan onay al
   4. Onay gelmeden degisiklik yapma
 - Kritik dosyalar (config, auth, database, payment) icin TEK dosya bile olsa onay al
 
 ## Projeler Arasi Ogrenme
 - Bir projede cozulen sorun diger projelerde de gecerli olabilir
-- Bilinen projeler: ADHD Killer, VoiceFlow, GhostX, BILSAV PWA, EasyRide
+- Bilinen projeler: ADHD-Killer-Pro-Project, VoiceFlow, GhostX, EasyRide
 - "Bu sorunu [diger proje]'de soyle cozmustuk, burada da uygulayalim mi?" diye sor
 
 ## PROJE YAPISI
