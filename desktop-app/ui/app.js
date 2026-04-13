@@ -186,7 +186,7 @@ async function init() {
     console.log("Settings loaded:", cachedSettings);
 
     // Auto-set embedded API key if not already set
-    if (!cachedSettings.apiKey && !cachedSettings.groqApiKey) {
+    if (!cachedSettings.apiKey) {
       cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
     }
 
@@ -595,7 +595,7 @@ function stopRecording() {
 
 // ==================== TRANSCRIBE ====================
 async function transcribe(audioBlob) {
-  // Her dikte oncesi settings taze oku
+  // Her dikatte settings taze oku - key degismis olabilir
   cachedSettings = await window.voiceflow.getSettings();
   const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey || EMBEDDED_API_KEY;
   const language = cachedSettings.language || "tr";
