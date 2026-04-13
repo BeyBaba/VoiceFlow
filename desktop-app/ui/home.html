@@ -220,8 +220,7 @@
         <div class="nav-item" data-page="scratchpad"><span class="nav-icon">📝</span> Scratchpad</div>
         <div class="nav-item" data-page="history"><span class="nav-icon">📋</span> Gecmis</div>
         <div class="nav-item" data-page="shortcuts"><span class="nav-icon">⌨️</span> Kisayollar</div>
-        <div class="nav-item" data-page="powermode"><span class="nav-icon">⚡</span> Guc Modu</div>
-        <div class="nav-divider"></div>
+                <div class="nav-divider"></div>
         <div class="nav-label">AYARLAR</div>
         <div class="nav-item" data-page="s-general"><span class="nav-icon">⚙️</span> Genel</div>
         <div class="nav-item" data-page="s-api"><span class="nav-icon">🔑</span> API Durumu</div>
@@ -326,140 +325,6 @@
         </div>
       </div>
 
-      <!-- POWER MODE -->
-      <div class="page" id="page-powermode">
-        <div class="page-header"><h1 class="page-title">⚡ Guc Modu</h1><p class="page-desc">Sesle aktive olan eller-serbest dikte</p></div>
-        <div class="page-body">
-
-          <!-- Step 1: Wake word inputs (up to 3) -->
-          <div class="card" style="padding:20px">
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px">1. Uyanma Komutlari Belirleyin</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Bu kelimelerden birini soylediginizde dikte otomatik baslar. En az 1, en fazla 3 komut yazin:</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;color:var(--text-3);min-width:16px">1.</span>
-                <input type="text" class="card-input" id="sWakeWord1" tabindex="1" placeholder="Ornek: Yaz, Basla, Hey..." style="flex:1;text-align:center;font-weight:700;font-size:15px;padding:9px">
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;color:var(--text-3);min-width:16px">2.</span>
-                <input type="text" class="card-input" id="sWakeWord2" tabindex="2" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;color:var(--text-3);min-width:16px">3.</span>
-                <input type="text" class="card-input" id="sWakeWord3" tabindex="3" placeholder="(istege bagli)" style="flex:1;text-align:center;font-size:14px;padding:9px;opacity:0.7">
-              </div>
-            </div>
-          </div>
-
-          <!-- Microphone Selector -->
-          <div class="card" style="padding:16px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:18px">🎙️</span>
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Mikrofon</div>
-                <select class="card-select" id="pmMicSelect" style="width:100%;padding:8px 10px;border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text-1);border:1px solid var(--border)">
-                  <option value="default">Varsayilan Mikrofon</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: Test -->
-          <div class="card" style="padding:20px" id="pmTestSection">
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px">2. Ses Testi</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Uyanma kelimenizi soyleyerek calısıp calismadigini test edin:</div>
-
-            <button id="pmTestBtn" style="width:100%;padding:12px;border:2px solid var(--accent);border-radius:10px;background:transparent;color:var(--accent-text);cursor:pointer;font-size:14px;font-weight:700;margin-bottom:14px;transition:all .2s">🎙️ Test Et — Mikrofonla Dene</button>
-
-            <!-- Audio level bar -->
-            <div id="pmTestArea" style="display:none">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                <span style="font-size:14px;min-width:24px">🎙️</span>
-                <div style="flex:1;height:10px;background:var(--bg-input);border-radius:5px;overflow:hidden">
-                  <div id="pmLevelBar" style="width:0%;height:100%;background:linear-gradient(90deg,#10B981,#F59E0B,#EF4444);border-radius:5px;transition:width 0.1s"></div>
-                </div>
-                <span id="pmLevelNum" style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">0</span>
-              </div>
-
-              <div id="pmLiveText" style="min-height:48px;padding:12px 14px;background:var(--bg-input);border-radius:8px;font-size:15px;color:var(--text-1);word-break:break-word;border:2px solid var(--border);transition:all .3s">
-                <span style="color:var(--text-3);font-style:italic">Simdi uyanma kelimenizi soyleyin...</span>
-              </div>
-              <div id="pmMatchIndicator" style="margin-top:8px;font-size:13px;font-weight:600;min-height:20px"></div>
-            </div>
-          </div>
-
-          <!-- Step 3: Activate (shown after successful test) -->
-          <div class="card" style="padding:20px" id="pmActivateSection">
-            <div style="font-size:14px;font-weight:700;margin-bottom:4px">3. Guc Modunu Etkinlestir</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Test basarili! Simdi guc modunu aktif edebilirsiniz:</div>
-            <div class="card-row" style="padding:0">
-              <div class="card-label-wrap">
-                <div class="card-label" style="font-size:15px;font-weight:700;color:var(--accent-text)">Guc Modu</div>
-                <div class="card-hint" id="pmActivateHint">Kapali</div>
-              </div>
-              <label class="toggle"><input type="checkbox" id="sPowerMode"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-            </div>
-          </div>
-
-          <!-- Status indicator (shown when active) -->
-          <div id="powerModeStatusCard" class="card" style="text-align:center;padding:16px;display:none">
-            <div id="pmStatusIcon" style="font-size:32px;margin-bottom:6px">🔇</div>
-            <div id="pmStatusText" style="font-size:13px;font-weight:600;color:var(--text-2)">Kapali</div>
-            <div id="pmStatusHint" style="font-size:11px;color:var(--text-3);margin-top:4px"></div>
-            <div id="pmDownloadProgress" style="display:none;margin-top:10px">
-              <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden">
-                <div id="pmDownloadBar" style="width:0%;height:100%;background:linear-gradient(90deg,#3B82F6,#8B5CF6);transition:width 0.3s;border-radius:3px"></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-                <div id="pmDownloadText" style="font-size:11px;color:var(--text-3)">%0</div>
-                <div style="display:flex;gap:6px">
-                  <button id="pmDownloadCancel" onclick="pmCancelDownload()" style="font-size:11px;padding:3px 10px;border:1px solid rgba(239,68,68,0.4);border-radius:6px;background:transparent;color:#EF4444;cursor:pointer;font-weight:600">Iptal</button>
-                  <button id="pmDownloadRetry" onclick="pmRetryDownload()" style="display:none;font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-weight:600">Yeniden Dene</button>
-                </div>
-              </div>
-            </div>
-            <button id="pmStopBtn" onclick="pmStopFromUI()" style="display:none;margin-top:12px;padding:8px 20px;border:1px solid rgba(239,68,68,0.4);border-radius:8px;background:rgba(239,68,68,0.08);color:#EF4444;cursor:pointer;font-size:12px;font-weight:600;width:100%">Guc Modunu Kapat</button>
-          </div>
-
-          <!-- Sensitivity slider -->
-          <div class="card" style="padding:16px;">
-            <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Hassasiyet Ayari</div>
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Dusuk = sadece net soylenen kelimeler, Yuksek = daha kolay tetiklenir</div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:11px;color:var(--text-3);">Dusuk</span>
-              <input type="range" id="sPowerSensitivity" min="1" max="5" step="1" value="2" style="flex:1;accent-color:var(--accent);">
-              <span style="font-size:11px;color:var(--text-3);">Yuksek</span>
-            </div>
-            <div style="text-align:center;margin-top:4px;font-size:11px;color:var(--accent)" id="sensitivityLabel">Orta (3/5)</div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="card">
-            <div class="card-row">
-              <div class="card-label-wrap">
-                <div class="card-label">Cift tikla yapistir</div>
-                <div class="card-hint">Dikte bitince farenin sol tusuna cift tiklayarak yapistirir</div>
-              </div>
-              <label class="toggle"><input type="checkbox" id="sPowerDblClick" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-row">
-              <div class="card-label-wrap">
-                <div class="card-label">Uygulama baslangicinda etkinlestir</div>
-                <div class="card-hint">VoiceFlow acildiginda guc modu otomatik baslasin</div>
-              </div>
-              <label class="toggle"><input type="checkbox" id="sPowerAutoStart"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-            </div>
-          </div>
-
-          <div class="info-box" style="margin-top:12px">
-            <p>🧠 <strong>Nasil calisir?</strong> Guc modu aktifken VoiceFlow arka planda dinler. Uyanma kelimenizi soyleyin — dikte baslar. Tekrar soyleyin veya Ctrl+Space basin — kayit durur.</p>
-          </div>
-        </div>
-      </div>
 
       <!-- Shortcut Change Modal -->
       <div id="scModal" tabindex="0" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;outline:none">
@@ -515,10 +380,7 @@
             <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:var(--text-3);font-weight:900;user-select:none">● ● ● ● ● ● ● ●</div>
             <div id="apiTrialInfo" style="text-align:center;margin-top:4px;font-size:12px;color:var(--text-2)"></div>
             <!-- API KEY DEGİSTİR -->
-            <div style="margin-top:8px;text-align:center">
-              <a href="#" onclick="window.voiceflow.openExternal('https://console.groq.com/keys');return false;" style="display:inline-block;margin-bottom:8px;font-size:12px;color:var(--accent-text);font-weight:700;text-decoration:none">🔗 Ucretsiz Groq Key Al →</a>
-            </div>
-            <div style="margin-top:4px;text-align:center">
+            <div style="margin-top:10px;text-align:center">
               <button id="btnChangeApiKey" onclick="toggleApiKeyInput(true)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:12px;font-weight:600;cursor:pointer">🔑 Groq API Key Degistir</button>
             </div>
             <div id="apiKeyInputArea" style="display:none;margin-top:10px">
@@ -539,7 +401,13 @@
               <button onclick="window.voiceflow.openExternal('https://voice-flow-six.vercel.app')" style="width:100%;margin-top:8px;padding:8px;border:none;border-radius:6px;background:linear-gradient(135deg,#0F766E,#4F46E5);color:white;font-size:12px;font-weight:700;cursor:pointer">Pro'ya Yukselt</button>
             </div>
           </div>
-          <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">AI Modeli</div><div class="card-hint">Konusma tanima icin kullanilacak model</div></div><select class="card-select" id="sModel"><option value="whisper-large-v3">Whisper Large v3</option><option value="whisper-large-v3-turbo">Whisper v3 Turbo</option><option value="distil-whisper-large-v3-en">Distil Whisper (EN)</option></select></div></div>
+          <div class="card" style="background:rgba(15,118,110,0.04);border-color:rgba(15,118,110,0.2)">
+            <div style="font-size:12px;color:var(--text-2);line-height:1.6">
+              🎙️ <strong>Ses Tanıma Modu:</strong><br>
+              VoiceFlow önce Chrome'un yerleşik ses tanımasını kullanır (ücretsiz, internet gerekmez).<br>
+              Chrome çalışmazsa otomatik olarak Groq API'ye geçer.
+            </div>
+          </div>
           <div class="card"><div class="card-row"><div class="card-label-wrap"><div class="card-label">Sicaklik (Temperature)</div><div class="card-hint">Dusuk = tutarli, yuksek = yaratici</div></div><select class="card-select" id="sTemperature" style="min-width:70px"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.2">0.2</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="0.8">0.8</option><option value="1.0">1.0</option></select></div></div>
         </div>
       </div>
