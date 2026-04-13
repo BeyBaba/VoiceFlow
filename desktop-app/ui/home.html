@@ -514,6 +514,18 @@
             </div>
             <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:var(--text-3);font-weight:900;user-select:none">● ● ● ● ● ● ● ●</div>
             <div id="apiTrialInfo" style="text-align:center;margin-top:4px;font-size:12px;color:var(--text-2)"></div>
+            <!-- API KEY DEGİSTİR -->
+            <div style="margin-top:10px;text-align:center">
+              <button id="btnChangeApiKey" onclick="toggleApiKeyInput(true)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:12px;font-weight:600;cursor:pointer">🔑 Groq API Key Degistir</button>
+            </div>
+            <div id="apiKeyInputArea" style="display:none;margin-top:10px">
+              <input id="apiKeyInput" type="password" placeholder="gsk_..." style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-0);font-size:13px;outline:none;margin-bottom:8px" />
+              <div style="display:flex;gap:8px">
+                <button onclick="saveApiKey()" style="flex:1;padding:8px;border:none;border-radius:8px;background:#0F766E;color:white;font-size:13px;font-weight:700;cursor:pointer">Kaydet</button>
+                <button onclick="toggleApiKeyInput(false)" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:13px;font-weight:600;cursor:pointer">Iptal</button>
+              </div>
+            </div>
+
             <div id="apiRestrictedFeatures" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(239,68,68,0.05);border-radius:8px;border:1px solid rgba(239,68,68,0.1)">
               <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:6px">Kisitlanan ozellikler:</div>
               <div style="font-size:11px;color:var(--text-2);line-height:1.6">
@@ -1042,6 +1054,24 @@
     }
 
     // SETTINGS SAVE
+    function toggleApiKeyInput(show){
+      document.getElementById('apiKeyInputArea').style.display = show ? 'block' : 'none';
+      const btn = document.getElementById('btnChangeApiKey');
+      if(btn) btn.style.display = show ? 'none' : 'inline-block';
+      if(show) setTimeout(()=>document.getElementById('apiKeyInput').focus(),100);
+    }
+
+    function saveApiKey(){
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if(!key){ showToast('API Key bos birakilamaz!'); return; }
+      if(!key.startsWith('gsk_')){ showToast('Gecersiz format! Key gsk_ ile baslamali.'); return; }
+      saveSetting('groqApiKey', key);
+      toggleApiKeyInput(false);
+      document.getElementById('apiKeyInput').value = '';
+      updateApiKeyUI();
+      showToast('Groq API Key kaydedildi!');
+    }
+
     function saveSetting(k,v){ currentSettings[k]=v; window.voiceflow.saveSettings({[k]:v}); }
     const EMBEDDED_API_KEY = "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";
 
@@ -1066,9 +1096,21 @@
       const trialInfo=document.getElementById("apiTrialInfo");
       const restricted=document.getElementById("apiRestrictedFeatures");
 
+      // Maskeli key gösterimi
+      if(s.groqApiKey && s.groqApiKey.length > 8){
+        const k = s.groqApiKey;
+        masked.textContent = k.substring(0,7) + '****' + k.substring(k.length-4);
+        masked.style.fontSize = '13px';
+        masked.style.letterSpacing = '1px';
+      } else {
+        masked.textContent = '● ● ● ● ● ● ● ●';
+        masked.style.fontSize = '18px';
+        masked.style.letterSpacing = '4px';
+      }
+
       // Her durumda API Key degistir butonunu goster
-      const changeBtn = document.getElementById("btnChangeApiKey");
-      if(changeBtn) changeBtn.style.display = "inline-block";
+      const changeBtn = document.getElementById('btnChangeApiKey');
+      if(changeBtn) changeBtn.style.display = 'inline-block';
 
       if(s.isPro){
         // PRO - yeşil
