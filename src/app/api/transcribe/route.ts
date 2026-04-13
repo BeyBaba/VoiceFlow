@@ -17,7 +17,7 @@ const LANGUAGE_PROMPTS: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = request.headers.get("x-groq-api-key") || process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json(
