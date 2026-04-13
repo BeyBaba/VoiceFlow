@@ -14,7 +14,7 @@ function isPremiumAvailable(settings) {
 
 // ==================== LANGUAGE CONFIG ====================
 const LANGUAGE_PROMPTS = {
-  tr: "Bu bir Türkçe dikte kaydıdır. Kelimeleri tam ve doğru yaz, kısaltma yapma, noktalama ekle.",
+  tr: "Bu bir Turkce konusma kaydidir. Lutfen Turkce olarak yaziya dokun.",
   de: "Dies ist eine deutsche Sprachaufnahme. Bitte auf Deutsch transkribieren.",
   fr: "Ceci est un enregistrement vocal en francais. Veuillez transcrire en francais.",
   es: "Esta es una grabacion de voz en espanol. Por favor, transcribir en espanol.",
@@ -187,7 +187,7 @@ async function init() {
 
     // Auto-set embedded API key if not already set
     if (!cachedSettings.apiKey) {
-      cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
+      // Key yoksa kaydetme - kullanıcı API Durumu'ndan girecek
     }
 
     if (cachedSettings.setupComplete) {
@@ -426,7 +426,7 @@ function createConfetti() {
 async function finishOnboarding() {
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
-    apiKey: EMBEDDED_API_KEY,
+    apiKey: enteredKey,
     autoPaste: true,
     autoCopy: true,
     removeFiller: true,
@@ -594,22 +594,101 @@ function stopRecording() {
 }
 
 // ==================== TRANSCRIBE ====================
+// Önce Chrome Web Speech API dene, başarısız olursa Groq API kullan
 async function transcribe(audioBlob) {
-  if (!cachedSettings) {
-    cachedSettings = await window.voiceflow.getSettings();
-  }
-  const apiKey = EMBEDDED_API_KEY;
+  cachedSettings = await window.voiceflow.getSettings();
   const language = cachedSettings.language || "tr";
-  const model = cachedSettings.aiModel || (lang === "tr" ? "whisper-large-v3" : "whisper-large-v3-turbo");
+  const langCode = language === "tr" ? "tr-TR"
+    : language === "en" ? "en-US"
+    : language === "de" ? "de-DE"
+    : language === "fr" ? "fr-FR"
+    : language === "es" ? "es-ES"
+    : language === "ja" ? "ja-JP"
+    : language === "ko" ? "ko-KR"
+    : language === "zh" ? "zh-CN"
+    : language === "pt" ? "pt-PT"
+    : language === "it" ? "it-IT"
+    : language === "ru" ? "ru-RU"
+    : language === "ar" ? "ar-SA"
+    : "tr-TR";
+
+  // Chrome Web Speech API dene
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    try {
+      const result = await useChromeSpeech(langCode);
+      if (result && result.trim().length > 0) {
+        const cleaned = cleanTranscript(result, language);
+        await handleTranscriptResult(cleaned);
+        return;
+      }
+    } catch (e) {
+      console.warn("Chrome Speech başarısız, Groq'a geçiliyor:", e.message);
+    }
+  }
+
+  // Groq API fallback
+  await useGroqAPI(audioBlob, language);
+}
+
+function useChromeSpeech(langCode) {
+  return new Promise((resolve, reject) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = langCode;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    const timeout = setTimeout(() => {
+      try { recognition.stop(); } catch(e) {}
+      reject(new Error("Chrome Speech zaman aşımı"));
+    }, 10000);
+
+    recognition.onresult = (event) => {
+      clearTimeout(timeout);
+      const text = event.results[0][0].transcript || "";
+      resolve(text);
+    };
+
+    recognition.onerror = (event) => {
+      clearTimeout(timeout);
+      reject(new Error("Chrome Speech hatası: " + event.error));
+    };
+
+    recognition.onend = () => {
+      clearTimeout(timeout);
+    };
+
+    try {
+      recognition.start();
+    } catch(e) {
+      clearTimeout(timeout);
+      reject(e);
+    }
+  });
+}
+
+async function useGroqAPI(audioBlob, language) {
+  const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey;
+  if (!apiKey) {
+    showToast("API Key bulunamadı! Ayarlar → API Durumu");
+    isProcessing = false;
+    showView("idle");
+    window.voiceflow.resizeWindow(380, 100);
+    return;
+  }
+
+  const model = language === "tr" ? "whisper-large-v3" : (cachedSettings.aiModel || "whisper-large-v3-turbo");
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
 
   try {
-    // Determine file extension from actual blob type
     const blobMime = audioBlob.type || "audio/webm";
     let ext = "webm";
     if (blobMime.includes("wav")) ext = "wav";
     else if (blobMime.includes("ogg")) ext = "ogg";
     else if (blobMime.includes("mp4") || blobMime.includes("m4a")) ext = "m4a";
+
     const file = new File([audioBlob], "recording." + ext, { type: blobMime });
     const formData = new FormData();
     formData.append("file", file);
@@ -618,18 +697,20 @@ async function transcribe(audioBlob) {
     formData.append("response_format", "verbose_json");
     formData.append("temperature", String(temperature));
 
+    const LANGUAGE_PROMPTS = {
+      tr: "Bu bir Türkçe dikte kaydıdır. Kelimeleri tam ve doğru yaz, kısaltma yapma, noktalama ekle.",
+      en: "This is a dictation recording. Please transcribe accurately.",
+    };
     const prompt = LANGUAGE_PROMPTS[language] || "";
     if (prompt) formData.append("prompt", prompt);
 
     let response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { Authorization: "Bearer " + apiKey },
       body: formData,
     });
 
-    // Fallback to whisper-large-v3 if turbo fails (not auth error)
     if (!response.ok && response.status !== 401) {
-      console.warn("Turbo model failed, trying whisper-large-v3...");
       const fallbackForm = new FormData();
       fallbackForm.append("file", new File([audioBlob], "recording." + ext, { type: blobMime }));
       fallbackForm.append("model", "whisper-large-v3");
@@ -637,97 +718,95 @@ async function transcribe(audioBlob) {
       fallbackForm.append("response_format", "verbose_json");
       fallbackForm.append("temperature", String(temperature));
       if (prompt) fallbackForm.append("prompt", prompt);
-
       response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: "Bearer " + apiKey },
         body: fallbackForm,
       });
     }
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Groq error:", errText);
-
       if (response.status === 401) {
-        showToast("API Key gecersiz! Ayarlardan kontrol edin.");
-      } else if (response.status === 400) {
-        showToast("Ses formati desteklenmiyor — Ayarlardan WAV formatini deneyin");
-      } else if (response.status === 413) {
-        showToast("Kayit cok uzun — daha kisa konusun");
+        showToast("API Key geçersiz! Ayarlar → API Durumu'ndan güncelleyin.");
+      } else if (response.status === 429) {
+        showToast("Groq limiti aşıldı, biraz bekleyin.");
       } else {
-        showToast("Transkripsiyon hatasi: " + response.status);
+        showToast("Ses tanıma hatası: " + response.status);
       }
-
       isProcessing = false;
       showView("idle");
       window.voiceflow.resizeWindow(380, 100);
       return;
     }
 
-    const result = await response.json();
-    const rawText = result.text || "";
-
-    // Log API usage for cost tracking (duration from result or estimate 5 sec)
-    try {
-      const dictDuration = result.duration || 5;
-      const settings = await window.voiceflow.getSettings();
-      const usageLog = settings.apiUsageLog || [];
-      usageLog.push({ time: Date.now(), duration: dictDuration, type: "dictate", costUsd: dictDuration * 0.0000308 });
-      if (usageLog.length > 10000) usageLog.splice(0, usageLog.length - 10000);
-      window.voiceflow.saveSettings({ apiUsageLog: usageLog });
-    } catch (e) { console.log("Usage log error:", e); }
-    const cleaned = cleanTranscript(rawText, language);
-
-    if (!cleaned) {
-      showToast("Ses algilanamadi");
-      isProcessing = false;
-      showView("idle");
-      window.voiceflow.resizeWindow(380, 100);
-      return;
-    }
-
-    // Play complete sound — "ding"
-    playCompleteSound();
-
-    isProcessing = false;
-
-    // Copy to clipboard immediately
-    if (cachedSettings.autoCopy !== false) {
-      window.voiceflow.copyToClipboard(cleaned);
-    }
-
-    // Show result with typing animation
-    await showResultWithTyping(cleaned);
-
-    // Update result badge
-    window.voiceflow.showResult(cleaned);
-
-    // Save to transcript history
-    await saveToHistory(cleaned);
-
-    // Update word count
-    await updateDailyWordCount(cleaned);
-
-    // Auto-paste: hide window and simulate Ctrl+V (premium only)
-    if (cachedSettings.autoPaste && isPremiumAvailable(cachedSettings)) {
-      setTimeout(() => {
-        showToast("Kopyalandi!");
-        setTimeout(() => {
-          window.voiceflow.autoPaste();
-        }, 600);
-      }, 800);
-    }
+    const data = await response.json();
+    const transcript = data.text || "";
+    const cleaned = cleanTranscript(transcript, language);
+    await handleTranscriptResult(cleaned);
 
   } catch (err) {
-    console.error("Transcription error:", err);
-    showToast("Baglanti hatasi!");
+    console.error("Groq hatası:", err);
+    showToast("Bağlantı hatası: " + err.message);
     isProcessing = false;
     showView("idle");
     window.voiceflow.resizeWindow(380, 100);
   }
 }
 
+async function handleTranscriptResult(cleaned) {
+  if (!cleaned || cleaned.trim().length === 0) {
+    showToast("Ses algılanamadı, tekrar deneyin.");
+    isProcessing = false;
+    showView("idle");
+    window.voiceflow.resizeWindow(380, 100);
+    return;
+  }
+
+  // Word count for free users
+  const SUPER_USERS = ["savasarac@gmail.com"];
+  const isSuperUser = SUPER_USERS.includes(cachedSettings.userEmail);
+  if (!cachedSettings.isPro && !isSuperUser) {
+    const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+    const today = new Date().toISOString().split("T")[0];
+    let dailyCount = cachedSettings.dailyWordCount || 0;
+    if (cachedSettings.lastWordCountDate !== today) dailyCount = 0;
+    dailyCount += wordCount;
+    await window.voiceflow.saveSettings({ dailyWordCount: dailyCount, lastWordCountDate: today });
+    cachedSettings.dailyWordCount = dailyCount;
+    cachedSettings.lastWordCountDate = today;
+  }
+
+  // Auto copy
+  if (cachedSettings.autoCopy !== false) {
+    await window.voiceflow.copyToClipboard(cleaned);
+  }
+
+  // Save to history
+  if (cachedSettings.keepHistory !== false) {
+    const history = cachedSettings.transcriptionHistory || [];
+    history.unshift({ text: cleaned, date: new Date().toISOString() });
+    if (history.length > 100) history.splice(100);
+    await window.voiceflow.saveSettings({ transcriptionHistory: history });
+  }
+
+  // Log API usage
+  if (typeof logApiUsage === "function") logApiUsage(audioBlob?.size || 0, "transcribe");
+
+  playCompleteSound();
+  isProcessing = false;
+  showResultWithTyping(cleaned);
+
+  // Auto paste
+  if (cachedSettings.autoPaste) {
+    setTimeout(() => window.voiceflow.autoPaste(), 300);
+  }
+
+  // Notification
+  if (cachedSettings.notifications !== false) {
+    window.voiceflow.showNotification(cleaned);
+  }
+}
 // ==================== HISTORY ====================
 async function saveToHistory(text) {
   try {
