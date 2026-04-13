@@ -515,7 +515,10 @@
             <div id="apiKeyMasked" style="font-family:'SF Mono','Cascadia Code',monospace;font-size:18px;letter-spacing:4px;text-align:center;padding:10px 0;color:var(--text-3);font-weight:900;user-select:none">● ● ● ● ● ● ● ●</div>
             <div id="apiTrialInfo" style="text-align:center;margin-top:4px;font-size:12px;color:var(--text-2)"></div>
             <!-- API KEY DEGİSTİR -->
-            <div style="margin-top:10px;text-align:center">
+            <div style="margin-top:8px;text-align:center">
+              <a href="#" onclick="window.voiceflow.openExternal('https://console.groq.com/keys');return false;" style="display:inline-block;margin-bottom:8px;font-size:12px;color:var(--accent-text);font-weight:700;text-decoration:none">🔗 Ucretsiz Groq Key Al →</a>
+            </div>
+            <div style="margin-top:4px;text-align:center">
               <button id="btnChangeApiKey" onclick="toggleApiKeyInput(true)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:12px;font-weight:600;cursor:pointer">🔑 Groq API Key Degistir</button>
             </div>
             <div id="apiKeyInputArea" style="display:none;margin-top:10px">

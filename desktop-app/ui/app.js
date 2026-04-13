@@ -185,9 +185,9 @@ async function init() {
     cachedSettings = await window.voiceflow.getSettings();
     console.log("Settings loaded:", cachedSettings);
 
-    // Auto-set embedded API key if not already set
-    if (!cachedSettings.apiKey) {
-      cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
+    // Key kontrolu - yoksa uyar
+    if (!cachedSettings.apiKey && !cachedSettings.groqApiKey && cachedSettings.setupComplete) {
+      showToast("API Key eksik! Lutfen API Durumu sayfasindan girin.");
     }
 
     if (cachedSettings.setupComplete) {
@@ -229,8 +229,6 @@ function showView(name) {
 
 // ==================== ONBOARDING ====================
 function goToStep(stepNum) {
-  // Skip Step 1 (API Key) — key is embedded
-  if (stepNum === 1) stepNum = 2;
 
   const steps = document.querySelectorAll(".ob-step");
   const goingBack = stepNum < currentOnboardingStep;
@@ -311,6 +309,8 @@ function validateAndGoStep2() {
     return;
   }
 
+  // Key'i hemen kaydet
+  window.voiceflow.saveSettings({ apiKey: apiKey, groqApiKey: apiKey });
   goToStep(2);
 }
 
@@ -424,9 +424,11 @@ function createConfetti() {
 
 // Finish onboarding
 async function finishOnboarding() {
+  const enteredKey = obApiKeyInput ? obApiKeyInput.value.trim() : "";
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
-    apiKey: EMBEDDED_API_KEY,
+    apiKey: enteredKey,
+    groqApiKey: enteredKey,
     autoPaste: true,
     autoCopy: true,
     removeFiller: true,
@@ -595,9 +597,16 @@ function stopRecording() {
 
 // ==================== TRANSCRIBE ====================
 async function transcribe(audioBlob) {
-  // Her dikatte settings taze oku - key degismis olabilir
+  // Her dikatte settings taze oku
   cachedSettings = await window.voiceflow.getSettings();
-  const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey || EMBEDDED_API_KEY;
+  const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey;
+  if (!apiKey) {
+    showToast("API Key bulunamadi! Ayarlar → API Durumu");
+    isProcessing = false;
+    showView("idle");
+    window.voiceflow.resizeWindow(380, 100);
+    return;
+  }
   const language = cachedSettings.language || "tr";
   const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
