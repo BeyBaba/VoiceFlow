@@ -186,7 +186,7 @@ async function init() {
     console.log("Settings loaded:", cachedSettings);
 
     // Auto-set embedded API key if not already set
-    if (!cachedSettings.apiKey) {
+    if (!cachedSettings.apiKey && !cachedSettings.groqApiKey) {
       cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
     }
 
@@ -229,6 +229,8 @@ function showView(name) {
 
 // ==================== ONBOARDING ====================
 function goToStep(stepNum) {
+  // Skip Step 1 (API Key) — key is embedded
+  if (stepNum === 1) stepNum = 2;
 
   const steps = document.querySelectorAll(".ob-step");
   const goingBack = stepNum < currentOnboardingStep;
@@ -422,12 +424,9 @@ function createConfetti() {
 
 // Finish onboarding
 async function finishOnboarding() {
-  const enteredKey = obApiKeyInput ? obApiKeyInput.value.trim() : "";
-  const keyToSave = (enteredKey && enteredKey.startsWith("gsk_")) ? enteredKey : EMBEDDED_API_KEY;
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
-    apiKey: keyToSave,
-    groqApiKey: keyToSave,
+    apiKey: EMBEDDED_API_KEY,
     autoPaste: true,
     autoCopy: true,
     removeFiller: true,
@@ -596,9 +595,8 @@ function stopRecording() {
 
 // ==================== TRANSCRIBE ====================
 async function transcribe(audioBlob) {
-  if (!cachedSettings) {
-    cachedSettings = await window.voiceflow.getSettings();
-  }
+  // Her dikte oncesi settings taze oku
+  cachedSettings = await window.voiceflow.getSettings();
   const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey || EMBEDDED_API_KEY;
   const language = cachedSettings.language || "tr";
   const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
