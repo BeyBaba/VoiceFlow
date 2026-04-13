@@ -1066,6 +1066,10 @@
       const trialInfo=document.getElementById("apiTrialInfo");
       const restricted=document.getElementById("apiRestrictedFeatures");
 
+      // Her durumda API Key degistir butonunu goster
+      const changeBtn = document.getElementById("btnChangeApiKey");
+      if(changeBtn) changeBtn.style.display = "inline-block";
+
       if(s.isPro){
         // PRO - yeşil
         card.style.borderColor="rgba(16,185,129,0.3)";
@@ -1372,10 +1376,10 @@
           // Get word-level results with confidence
           const wordResults = msg.result?.result || [];
 
-          // Free-form confidence thresholds - dusuruldu daha kolay algilansın
-          // 1=Cok Dusuk (0.30), 2=Dusuk (0.20), 3=Orta (0.15), 4=Yuksek (0.10), 5=Cok Yuksek (0.05)
+          // Free-form confidence thresholds (Vosk Turkce modeli dusuk confidence verir)
+          // 1=Cok Dusuk (0.70), 2=Dusuk (0.50), 3=Orta (0.35), 4=Yuksek (0.20), 5=Cok Yuksek (0.10)
           const sensitivity = currentSettings.powerSensitivity || 2;
-          const confThresholds = [0, 0.30, 0.20, 0.15, 0.10, 0.05];
+          const confThresholds = [0, 0.70, 0.50, 0.35, 0.20, 0.10];
           const confThreshold = confThresholds[sensitivity];
 
           const liveEl = document.getElementById("pmLiveText");
