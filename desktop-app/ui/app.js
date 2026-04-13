@@ -14,7 +14,7 @@ function isPremiumAvailable(settings) {
 
 // ==================== LANGUAGE CONFIG ====================
 const LANGUAGE_PROMPTS = {
-  tr: "Bu bir Turkce konusma kaydidir. Lutfen Turkce olarak yaziya dokun.",
+  tr: "Bu bir Türkçe dikte kaydıdır. Kelimeleri tam ve doğru yaz, kısaltma yapma, noktalama ekle.",
   de: "Dies ist eine deutsche Sprachaufnahme. Bitte auf Deutsch transkribieren.",
   fr: "Ceci est un enregistrement vocal en francais. Veuillez transcrire en francais.",
   es: "Esta es una grabacion de voz en espanol. Por favor, transcribir en espanol.",
@@ -185,9 +185,9 @@ async function init() {
     cachedSettings = await window.voiceflow.getSettings();
     console.log("Settings loaded:", cachedSettings);
 
-    // Key kontrolu - yoksa uyar
-    if (!cachedSettings.apiKey && !cachedSettings.groqApiKey && cachedSettings.setupComplete) {
-      showToast("API Key eksik! Lutfen API Durumu sayfasindan girin.");
+    // Auto-set embedded API key if not already set
+    if (!cachedSettings.apiKey) {
+      cachedSettings = await window.voiceflow.saveSettings({ apiKey: EMBEDDED_API_KEY });
     }
 
     if (cachedSettings.setupComplete) {
@@ -229,6 +229,8 @@ function showView(name) {
 
 // ==================== ONBOARDING ====================
 function goToStep(stepNum) {
+  // Skip Step 1 (API Key) — key is embedded
+  if (stepNum === 1) stepNum = 2;
 
   const steps = document.querySelectorAll(".ob-step");
   const goingBack = stepNum < currentOnboardingStep;
@@ -309,8 +311,6 @@ function validateAndGoStep2() {
     return;
   }
 
-  // Key'i hemen kaydet
-  window.voiceflow.saveSettings({ apiKey: apiKey, groqApiKey: apiKey });
   goToStep(2);
 }
 
@@ -424,11 +424,9 @@ function createConfetti() {
 
 // Finish onboarding
 async function finishOnboarding() {
-  const enteredKey = obApiKeyInput ? obApiKeyInput.value.trim() : "";
   cachedSettings = await window.voiceflow.saveSettings({
     language: selectedLang,
-    apiKey: enteredKey,
-    groqApiKey: enteredKey,
+    apiKey: EMBEDDED_API_KEY,
     autoPaste: true,
     autoCopy: true,
     removeFiller: true,
@@ -597,18 +595,12 @@ function stopRecording() {
 
 // ==================== TRANSCRIBE ====================
 async function transcribe(audioBlob) {
-  // Her dikatte settings taze oku
-  cachedSettings = await window.voiceflow.getSettings();
-  const apiKey = cachedSettings.groqApiKey || cachedSettings.apiKey;
-  if (!apiKey) {
-    showToast("API Key bulunamadi! Ayarlar → API Durumu");
-    isProcessing = false;
-    showView("idle");
-    window.voiceflow.resizeWindow(380, 100);
-    return;
+  if (!cachedSettings) {
+    cachedSettings = await window.voiceflow.getSettings();
   }
+  const apiKey = EMBEDDED_API_KEY;
   const language = cachedSettings.language || "tr";
-  const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
+  const model = cachedSettings.aiModel || (lang === "tr" ? "whisper-large-v3" : "whisper-large-v3-turbo");
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
 
   try {
