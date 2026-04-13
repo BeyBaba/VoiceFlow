@@ -598,7 +598,7 @@ async function transcribe(audioBlob) {
   if (!cachedSettings) {
     cachedSettings = await window.voiceflow.getSettings();
   }
-  const apiKey = EMBEDDED_API_KEY;
+  const apiKey = cachedSettings.groqApiKey || EMBEDDED_API_KEY;
   const language = cachedSettings.language || "tr";
   const model = cachedSettings.aiModel || "whisper-large-v3-turbo";
   const temperature = cachedSettings.temperature !== undefined ? cachedSettings.temperature : 0;
